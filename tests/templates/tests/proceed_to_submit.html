@@ -1,0 +1,28 @@
+{% extends 'user/base.html' %}
+
+{% block content %}
+<div class="container my-5">
+
+    <h2 class="mb-4 text-center">Test Summary</h2>
+
+    <div class="card p-4">
+        <p><strong>Total Questions:</strong> {{ total_questions }}</p>
+        <p><strong>Attempted Questions:</strong> {{ attempted_questions }}</p>
+        <p><strong>Sureshot Attempts:</strong> {{ sureshot }}</p>
+        <p><strong>Applied Attempts:</strong> {{ applied }}</p>
+        <p><strong>Guesswork Attempts:</strong> {{ guesswork }}</p>
+        <p><strong>Unattempted Questions:</strong> {{ unattempted }}</p>
+
+        <div class="mt-4 d-flex flex-wrap gap-3">
+            <a href="{% url 'take_test' test.id back_serial %}" class="btn btn-secondary">🔙 Back to Test</a>
+
+            {% if unattempted > 0 %}
+            <a href="{% url 'blind_attempt' test.id %}"class="btn btn-warning">🎯 Attempt Blind Attempts</a>
+            {% endif %}
+
+            <a href="#" class="btn btn-success">✅ Submit Test</a>
+        </div>
+    </div>
+
+</div>
+{% endblock %}blind_attempt

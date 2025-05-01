@@ -1,0 +1,129 @@
+{% extends 'user/base.html' %}
+
+{% block title %}Test Result - {{ test.name|default:"Test" }}{% endblock %}
+
+{% block content %}
+<div class="container py-3">
+    <h3 class="text-center mb-3">Test Result</h3>
+    <h5 class="text-center text-muted mb-4">{{ test.name|default:"Untitled Test" }}</h5>
+    <h6>Test date: {{ test.end_time|date:"d M Y" }}</h6>
+    <br>
+  <!-- Score row without card -->
+  <div class="row mb-4 justify-content-center text-center">
+    <div class="col-auto">
+        <span class="fw-bold fs-5">Score:</span>
+        <span class="fw-bold fs-4 text-dark">{{ score }} Marks</span>
+    </div>
+</div>
+<!-- Correct, Wrong, Unattempted row -->
+<div class="row g-3 mb-4 text-center">
+    <div class="col-6 col-sm-6 col-md-4">
+        <a href="{% url 'attempt_type_detail' test.id 'right' %}" class="text-decoration-none">
+            <div class="card border-success shadow-sm text-center h-100">
+                <div class="card-body p-3">
+                    <div class="small text-muted">✅ Correct</div>
+                    <div class="fw-bold fs-4 text-success">{{ correct }}</div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-sm-6 col-md-4">
+        <a href="{% url 'attempt_type_detail' test.id 'wrong' %}" class="text-decoration-none">
+            <div class="card border-danger shadow-sm text-center h-100">
+                <div class="card-body p-3">
+                    <div class="small text-muted">❌ Wrong</div>
+                    <div class="fw-bold fs-4 text-danger">{{ wrong }}</div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-sm-6 col-md-4">
+        <a href="{% url 'attempt_type_detail' test.id 'unattempted' %}" class="text-decoration-none">
+            <div class="card border-warning shadow-sm text-center h-100">
+                <div class="card-body p-3">
+                    <div class="small text-muted">🚫 Unattempted</div>
+                    <div class="fw-bold fs-4 text-warning">{{ unattempted }}</div>
+                </div>
+            </div>
+        </a>
+    </div>
+</div>
+
+    <!-- Blind Attempt Impact (Subtle, only if exists) -->
+    {% for t in attempt_types %}
+        {% if t.key == 'blind' and t.total > 0 %}
+        <div class="text-center mt-4 small text-muted">
+            <span class="fw-semibold">Blind Attempt Impact</span> (Experimental): 
+            {% if t.marks > 0 %}
+                You would have gained 
+                <span class="text-success fw-bold">+{{ t.marks }}</span> marks
+            {% elif t.marks < 0 %}
+                You would have lost 
+                <span class="text-danger fw-bold">{{ t.marks }}</span> marks
+            {% else %}
+                No change in marks
+            {% endif %}
+            <span class="text-muted">({{ t.wrong }} wrong/{{ t.total }})</span>
+        </div>
+        {% endif %}
+    {% endfor %}
+
+    <br>
+
+    <!-- Attempt Type Breakdown -->
+    <h5 class="text-center mb-3">📊 Attempt Type Breakdown</h5>
+    <div class="row g-3 justify-content-center">
+        {% for t in attempt_types %}
+            {% if t.key != 'blind' %}
+            <div class="col-12 col-sm-6 col-lg-3">
+                <div class="card h-100 border-primary shadow-sm">
+                    <div class="card-body text-center p-3">
+                        <h6 class="fw-bold mb-2">{{ t.label }}</h6>
+                        <div class="mb-1">
+                            <span class="fw-semibold 
+                                {% if t.key == 'sureshot' and t.percent_wrong > 10 %}
+                                    text-danger
+                                {% elif t.key == 'applied' and t.percent_wrong > 25 %}
+                                    text-danger
+                                {% elif t.key == 'guesswork' and t.percent_wrong > 50 %}
+                                    text-danger
+                                {% else %}
+                                    text-success
+                                {% endif %}
+                            ">
+                                {{ t.percent_wrong }}%
+                            </span> Wrong
+                            <div class="text-muted small">({{ t.wrong }}/{{ t.total }} attempts)</div>
+                        </div>
+                        <div class="mb-2">
+                            🎓 <span class="fw-semibold">Marks:</span> {{ t.marks }}
+                        </div>
+                        <a href="{% url 'attempt_type_detail' test.id t.key %}" class="btn btn-sm btn-outline-primary mt-2">
+                            View Attempts →
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        {% endfor %}
+    </div>
+    <br><br>
+
+    <div class="d-flex justify-content-center align-items-center gap-3 mb-4">
+        {% if previous_test_id %}
+            <a href="{% url 'test_result' previous_test_id %}" class="btn btn-outline-secondary">
+                &larr; Previous Test
+            </a>
+        {% endif %}
+    
+        <a href="{% url 'dashboard' %}">
+            <button class="btn btn-primary">Back to Dashboard</button>
+        </a>
+    
+        {% if next_test_id %}
+            <a href="{% url 'test_result' next_test_id %}" class="btn btn-outline-secondary">
+                Next Test &rarr;
+            </a>
+        {% endif %}
+    </div>
+{% endblock %}

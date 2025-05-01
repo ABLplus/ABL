@@ -1,0 +1,24 @@
+{% extends 'user/base.html' %}
+
+{% block content %}
+<div class="container my-5">
+
+    <h4 class="mb-4 text-center">Blind Attempt Mode</h4>
+
+    <div class="card p-4">
+        <h5>Q{{ question_log.serial }}. {{ question_log.question.question_html|safe }}</h5>
+
+        <form method="POST">
+            {% csrf_token %}
+            <div class="d-grid gap-3 mt-4">
+                <button type="submit" name="selected_option" value="A" class="btn btn-outline-primary">{{ question_log.question.option_a }}</button>
+                <button type="submit" name="selected_option" value="B" class="btn btn-outline-primary">{{ question_log.question.option_b }}</button>
+                <button type="submit" name="selected_option" value="C" class="btn btn-outline-primary">{{ question_log.question.option_c }}</button>
+                <button type="submit" name="selected_option" value="D" class="btn btn-outline-primary">{{ question_log.question.option_d }}</button>
+            </div>
+        </form>
+
+    </div>
+
+</div>
+{% endblock %}

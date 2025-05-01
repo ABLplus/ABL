@@ -1,0 +1,79 @@
+{% extends 'question/base.html' %}
+
+{% block title %}Attempt Question{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2 class="mb-4">Attempt Question</h2>
+
+    <!-- Question Selection Dropdown -->
+    <form method="get" class="mb-4">
+        <div class="row">
+            <div class="col-md-10">
+                <select name="question" class="form-select" onchange="this.form.submit()">
+                    {% for question in questions %}
+                        <option value="{{ question.id }}" {% if question.id == selected_question.id %}selected{% endif %}>
+                            {{ question.subject }} - {{ question.topic|default:"(No topic)" }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100">Load Question</button>
+            </div>
+        </div>
+    </form>
+
+    {% if selected_question %}
+    <!-- Question and Options -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">{{ selected_question.question_html|safe }}</h5>
+
+            <form method="post">
+                {% csrf_token %}
+                <div class="form-check my-2">
+                    <input class="form-check-input" type="radio" name="answer" id="optionA" value="A">
+                    <label class="form-check-label" for="optionA">
+                        {{ selected_question.option_a|safe }}
+                    </label>
+                </div>
+                <div class="form-check my-2">
+                    <input class="form-check-input" type="radio" name="answer" id="optionB" value="B">
+                    <label class="form-check-label" for="optionB">
+                       {{ selected_question.option_b|safe }}
+                    </label>
+                </div>
+                <div class="form-check my-2">
+                    <input class="form-check-input" type="radio" name="answer" id="optionC" value="C">
+                    <label class="form-check-label" for="optionC">
+                        {{ selected_question.option_c|safe }}
+                    </label>
+                </div>
+                <div class="form-check my-2">
+                    <input class="form-check-input" type="radio" name="answer" id="optionD" value="D">
+                    <label class="form-check-label" for="optionD">
+                        {{ selected_question.option_d|safe }}
+                    </label>
+                </div>
+
+                <!-- Navigation Buttons -->
+                <div class="mt-4 text-center">
+                    <a href="{% url 'attempt_question' %}?question={{ selected_question.id|add:"-1" }}" class="btn btn-outline-secondary {% if selected_question.id == questions.first.id %}disabled{% endif %}">
+                        Previous
+                    </a>
+
+                    <button type="submit" class="btn btn-success mx-2">Save & Next</button>
+
+                    <a href="{% url 'attempt_question' %}?question={{ selected_question.id|add:"1" }}" class="btn btn-outline-primary {% if selected_question.id == questions.last.id %}disabled{% endif %}">
+                        Next
+                    </a>
+                </div>
+
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

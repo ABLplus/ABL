@@ -1,0 +1,37 @@
+{% extends 'user/base.html' %}
+{% load form_tags %}
+
+{% block title %}Profile{% endblock %}
+
+{% block content %}
+
+<div class="row justify-content-center">
+    <div class="col-11 col-md-6 col-lg-4">
+        <h2 class="text-center mb-4">My Profile</h2>
+
+        <form method="POST" novalidate>
+            {% csrf_token %}
+            
+            <div class="mb-3">
+                <label class="form-label">Username</label>
+                <input type="text" class="form-control" value="{{ request.user.username }}" disabled>
+            </div>
+
+            <div class="mb-3">
+                <label for="id_mobile_number" class="form-label">Mobile Number</label>
+                {{ form.mobile_number|add_class:"form-control" }}
+                {{ form.mobile_number.errors }}
+            </div>
+
+            <div class="d-grid">
+                <button type="submit" class="btn btn-primary">Update</button>
+            </div>
+        </form>
+        <p class="text-center mt-3">
+            <a href="{% url 'password_change' %}">Change Password</a>
+        </p>
+    </div>
+
+</div>
+
+{% endblock %}

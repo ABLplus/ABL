@@ -1,0 +1,51 @@
+{% extends 'user/base.html' %}
+{% load form_tags %}
+
+{% block title %}Register{% endblock %}
+
+{% block content %}
+
+<div class="row justify-content-center">
+    <div class="col-11 col-md-6 col-lg-4">
+        <h2 class="text-center mb-4">Create Your Account</h2>
+
+        <form method="POST" novalidate>
+            {% csrf_token %}
+            {{ form.non_field_errors }}
+
+            <div class="mb-3">
+                <label for="id_username" class="form-label">Username</label>
+                {{ form.username|add_class:"form-control" }}
+                {{ form.username.errors }}
+            </div>
+
+            <div class="mb-3">
+                <label for="id_mobile_number" class="form-label">Mobile Number</label>
+                {{ form.mobile_number|add_class:"form-control" }}
+                {{ form.mobile_number.errors }}
+            </div>
+
+            <div class="mb-3">
+                <label for="id_password1" class="form-label">Password</label>
+                {{ form.password1|add_class:"form-control" }}
+                {{ form.password1.errors }}
+            </div>
+
+            <div class="mb-3">
+                <label for="id_password2" class="form-label">Confirm Password</label>
+                {{ form.password2|add_class:"form-control" }}
+                {{ form.password2.errors }}
+            </div>
+
+            <div class="d-grid">
+                <button type="submit" class="btn btn-primary">Register</button>
+            </div>
+        </form>
+
+        <p class="text-center mt-3">
+            Already have an account? <a href="{% url 'login' %}">Login here</a>.
+        </p>
+    </div>
+</div>
+
+{% endblock %}

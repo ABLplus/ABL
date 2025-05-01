@@ -1,0 +1,34 @@
+{% extends 'question/base.html' %}
+{% block content %}
+<div class="container">
+    <h2>All Questions</h2>
+    <a href="{% url 'add_question' %}" class="btn btn-primary mb-3">Add New Question</a>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Subject</th>
+                <th>Year</th>
+                <th>Topic</th>
+                <th>Created</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for question in questions %}
+            <tr>
+                <td>{{ question.subject }}</td>
+                <td>{{ question.year }}</td>
+                <td>{{ question.topic }}</td>
+                <td>{{ question.created_at }}</td>
+                <td>
+                    <a href="{% url 'edit_question' question.pk %}" class="btn btn-sm btn-warning">Edit</a>
+                    <a href="{% url 'delete_question' question.pk %}" class="btn btn-sm btn-danger">Delete</a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5">No questions added yet.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

@@ -1,0 +1,43 @@
+{% extends 'user/base.html' %}
+{% load form_tags %}
+
+{% block title %}Login{% endblock %}
+
+{% block content %}
+
+<div class="row justify-content-center">
+    <div class="col-11 col-md-6 col-lg-4">
+        <h2 class="text-center mb-4">Login to Your Account</h2>
+
+        <form method="POST" novalidate>
+            {% csrf_token %}
+            {{ form.non_field_errors }}
+
+            <div class="mb-3">
+                <label for="id_username" class="form-label">Username</label>
+                {{ form.username|add_class:"form-control" }}
+                {{ form.username.errors }}
+            </div>
+
+            <div class="mb-3">
+                <label for="id_password" class="form-label">Password</label>
+                {{ form.password|add_class:"form-control" }}
+                {{ form.password.errors }}
+            </div>
+
+            <div class="d-grid">
+                <button type="submit" class="btn btn-success">Login</button>
+            </div>
+        </form>
+
+        <p class="text-center mt-3">
+            Don't have an account? <a href="{% url 'register' %}">Register here</a>.
+        </p>
+
+        <p class="text-center mt-3">
+            Forgot your password? Please contact the admin team for assistance.
+        </p>
+    </div>
+</div>
+
+{% endblock %}
