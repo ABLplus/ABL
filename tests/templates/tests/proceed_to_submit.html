@@ -20,9 +20,9 @@
             <a href="{% url 'blind_attempt' test.id %}"class="btn btn-warning">🎯 Attempt Blind Attempts</a>
             {% endif %}
 
-            <a href="#" class="btn btn-success">✅ Submit Test</a>
+            <a href="{% url 'submit_test' test.id %}" class="btn btn-success">✅ Submit Test</a>
         </div>
     </div>
 
 </div>
-{% endblock %}blind_attempt
+{% endblock %}

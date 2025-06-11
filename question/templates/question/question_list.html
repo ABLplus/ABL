@@ -1,24 +1,60 @@
 {% extends 'question/base.html' %}
+{% load range_tags %}
 {% block content %}
 <div class="container">
-    <h2>All Questions</h2>
+    <h2>All Questions ({{ total_count }})</h2>
+
+    <!-- Filter Form -->
+    <form method="get" class="row g-3 mb-3">
+        <div class="col-md-2">
+            <select name="year" class="form-select">
+                <option value="">-- All Years --</option>
+                {% for y in 2000|to:2025 %}
+                    <option value="{{ y }}" {% if filter_year == y|stringformat:"s" %}selected{% endif %}>{{ y }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <select name="subject" class="form-select">
+                <option value="">-- Select Subject --</option>
+                {% for subj in subjects %}
+                    <option value="{{ subj.id }}" {% if filter_subject == subj.id|stringformat:"s" %}selected{% endif %}>{{ subj.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3 form-check pt-2">
+            <input class="form-check-input" type="checkbox" name="unlinked" value="1" id="unlinkedCheck"
+                {% if filter_unlinked %}checked{% endif %}>
+            <label class="form-check-label" for="unlinkedCheck">
+                No Subject Assigned
+            </label>
+        </div>
+        <div class="col-md-2">
+            <button type="submit" class="btn btn-success">Apply Filters</button>
+        </div>
+        <div class="col-md-2">
+            <a href="{% url 'question_list' %}" class="btn btn-secondary">Clear Filters</a>
+        </div>
+    </form>
+
     <a href="{% url 'add_question' %}" class="btn btn-primary mb-3">Add New Question</a>
+
     <table class="table table-bordered">
         <thead>
             <tr>
                 <th>Subject</th>
                 <th>Year</th>
                 <th>Topic</th>
-                <th>Created</th>
+                <th>Question statement/th>
                 <th>Actions</th>
             </tr>
         </thead>
         <tbody>
             {% for question in questions %}
             <tr>
-                <td>{{ question.subject }}</td>
+                <td>{{ question.subject.name|default:question.subject_name }}</td>
                 <td>{{ question.year }}</td>
-                <td>{{ question.topic }}</td>
+                <td>{{ question.question_html|safe }}</td>
                 <td>{{ question.created_at }}</td>
                 <td>
                     <a href="{% url 'edit_question' question.pk %}" class="btn btn-sm btn-warning">Edit</a>
@@ -26,7 +62,7 @@
                 </td>
             </tr>
             {% empty %}
-            <tr><td colspan="5">No questions added yet.</td></tr>
+            <tr><td colspan="5">No questions found.</td></tr>
             {% endfor %}
         </tbody>
     </table>

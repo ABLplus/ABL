@@ -5,9 +5,12 @@
 {% block content %}
 
 <!-- Hero Section -->
-<div class="text-center mb-5">
-    <h1 class="display-5 fw-semibold">Welcome to ABL</h1>
-    <p class="lead mt-3">Practice Smart. Learn Better. Test Yourself. Know Your Strengths and Weaknesses.</p>
+<div class="text-center mb-5 py-4 px-3 bg-body-tertiary rounded shadow-sm">
+    <h1 class="display-5 fw-bold text-primary">Welcome to ABL</h1>
+    <p class="lead mt-3 text-body">Practice smart. Learn better. Test yourself. Know your strengths and weaknesses.</p>
+    <p class="text-muted fs-6 mt-2">
+        Begin with year-wise UPSC Prelims GS-1 papers and gauge your performance with real exam-level questions.
+    </p>
 </div>
 
 <!-- Login Section -->
@@ -15,15 +18,9 @@
     <div class="d-grid gap-2 col-10 col-md-4 mx-auto">
         <a href="{% url 'login' %}" class="btn btn-success px-4 py-2">Login</a>
     </div>
-    <p class="mt-3">
-        Don't have an account? <a href="{% url 'register' %}">Register here</a>.
+    <p class="mt-3 text-body">
+        Don't have an account? Contact Admin.
     </p>
-</div>
-
-<!-- Demo Test Section -->
-<div class="text-center mt-5">
-    <h5 class="mb-3">Just want to try first?</h5>
-    <a href="#" class="btn btn-outline-secondary px-4 py-2">Take a Demo Test</a>
 </div>
 
 {% endblock %}

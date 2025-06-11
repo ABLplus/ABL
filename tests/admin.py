@@ -11,7 +11,7 @@ class TestAdmin(admin.ModelAdmin):
 
 @admin.register(QuestionLog)
 class QuestionLogAdmin(admin.ModelAdmin):
-    list_display = ('id', 'user', 'question', 'test', 'serial', 'user_answered', 'attempt_result', 'timestamp')
+    list_display = ('id', 'user', 'question', 'test', 'serial', 'user_answered', 'attempt_result', 'attempt_type','timestamp')
     list_filter = ('attempt_result', 'attempt_type')
     search_fields = ('user__username', 'question__id')
     ordering = ('-timestamp',)

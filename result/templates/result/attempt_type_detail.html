@@ -7,24 +7,29 @@
 <div class="container py-4">
     <h4 class="mb-4 text-center">
         {% if attempt_type == 'Unattempted' %}
-            Blind/Unattempted Questions  – {{ test.name }}
+            Blind/Unattempted Questions – {{ test.name }}
         {% else %}
-            {{ attempt_type }} Attempts  – {{ test.name }}
+            {{ attempt_type }} Attempts – {{ test.name }}
         {% endif %}
     </h4>
-    <h6>Test date: {{ test.end_time|date:"d M Y" }}</h6>
-    <a href="{% url 'test_result' test_id=test.id %}"><button class="btn btn-primary">Back to Test Summary</button></a>
 
+    <h6>Test date: {{ test.end_time|date:"d M Y" }}</h6>
+
+    <a href="{% url 'test_result' test_id=test.id %}">
+        <button class="btn btn-primary mb-3">Back to Test Summary</button>
+    </a>
+
+    <!-- Filter Form -->
     <form method="get" class="row g-3 mb-4 align-items-end">
         {% if attempt_type|lower != 'right' and attempt_type|lower != 'wrong' and attempt_type|lower != 'unattempted' %}
-<div class="col-md-3">
-    <label for="result" class="form-label">Filter by Result</label>
-    <select name="result" id="result" class="form-select form-select-sm">
-        <option value="">All</option>
-        <option value="right" {% if selected_result == 'right' %}selected{% endif %}>Right</option>
-        <option value="wrong" {% if selected_result == 'wrong' %}selected{% endif %}>Wrong</option>
-    </select>
-</div>
+        <div class="col-md-3">
+            <label for="result" class="form-label">Filter by Result</label>
+            <select name="result" id="result" class="form-select form-select-sm">
+                <option value="">All</option>
+                <option value="right" {% if selected_result == 'right' %}selected{% endif %}>Right</option>
+                <option value="wrong" {% if selected_result == 'wrong' %}selected{% endif %}>Wrong</option>
+            </select>
+        </div>
         {% endif %}
 
         <div class="col-md-4">
@@ -48,16 +53,16 @@
         </div>
     </form>
 
-    <h5>{{ log_count }} Questions: </h5>
+    <h5>{{ log_count }} Questions:</h5>
 
+    {% if user.username == "Adil2" %}
+    <!-- Questions Table -->
     <div class="table-responsive">
         <table class="table table-bordered table-hover align-middle table-sm text-sm">
-            <thead class="table-light text-center align-middle">
+            <thead class="bg-body-tertiary text-center align-middle">
                 <tr>
-                    <th style="width: 40px;">#</th>
+                    <th style="width: 40px;">Sr. No.</th>
                     <th style="min-width: 300px;">Question</th>
-                    <th style="min-width: 280px;">Options</th>
-                    <th style="width: 100px;">Subject</th>
                     <th style="min-width: 250px;">Explanation</th>
                 </tr>
             </thead>
@@ -65,39 +70,39 @@
                 {% for log in logs %}
                 <tr>
                     <td class="text-center">{{ forloop.counter }}</td>
-    
+
                     <!-- Question -->
-                    <td>{{ log.question.question_html|safe }}</td>
-    
-                    <!-- Options -->
-                    <td>
-                        {% for opt in 'abcd' %}
-                        <div class="p-1 mb-1 rounded 
+                    <td><p><b>{{ log.question.subject.name }}</b></p>
+
+                    <br>
+
+                        {{ log.question.question_html|safe }}
+
+                        <br>
+                    {% for opt in 'abcd' %}
+                        <div class="p-1 mb-1 rounded
                             {% if log.attempt_result == 'right' and opt == log.question.correct_option %}
                                 bg-success text-white
                             {% elif log.attempt_result == 'wrong' %}
                                 {% if opt == log.question.correct_option %}
                                     bg-success text-white
                                 {% elif opt == log.user_answered %}
-                                    bg-danger-subtle text-dark
+                                    bg-danger-subtle text-body
                                 {% else %}
-                                    bg-light
+                                    bg-body-secondary
                                 {% endif %}
                             {% else %}
-                                bg-light
+                                bg-body-secondary
                             {% endif %}
                         ">
                             <strong>{{ opt|upper }}.</strong> {{ log.question|get_option:opt }}
                         </div>
                         {% endfor %}
                     </td>
-    
-                    <!-- Subject -->
-                    <td class="text-nowrap">{{ log.question.subject.name }}</td>
-    
+
                     <!-- Explanation -->
                     <td>
-                        <div class="text-wrap overflow-auto" style="max-width: 100%;">
+                        <div class="text-wrap overflow-auto bg-body p-2 rounded" style="max-width: 100%;">
                             {{ log.question.explanation_html|safe }}
                         </div>
                     </td>
@@ -110,7 +115,75 @@
             </tbody>
         </table>
     </div>
-    
+
+    {% else %}
+    <!-- Questions Table -->
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover align-middle table-sm text-sm">
+            <thead class="bg-body-tertiary text-center align-middle">
+                <tr>
+                    <th style="width: 40px;">#</th>
+                    <th style="min-width: 300px;">Question</th>
+                    <th style="min-width: 280px;">Options</th>
+                    <th style="width: 100px;">Subject</th>
+                    <th style="min-width: 250px;">Explanation</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                <tr>
+                    <td class="text-center">{{ forloop.counter }}</td>
+
+                    <!-- Question -->
+                    <td>{{ log.question.question_html|safe }}</td>
+
+                    <!-- Options -->
+                    <td>
+                        {% for opt in 'abcd' %}
+                        <div class="p-1 mb-1 rounded
+                            {% if log.attempt_result == 'right' and opt == log.question.correct_option %}
+                                bg-success text-white
+                            {% elif log.attempt_result == 'wrong' %}
+                                {% if opt == log.question.correct_option %}
+                                    bg-success text-white
+                                {% elif opt == log.user_answered %}
+                                    bg-danger-subtle text-body
+                                {% else %}
+                                    bg-body-secondary
+                                {% endif %}
+                            {% else %}
+                                bg-body-secondary
+                            {% endif %}
+                        ">
+                            <strong>{{ opt|upper }}.</strong> {{ log.question|get_option:opt }}
+                        </div>
+                        {% endfor %}
+                    </td>
+
+                    <!-- Subject -->
+                    <td class="text-nowrap">{{ log.question.subject.name }}</td>
+
+                    <!-- Explanation -->
+                    <td>
+                        <div class="text-wrap overflow-auto bg-body p-2 rounded" style="max-width: 100%;">
+                            {{ log.question.explanation_html|safe }}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center text-muted">No {{ attempt_type }} attempts found for this test.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
+    {% endif %}
+
+
+
+
+
+
 </div>
 {% endblock %}

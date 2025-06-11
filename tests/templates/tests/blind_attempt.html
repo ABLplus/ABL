@@ -11,10 +11,10 @@
         <form method="POST">
             {% csrf_token %}
             <div class="d-grid gap-3 mt-4">
-                <button type="submit" name="selected_option" value="A" class="btn btn-outline-primary">{{ question_log.question.option_a }}</button>
-                <button type="submit" name="selected_option" value="B" class="btn btn-outline-primary">{{ question_log.question.option_b }}</button>
-                <button type="submit" name="selected_option" value="C" class="btn btn-outline-primary">{{ question_log.question.option_c }}</button>
-                <button type="submit" name="selected_option" value="D" class="btn btn-outline-primary">{{ question_log.question.option_d }}</button>
+                <button type="submit" name="selected_option" value="a" class="btn btn-outline-primary">{{ question_log.question.option_a }}</button>
+                <button type="submit" name="selected_option" value="b" class="btn btn-outline-primary">{{ question_log.question.option_b }}</button>
+                <button type="submit" name="selected_option" value="c" class="btn btn-outline-primary">{{ question_log.question.option_c }}</button>
+                <button type="submit" name="selected_option" value="d" class="btn btn-outline-primary">{{ question_log.question.option_d }}</button>
             </div>
         </form>
 

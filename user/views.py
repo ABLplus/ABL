@@ -1,10 +1,9 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth import login as auth_login, logout as auth_logout, authenticate
 from django.contrib.auth.decorators import login_required
 from .forms import *
-from tests.models import *
-from django.shortcuts import redirect, get_object_or_404
+from tests.models import Test
 from django.db.models import Max
 
 
@@ -47,15 +46,11 @@ def logout(request):
     if request.method == 'POST':
         auth_logout(request)
         return redirect('home')
-    
-
-
-
 
 
 @login_required
 def dashboard(request):
-    years = list(range(2013, 2025))
+    years = list(range(2000, 2025))
 
     user_tests = Test.objects.filter(user=request.user)
     pending_tests = user_tests.filter(status='pending')
@@ -90,8 +85,8 @@ def dashboard(request):
             guesswork_wrongrate = round((test.guesswork_wrong / test.guesswork_attempts) * 100, 1)
 
         blind_attempt_impact = "-"
-        if test.unattempted:
-            blind_attempt_impact = (test.unattempted - test.blind_wrong) * 2 - (test.blind_wrong * 2/3)
+        if test.blind_attempts:
+            blind_attempt_impact = (test.blind_attempts - test.blind_wrong) * 2 - (test.blind_wrong * 2/3)
             blind_attempt_impact = round(blind_attempt_impact, 1)
 
         completed_tests_with_metrics.append({
@@ -113,10 +108,10 @@ def dashboard(request):
 @login_required
 def delete_test(request, test_id):
     test = get_object_or_404(Test, id=test_id, user=request.user)
-    
+
     if test.status == 'pending':  # Only allow deleting pending tests
         test.delete()
-    
+
     return redirect('dashboard')
 
 
@@ -129,5 +124,5 @@ def profile(request):
             return redirect('profile')
     else:
         form = ProfileForm(instance=request.user.profile)
-    
+
     return render(request, 'user/profile.html', {'form': form})

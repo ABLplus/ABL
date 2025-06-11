@@ -78,7 +78,7 @@
             <div class="col-12 col-sm-6 col-lg-3">
                 <div class="card h-100 border-primary shadow-sm">
                     <div class="card-body text-center p-3">
-                        <h6 class="fw-bold mb-2">{{ t.label }}</h6>
+                        <h6 class="fw-bold mb-2">{{ t.label }} {{ t.total }} attempted</h6>
                         <div class="mb-1">
                             <span class="fw-semibold 
                                 {% if t.key == 'sureshot' and t.percent_wrong > 10 %}
@@ -93,7 +93,7 @@
                             ">
                                 {{ t.percent_wrong }}%
                             </span> Wrong
-                            <div class="text-muted small">({{ t.wrong }}/{{ t.total }} attempts)</div>
+                            <div class="text-muted small">({{ t.wrong }} wrong/{{ t.total }})</div>
                         </div>
                         <div class="mb-2">
                             🎓 <span class="fw-semibold">Marks:</span> {{ t.marks }}

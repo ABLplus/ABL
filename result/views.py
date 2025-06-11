@@ -3,6 +3,9 @@ from django.shortcuts import render, get_object_or_404, redirect
 from tests.models import *
 from collections import Counter
 from question.models import Subject
+from tests.models import QuestionLog, Test
+
+
 
 def test_result(request, test_id):
 
@@ -13,6 +16,7 @@ def test_result(request, test_id):
     total = test.total_questions
     correct = test.correct_answers
     unattempted = test.unattempted
+    blind_attempts = test.blind_attempts
     wrong = test.wrong_answers()
     attempted = total - unattempted
     score = test.total_score
@@ -68,7 +72,6 @@ def test_result(request, test_id):
 
     # Optional: Blind Attempt (only shown if used)
     if test.blind_wrong > 0:
-        blind_attempts = unattempted
         blind_correct = blind_attempts - test.blind_wrong
         blind_marks = compute_score(blind_correct, test.blind_wrong)
 
@@ -100,13 +103,11 @@ def test_result(request, test_id):
     return render(request, 'result/test_result.html', context)
 
 
-from django.shortcuts import render, get_object_or_404
-from collections import Counter
-from tests.models import QuestionLog, Test
-from question.models import Subject
 
 def attempt_type_detail(request, test_id, attempt_type):
-    test = get_object_or_404(Test, id=test_id, user=request.user)  # 1 DB hit
+    test = get_object_or_404(Test, id=test_id, user=request.user)# 1 DB hit
+
+
 
     # Pull all logs and their linked question & subject in one query
     base_logs = QuestionLog.objects.filter(test=test).select_related('question__subject')  # 1 DB hit
@@ -149,6 +150,7 @@ def attempt_type_detail(request, test_id, attempt_type):
         logs = [log for log in logs if log.question.subject and log.question.subject.name == subject_filter]
 
     context = {
+        'user': request.user,
         'test': test,
         'logs': logs,
         'log_count': len(logs),

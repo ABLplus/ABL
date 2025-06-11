@@ -41,7 +41,7 @@
             🚀 Proceed to Submit
         </a>
     </div>
-   
+
 
     <!-- Question Card -->
     <div class="card p-4 mb-4">
@@ -61,11 +61,11 @@
                         {% else %} active {% endif %}
                     {% endif %}
                 ">
-                    <input class="form-check-input me-2" type="radio" name="option" value="a" 
+                    <input class="form-check-input me-2" type="radio" name="option" value="a"
                         {% if question_log.user_answered == 'a' %}checked{% endif %} required>
-                    a. {{ question_log.question.option_a }}
+                    {{ question_log.question.option_a }}
                 </label>
-            
+
                 <label class="list-group-item list-group-item-action
                     {% if question_log.user_answered == 'b' %}
                         {% if question_log.attempt_type == 'sureshot' %} sureshot-bg
@@ -74,11 +74,11 @@
                         {% else %} active {% endif %}
                     {% endif %}
                 ">
-                    <input class="form-check-input me-2" type="radio" name="option" value="b" 
+                    <input class="form-check-input me-2" type="radio" name="option" value="b"
                         {% if question_log.user_answered == 'b' %}checked{% endif %}>
-                    b. {{ question_log.question.option_b }}
+                    {{ question_log.question.option_b }}
                 </label>
-            
+
                 <label class="list-group-item list-group-item-action
                     {% if question_log.user_answered == 'c' %}
                         {% if question_log.attempt_type == 'sureshot' %} sureshot-bg
@@ -87,11 +87,11 @@
                         {% else %} active {% endif %}
                     {% endif %}
                 ">
-                    <input class="form-check-input me-2" type="radio" name="option" value="c" 
+                    <input class="form-check-input me-2" type="radio" name="option" value="c"
                         {% if question_log.user_answered == 'c' %}checked{% endif %}>
-                    c. {{ question_log.question.option_c }}
+                    {{ question_log.question.option_c }}
                 </label>
-            
+
                 <label class="list-group-item list-group-item-action
                     {% if question_log.user_answered == 'd' %}
                         {% if question_log.attempt_type == 'sureshot' %} sureshot-bg
@@ -100,9 +100,9 @@
                         {% else %} active {% endif %}
                     {% endif %}
                 ">
-                    <input class="form-check-input me-2" type="radio" name="option" value="d" 
+                    <input class="form-check-input me-2" type="radio" name="option" value="d"
                         {% if question_log.user_answered == 'd' %}checked{% endif %}>
-                    d. {{ question_log.question.option_d }}
+                    {{ question_log.question.option_d }}
                 </label>
             </div>
 
@@ -122,24 +122,24 @@
     <div class="d-flex justify-content-start mt-2 mb-1">
         <form method="post" action="{% url 'reset_question' test_id=test.id serial=current_serial %}">
             {% csrf_token %}
-            <button type="submit" class="btn btn-outline-dark btn-sm">Reset Question</button>
+            <button type="submit" class="btn btn-outline-secondary btn-sm">Reset Question</button>
         </form>
     </div>
     <div id="heatmap-section" class="question-heatmap-container d-flex justify-content-center mt-4">
         <div class="question-heatmap">
             {% for qlog in all_question_logs %}
             <a href="{% url 'take_test' test_id=test.id serial=qlog.serial %}" class="question-square-link">
-                <div class="question-square 
-                    {% if qlog.attempt_type == 'sureshot' %} sureshot 
-                    {% elif qlog.attempt_type == 'applied' %} applied 
-                    {% elif qlog.attempt_type == 'guesswork' %} guesswork 
+                <div class="question-square
+                    {% if qlog.attempt_type == 'sureshot' %} sureshot
+                    {% elif qlog.attempt_type == 'applied' %} applied
+                    {% elif qlog.attempt_type == 'guesswork' %} guesswork
                     {% else %} unattempted {% endif %}">
                 </div>
             </a>
             {% endfor %}
         </div>
     </div>
-   
+
 </div>
 
 <script>

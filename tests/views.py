@@ -1,16 +1,12 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from .models import *
+from .models import Test, QuestionLog, QuestionAttemptSummary
 from question.models import Question
-import random
-from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
-from django.db.models import Max
-from django.db import transaction
-from django.db.models import Q
-from collections import defaultdict
+from django.db.models import Max, Q
 from django.utils import timezone
 from decimal import Decimal
+
 
 
 MARKS_RIGHT = Decimal('2.0')
@@ -25,7 +21,7 @@ def submit_test(request, test_id):
     # ✅ Skip processing if already completed
     if test.status == 'completed':
         return redirect('test_result', test_id=test.id)
-    
+
     logs = test.questionlog_set.select_related('question')
 
     # Split into logs that contribute to performance and all logs for test summary
@@ -95,11 +91,11 @@ def submit_test(request, test_id):
     sureshot = logs.filter(attempt_type='sureshot')
     applied = logs.filter(attempt_type='applied')
     guesswork = logs.filter(attempt_type='guesswork')
-    blind = logs.filter(attempt_type='blind')  
+    blind = logs.filter(attempt_type='blind')
 
 
     total_score=  correct_answers*2 -(wrong_answers*2/3)
-        
+
 
     # STEP 3: Save everything atomically
     with transaction.atomic():
@@ -124,7 +120,7 @@ def submit_test(request, test_id):
         test.sureshot_attempts = sureshot.count()
         test.applied_attempts = applied.count()
         test.guesswork_attempts = guesswork.count()
-        
+
 
         test.sureshot_wrong = sureshot.filter(attempt_result='wrong').count()
         test.applied_wrong = applied.filter(attempt_result='wrong').count()
@@ -146,9 +142,12 @@ def blind_attempt(request, test_id):
         Q(attempt_type__isnull=True) | Q(attempt_type='unattempted')
     ).order_by('serial').first()
 
+
     if not next_unattempted:
-        # No unattempted questions left, finalize the test
+        test.blind_attempts = test.questionlog_set.filter(attempt_type='blind').count()
+        test.save(update_fields=['blind_attempts'])
         return redirect('submit_test', test_id=test.id)
+
 
     if request.method == 'POST':
         selected_option = request.POST.get('selected_option')
@@ -193,10 +192,10 @@ def proceed_to_submit(request, test_id):
                 back_serial = highest_attempt
             else:
                 back_serial = highest_attempt + 1
-        
+
     else:
             back_serial = 1  # No attempt yet
-    
+
 
     context = {
         'test': test,
@@ -211,16 +210,13 @@ def proceed_to_submit(request, test_id):
 
     return render(request, 'tests/proceed_to_submit.html', context)
 
+# @login_required
+# def dashboard(request):
+#     years = list(range(2000, 2025))  # 2000 to 2024 inclusive
+#     return render(request, 'user/dashboard.html', {'years': years})
 
-def dashboard(request):
-    years = list(range(2013, 2025))  # 2013 to 2024 inclusive
-    return render(request, 'user/dashboard.html', {'years': years})
 
-
-from django.db import transaction
-from django.shortcuts import redirect
-from .models import Test, Question, QuestionLog
-
+@login_required
 def start_test(request):
     if request.method == 'POST':
         year = int(request.POST.get('year'))
@@ -260,6 +256,7 @@ def start_test(request):
                 total_questions=questions.count(),
                 test_type='full_length',
                 attempt_serial=new_serial,
+                start_time=timezone.now()
             )
 
             # Create QuestionLogs
@@ -279,7 +276,7 @@ def start_test(request):
 
     return redirect('dashboard')
 
-    
+
 
 @login_required
 def reset_question(request, test_id, serial):
@@ -290,7 +287,7 @@ def reset_question(request, test_id, serial):
         qlog.attempt_result = None
         qlog.save()
     return redirect('take_test', test_id=test_id, serial=serial)
-    
+
 
 
 
@@ -306,9 +303,10 @@ def take_test(request, test_id, serial):
         # Save user answer
         question_log.user_answered = user_answered
         question_log.attempt_type = attempt_type
+        question_log.timestamp=timezone.now()
 
         # Calculate result
-        
+
         if user_answered.lower() == question_log.question.correct_option.lower():
             question_log.attempt_result = 'right'
         else:
@@ -325,7 +323,7 @@ def take_test(request, test_id, serial):
 
     prev_serial = serial - 1 if serial > 1 else None
     next_serial = serial + 1 if serial < test.total_questions else None
-    
+
     all_question_logs = test.questionlog_set.only('id', 'serial', 'attempt_type').order_by('serial')
     context = {
         'test': test,
