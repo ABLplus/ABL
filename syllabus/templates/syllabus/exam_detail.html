@@ -1,0 +1,40 @@
+<h2>{{ exam.name }} - Subjects</h2>
+<p>{{ exam.description }}</p>
+
+<form method="post">
+    {% csrf_token %}
+    {{ subject_form.as_p }}
+    <input type="hidden" name="subject_id" id="subject_id">
+    <button type="submit" name="save_subject">Save Subject</button>
+</form>
+
+<hr>
+
+<ul>
+    {% for subject in subjects %}
+        <li>
+            <a href="{% url 'subject_detail' subject.id %}" class="text-blue-600 font-semibold hover:underline">
+                {{ subject.name }}
+            </a>
+
+            <form method="post" style="display:inline;">
+                {% csrf_token %}
+                <input type="hidden" name="subject_id" value="{{ subject.id }}">
+                <button type="submit" name="delete_subject" class="text-red-600 ml-2">Delete</button>
+            </form>
+
+            <button onclick="editSubject('{{ subject.id }}', '{{ subject.name }}')" class="text-yellow-600 ml-2">Edit</button>
+        </li>
+    {% empty %}
+        <li>No subjects yet.</li>
+    {% endfor %}
+</ul>
+
+<a href="{% url 'exams_view' %}">← Back to Exams</a>
+
+<script>
+function editSubject(id, name) {
+    document.getElementById('subject_id').value = id;
+    document.querySelector('[name="name"]').value = name;
+}
+</script>

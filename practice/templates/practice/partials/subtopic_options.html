@@ -1,0 +1,6 @@
+<option value="">— choose subtopic —</option>
+{% for subtopic in subtopics %}
+  <option value="{{ subtopic.id }}">{{ subtopic.name }}</option>
+{% empty %}
+  <option value="">No subtopics available</option>
+{% endfor %}

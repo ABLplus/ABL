@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Section → Topic → Subtopic Map</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f9f9f9;
+        }
+        h1 {
+            color: #2c3e50;
+        }
+        h2 {
+            margin-top: 30px;
+            color: #2980b9;
+        }
+        h3 {
+            margin: 10px 0 5px 20px;
+            color: #34495e;
+        }
+        ul {
+            margin-left: 40px;
+        }
+        .count {
+            color: #888;
+            font-size: 0.9em;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        select {
+            padding: 5px 10px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Section → Topic → Subtopic Map</h1>
+
+    <form method="get">
+        <div class="form-group">
+            <label for="subject"><strong>Select Subject:</strong></label>
+            <select name="subject" id="subject" onchange="this.form.submit()">
+                <option value="">-- All Subjects --</option>
+                {% for subject in subjects %}
+                    <option value="{{ subject.id }}" {% if subject.id == selected_subject_id %}selected{% endif %}>
+                        {{ subject.name }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+    </form>
+
+    {% if sections %}
+        {% for section in sections %}
+            <h2>{{ section.name }} <span class="count">({{ section.count }} questions)</span></h2>
+
+            {% for topic in section.topics %}
+                <h3>• {{ topic.name }} <span class="count">({{ topic.count }})</span></h3>
+
+                {% if topic.subtopics %}
+                    <ul>
+                        {% for sub in topic.subtopics %}
+                            <li>{{ sub.name }} <span class="count">({{ sub.count }})</span></li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <!-- <p style="margin-left: 40px; color: gray;">(No subtopics)</p> -->
+                {% endif %}
+            {% endfor %}
+        {% endfor %}
+    {% else %}
+        <p>No data available for the selected subject.</p>
+    {% endif %}
+
+</body>
+</html>

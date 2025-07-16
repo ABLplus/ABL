@@ -1,0 +1,195 @@
+{% extends "user/base.html" %}
+
+{% load static %}
+<script src="{% static "ckeditor/ckeditor.js" %}"></script>
+
+{# ensure htmx is loaded before any hx- attributes #}
+{% block head %}
+  {{ block.super }}
+  <script src="https://unpkg.com/htmx.org@1.9.3"></script>
+{% endblock %}
+
+{% block content %}
+
+
+<!-- ░░ PART 1: FILTER BAR ░░ -->
+<form id="ques-filter-form"
+      class="row g-2 align-items-end mb-4"
+
+      hx-get="{% url 'ques_edit_part' %}"
+      hx-target="#question-container"
+      hx-trigger="submit, change delay:250ms"
+      hx-include="#ques-filter-form">
+
+  <!-- Exam -->
+  <div class="col-md">
+    <label class="form-label">Exam</label>
+    <select name="exam" class="form-select">
+      <option value="">All</option>
+      <option value="not_assigned">Not Assigned</option>
+      {% for exam in exams %}
+        <option value="{{ exam }}"
+                {% if exam|stringformat:'s' == request.GET.exam %}selected{% endif %}>
+          {{ exam }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <!-- Year -->
+  <div class="col-md">
+    <label class="form-label">Year</label>
+    <select name="year" class="form-select">
+      <option value="">All</option>
+      <option value="not_assigned">Not Assigned</option>
+      {% for y in years %}
+        <option value="{{ y }}"
+                {% if y|stringformat:'s' == request.GET.year %}selected{% endif %}>
+          {{ y }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <!-- Unit -->
+  <div class="col-md">
+    <label class="form-label">Unit</label>
+    <select name="unit" class="form-select">
+      <option value="">All</option>
+      {% for u in units %}
+        <option value="{{ u }}"
+                {% if u|stringformat:'s' == request.GET.unit %}selected{% endif %}>
+          Unit {{ u }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <!-- Subject -->
+  <div class="col-md">
+    <label class="form-label">Subject</label>
+    <select name="subject_id" class="form-select"
+            hx-get="{% url 'get_section_dropdown' %}?mode=filter"
+            hx-target="#filter-section-dropdown"
+            hx-trigger="change"
+            hx-include="#ques-filter-form">
+      <option value="">Select Subject</option>
+      {% for s in subjects %}
+        <option value="{{ s.id }}"
+                {% if s.id|stringformat:'s' == request.GET.subject_id %}selected{% endif %}>
+          {{ s.name }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <!-- Section (HTMX container) -->
+  <div class="col-md" id="filter-section-dropdown">
+    <label class="form-label">Section</label>
+    <select name="section_id" class="form-select"
+            hx-get="{% url 'get_topic_dropdown' %}?mode=filter"
+            hx-target="#filter-topic-dropdown"
+            hx-trigger="change"
+            hx-include="#ques-filter-form">
+      <option value="">All Sections</option>
+      <option value="none" {% if request.GET.section_id == 'none' %}selected{% endif %}>
+        None (Unlinked)
+      </option>
+      {% for section in sections %}
+        <option value="{{ section.id }}"
+                {% if section.id|stringformat:'s' == request.GET.section_id %}selected{% endif %}>
+          {{ section.name }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <!-- Topic (HTMX container) -->
+  <div class="col-md" id="filter-topic-dropdown">
+    <label class="form-label">Topic</label>
+    <select name="topic_id" class="form-select"
+            hx-get="{% url 'get_subtopic_dropdown' %}?mode=filter"
+            hx-target="#filter-subtopic-dropdown"
+            hx-trigger="change"
+            hx-include="#ques-filter-form">
+      <option value="">All Topics</option>
+      <option value="none" {% if request.GET.topic_id == 'none' %}selected{% endif %}>
+        None (Unlinked)
+      </option>
+      {% for topic in filter_topics %}
+        <option value="{{ topic.id }}"
+                {% if topic.id|stringformat:'s' == request.GET.topic_id %}selected{% endif %}>
+          {{ topic.name }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <!-- Subtopic (HTMX container) -->
+  <div class="col-md" id="filter-subtopic-dropdown">
+    <label class="form-label">Subtopic</label>
+    <select name="subtopic_id" class="form-select">
+      <option value="">All Subtopics</option>
+      <option value="none" {% if request.GET.subtopic_id == 'none' %}selected{% endif %}>
+        None (Unlinked)
+      </option>
+      {% for sub in filter_subtopics %}
+        <option value="{{ sub.id }}"
+                {% if sub.id|stringformat:'s' == request.GET.subtopic_id %}selected{% endif %}>
+          {{ sub.name }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <!-- For Review -->
+  <div class="col-md">
+    <label class="form-label">For Review</label>
+    <select name="for_review" class="form-select">
+      <option value="">All</option>
+      <option value="true"  {% if request.GET.for_review == 'true'  %}selected{% endif %}>Marked for Review</option>
+      <option value="false" {% if request.GET.for_review == 'false' %}selected{% endif %}>Checked Questions</option>
+    </select>
+  </div>
+
+  <div class="col-auto">
+    <button type="submit" class="btn btn-primary">Apply Filters</button>
+  </div>
+  <div class="col-auto">
+    <a href="{% url 'ques_edit' %}" class="btn btn-outline-danger">Reset</a>
+  </div>
+</form>
+
+<!-- QUESTION PANE (HTMX will fill this in) -->
+  <div id="question-container"
+       hx-get="{% url 'ques_edit_part' %}?{{ get_params }}&index={{ index }}"
+       hx-trigger="load"
+       hx-target="this"
+       hx-swap="innerHTML">
+  </div>
+
+  <!-- CKEditor setup (only if you re-enable it) -->
+  <script src="{% static 'ckeditor/ckeditor.js' %}"></script>
+  <script>
+    function initCK(){
+      const ta=document.getElementById("id_q_statement");
+      if(ta && !CKEDITOR.instances[ta.id]){
+        CKEDITOR.replace(ta.id).on("instanceReady",()=>ta.style.display="none");
+      }
+    }
+    document.addEventListener("DOMContentLoaded", initCK);
+    document.body.addEventListener("htmx:beforeSwap", e=>{
+      if(e.detail.target.id==="q-statement-container"){
+        const ta=document.getElementById("id_q_statement");
+        if(ta && CKEDITOR.instances[ta.id]){
+          CKEDITOR.instances[ta.id].destroy(true);
+        }
+      }
+    });
+    document.body.addEventListener("htmx:afterSwap", e=>{
+      if(e.detail.target.id==="q-statement-container"){
+        initCK();
+      }
+    });
+  </script>
+{% endblock %}

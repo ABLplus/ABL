@@ -1,0 +1,11 @@
+<label class="form-label">Section</label>
+<select name="section_id" class="form-select"
+        hx-get="{% url 'get_topic_dropdown' %}?mode=filter"
+        hx-target="#filter-topic-dropdown"
+        hx-trigger="change"
+        hx-include="#ques-filter-form">
+  <option value="">Select Section</option>
+  {% for section in sections %}
+    <option value="{{ section.id }}" {% if section.id|stringformat:'s' == selected_id %} selected{% endif %}>{{ section.name }}</option>
+  {% endfor %}
+</select>

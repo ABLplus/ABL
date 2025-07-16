@@ -1,0 +1,23 @@
+{% load markdown_extras %}
+<select name="topic"
+        id="topic-{{ q.id }}"
+        class="form-select form-select-sm"
+        hx-get="{% url 'question:ajax_question_subtopics' q.id %}"
+        hx-trigger="change"
+        hx-target="#subtopic-{{ q.id }}"
+        hx-include="this">
+  <option value="">-- Topic --</option>
+  {% if topics %}
+    {% for top in topics %}
+      <option value="{{ top.id }}" {% if q.topic_id == top.id %}selected{% endif %}>
+        {{ top.name }}
+      </option>
+    {% endfor %}
+  {% else %}
+    {% for top in q.section.topics.all %}
+      <option value="{{ top.id }}" {% if q.topic_id == top.id %}selected{% endif %}>
+        {{ top.name }}
+      </option>
+    {% endfor %}
+  {% endif %}
+</select>

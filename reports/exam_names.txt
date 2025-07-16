@@ -1,0 +1,15 @@
+Exam Report (Ques Count by Exam)
+==================================================
+
+UPPSC: 848 questions
+CSE Prelims: 397 questions
+CDS: 289 questions
+CAPF: 203 questions
+BPSC: 156 questions
+RPSC: 127 questions
+MPPSC: 124 questions
+CGPSC: 124 questions
+UKPSC: 69 questions
+Not Defined: 52 questions
+JPSC: 49 questions
+(Empty String): 5 questions

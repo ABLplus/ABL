@@ -1,0 +1,107 @@
+
+<div class="bg-white dark:bg-gray-800 p-6 rounded shadow">
+  <h2 class="text-xl font-bold mb-4">Question {{ qlog.serial }}</h2>
+
+ <div class="prose dark:prose-invert max-w-none mb-6">
+    {{ qlog.question.question_html|safe }}
+</div>
+
+
+  <form
+    hx-post="{% url 'practice:practice_question_htmx' qlog.practiceSession.id qlog.serial %}"
+    hx-target="#question-container"
+    hx-swap="innerHTML"
+    class="space-y-6"
+  >
+    {% csrf_token %} 
+    {# ---- Option A ---- #}
+    <label class="flex items-start border rounded px-4 py-3 cursor-pointer
+           {% if qlog.user_answered == 'a' %}
+             {% if qlog.attempt_type == 'sureshot' %}bg-green-100 dark:bg-green-900 border-green-600
+             {% elif qlog.attempt_type == 'applied' %}bg-yellow-100 dark:bg-yellow-900 border-yellow-500
+             {% elif qlog.attempt_type == 'guesswork' %}bg-blue-100 dark:bg-blue-900 border-blue-500
+             {% else %}bg-gray-200 dark:bg-gray-700{% endif %}
+           {% else %}
+             hover:bg-gray-50 dark:hover:bg-gray-700
+           {% endif %}">
+      <input type="radio" name="option" value="a" class="mt-1 mr-3"
+             {% if qlog.user_answered == 'a' %}checked{% endif %} required>
+      <span class="prose dark:prose-invert">{{ qlog.question.option_a|safe }}</span>
+    </label>
+
+    {# ---- Option B ---- #}
+    <label class="flex items-start border rounded px-4 py-3 cursor-pointer
+           {% if qlog.user_answered == 'b' %}
+             {% if qlog.attempt_type == 'sureshot' %}bg-green-100 dark:bg-green-900 border-green-600
+             {% elif qlog.attempt_type == 'applied' %}bg-yellow-100 dark:bg-yellow-900 border-yellow-500
+             {% elif qlog.attempt_type == 'guesswork' %}bg-blue-100 dark:bg-blue-900 border-blue-500
+             {% else %}bg-gray-200 dark:bg-gray-700{% endif %}
+           {% else %}
+             hover:bg-gray-50 dark:hover:bg-gray-700
+           {% endif %}">
+      <input type="radio" name="option" value="b" class="mt-1 mr-3"
+             {% if qlog.user_answered == 'b' %}checked{% endif %} required>
+      <span class="prose dark:prose-invert">{{ qlog.question.option_b|safe }}</span>
+    </label>
+
+    {# ---- Option C ---- #}
+    <label class="flex items-start border rounded px-4 py-3 cursor-pointer
+           {% if qlog.user_answered == 'c' %}
+             {% if qlog.attempt_type == 'sureshot' %}bg-green-100 dark:bg-green-900 border-green-600
+             {% elif qlog.attempt_type == 'applied' %}bg-yellow-100 dark:bg-yellow-900 border-yellow-500
+             {% elif qlog.attempt_type == 'guesswork' %}bg-blue-100 dark:bg-blue-900 border-blue-500
+             {% else %}bg-gray-200 dark:bg-gray-700{% endif %}
+           {% else %}
+             hover:bg-gray-50 dark:hover:bg-gray-700
+           {% endif %}">
+      <input type="radio" name="option" value="c" class="mt-1 mr-3"
+             {% if qlog.user_answered == 'c' %}checked{% endif %} required>
+      <span class="prose dark:prose-invert">{{ qlog.question.option_c|safe }}</span>
+    </label>
+
+    {# ---- Option D ---- #}
+    <label class="flex items-start border rounded px-4 py-3 cursor-pointer
+           {% if qlog.user_answered == 'd' %}
+             {% if qlog.attempt_type == 'sureshot' %}bg-green-100 dark:bg-green-900 border-green-600
+             {% elif qlog.attempt_type == 'applied' %}bg-yellow-100 dark:bg-yellow-900 border-yellow-500
+             {% elif qlog.attempt_type == 'guesswork' %}bg-blue-100 dark:bg-blue-900 border-blue-500
+             {% else %}bg-gray-200 dark:bg-gray-700{% endif %}
+           {% else %}
+             hover:bg-gray-50 dark:hover:bg-gray-700
+           {% endif %}">
+      <input type="radio" name="option" value="d" class="mt-1 mr-3"
+             {% if qlog.user_answered == 'd' %}checked{% endif %} required>
+      <span class="prose dark:prose-invert">{{ qlog.question.option_d|safe }}</span>
+    </label>
+
+    {# ---- Attempt Buttons ---- #}
+   <div class="flex justify-around mt-6">
+  <button type="submit" name="attempt_type" value="guesswork"
+          class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded">
+    Guesswork
+  </button>
+
+  <button type="submit" name="attempt_type" value="sureshot"
+          class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded">
+    SureShot
+  </button>
+
+  <button type="submit" name="attempt_type" value="applied"
+          class="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-gray-900 rounded">
+    Applied
+  </button>
+    </div>
+
+    {# ---- Back link ---- #}
+    {% if prev_serial %}
+      <div class="mt-6">
+        <a hx-get="{% url 'practice:practice_question_htmx' qlog.practiceSession.id prev_serial %}"
+           hx-target="#question-container"
+           hx-swap="innerHTML"
+           class="text-blue-500 hover:underline">
+          ← Back
+        </a>
+      </div>
+    {% endif %}
+  </form>
+</div>

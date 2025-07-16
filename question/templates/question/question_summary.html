@@ -1,0 +1,45 @@
+{% extends "user/base.html" %}
+{% load static %}
+{% block content %}
+<h4 class="mb-4">{{ exam_name }} (2000 – 2025)</h4>
+
+<ul class="list-group">
+  {% for r in rows %}
+    <li class="list-group-item d-flex justify-content-between align-items-center">
+      <span class="fw-semibold fs-5">{{ r.year }}</span>
+
+      <span>
+        {# Pending #}
+        {% if r.pending %}
+          <a href="{% url 'question:question_list' %}?exam={{ exam_name|urlencode }}&year={{ r.year }}&status=pending"
+             class="text-secondary text-decoration-none me-2">
+            {{ r.pending }} Pending
+          </a>
+        {% else %}
+          <span class="text-secondary me-2">0 Pending</span>
+        {% endif %}
+
+        {# Under Review #}
+        {% if r.review %}
+          <a href="{% url 'question:question_list' %}?exam={{ exam_name|urlencode }}&year={{ r.year }}&status=review"
+             class="text-warning text-decoration-none me-2">
+            {{ r.review }} Review
+          </a>
+        {% else %}
+          <span class="text-warning me-2">0 Review</span>
+        {% endif %}
+
+        {# Checked #}
+        {% if r.checked %}
+          <a href="{% url 'question:question_list' %}?exam={{ exam_name|urlencode }}&year={{ r.year }}&status=checked"
+             class="text-success text-decoration-none">
+            {{ r.checked }} Checked
+          </a>
+        {% else %}
+          <span class="text-success">0 Checked</span>
+        {% endif %}
+      </span>
+    </li>
+  {% endfor %}
+</ul>
+{% endblock %}

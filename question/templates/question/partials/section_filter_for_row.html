@@ -1,0 +1,23 @@
+{% load markdown_extras %}
+<select name="section"
+        id="section-{{ q.id }}"
+        class="form-select form-select-sm"
+        hx-get="{% url 'question:ajax_question_topics' q.id %}"
+        hx-trigger="change"
+        hx-target="#topic-{{ q.id }}"
+        hx-include="this">
+  <option value="">-- Section --</option>
+  {% if sections %}
+    {% for sec in sections %}
+      <option value="{{ sec.id }}" {% if q.section_id == sec.id %}selected{% endif %}>
+        {{ sec.name }}
+      </option>
+    {% endfor %}
+  {% else %}
+    {% for sec in q.subject.sections.all %}
+      <option value="{{ sec.id }}" {% if q.section_id == sec.id %}selected{% endif %}>
+        {{ sec.name }}
+      </option>
+    {% endfor %}
+  {% endif %}
+</select>

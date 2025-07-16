@@ -1,0 +1,28 @@
+{# templates/syllabus/partials/q_edit_qstatement.html #}
+<div id="q-statement-container" class="mb-4">
+  {% if mode == "view" %}
+    <!-- Read-only display of the question statement -->
+    <div class="border p-3">{{ question.q_statement|safe }}</div>
+    <button
+      class="btn btn-sm btn-outline-primary mt-2"
+      hx-get="{% url 'ques_edit_part' %}?mode=edit&{{ get_params }}&index={{ index }}"
+      hx-target="#q-statement-container"
+      hx-swap="innerHTML">
+      ✎ Edit
+    </button>
+  {% else %}
+    <!-- Inline edit mode for the statement -->
+    <textarea
+      id="id_q_statement"
+      name="q_statement"
+      class="form-control mb-2"
+      rows="5">{{ question.q_statement }}</textarea>
+    <button
+      class="btn btn-sm btn-outline-secondary"
+      hx-get="{% url 'ques_edit_part' %}?mode=view&{{ get_params }}&index={{ index }}"
+      hx-target="#q-statement-container"
+      hx-swap="innerHTML">
+      ✖ Cancel
+    </button>
+  {% endif %}
+</div>

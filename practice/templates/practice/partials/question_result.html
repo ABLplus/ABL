@@ -1,0 +1,105 @@
+{# ───────── Question Card (highlight correct / wrong) ───────── #}
+{% load markdown_extras %}
+{# ───────── Navigation ───────── #}
+<div class="mt-6 flex items-center space-x-4">
+  {% if prev_serial %}
+    <button
+      hx-get="{% url 'practice:practice_question_htmx' qlog.practiceSession.id prev_serial %}"
+      hx-target="#question-container"
+      hx-swap="innerHTML"
+      class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded">
+      ← Back
+    </button>
+  {% endif %}
+
+  {% if next_log %}
+    <button
+      hx-get="{% url 'practice:practice_question_htmx' qlog.practiceSession.id next_log.serial %}"
+      hx-target="#question-container"
+      hx-swap="innerHTML"
+      class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded">
+      Next →
+    </button>
+  {% else %}
+    <a href="{% url 'practice:practice_summary' qlog.practiceSession.id %}"
+       class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded">
+      ✅ Finish and View Summary
+    </a>
+  {% endif %}
+</div>
+
+<div class="bg-white dark:bg-gray-800 p-6 rounded shadow">
+  <h2 class="text-xl font-bold mb-4">Question {{ qlog.serial }}</h2>
+
+  <div class="prose dark:prose-invert max-w-none mb-6">
+    {{ qlog.question.question_html|safe }}
+</div>
+
+  {# ---- Option A ---- #}
+  <div class="border rounded px-4 py-3
+      {% if qlog.question.correct_option|lower == 'a' %}
+        bg-green-100 dark:bg-green-900 border-green-600
+      {% elif qlog.user_answered == 'a' %}
+        bg-red-100 dark:bg-red-900 border-red-600
+      {% else %}
+        border-gray-300 dark:border-gray-600
+      {% endif %}">
+    <strong class="mr-2">A.</strong>
+    <span class="prose dark:prose-invert inline">{{ qlog.question.option_a|safe }}</span>
+  </div>
+
+  {# ---- Option B ---- #}
+  <div class="border rounded px-4 py-3 mt-2
+      {% if qlog.question.correct_option|lower == 'b' %}
+        bg-green-100 dark:bg-green-900 border-green-600
+      {% elif qlog.user_answered == 'b' %}
+        bg-red-100 dark:bg-red-900 border-red-600
+      {% else %}
+        border-gray-300 dark:border-gray-600
+      {% endif %}">
+    <strong class="mr-2">B.</strong>
+    <span class="prose dark:prose-invert inline">{{ qlog.question.option_b|safe }}</span>
+  </div>
+
+  {# ---- Option C ---- #}
+  <div class="border rounded px-4 py-3 mt-2
+      {% if qlog.question.correct_option|lower == 'c' %}
+        bg-green-100 dark:bg-green-900 border-green-600
+      {% elif qlog.user_answered == 'c' %}
+        bg-red-100 dark:bg-red-900 border-red-600
+      {% else %}
+        border-gray-300 dark:border-gray-600
+      {% endif %}">
+    <strong class="mr-2">C.</strong>
+    <span class="prose dark:prose-invert inline">{{ qlog.question.option_c|safe }}</span>
+  </div>
+
+  {# ---- Option D ---- #}
+  <div class="border rounded px-4 py-3 mt-2
+      {% if qlog.question.correct_option|lower == 'd' %}
+        bg-green-100 dark:bg-green-900 border-green-600
+      {% elif qlog.user_answered == 'd' %}
+        bg-red-100 dark:bg-red-900 border-red-600
+      {% else %}
+        border-gray-300 dark:border-gray-600
+      {% endif %}">
+    <strong class="mr-2">D.</strong>
+    <span class="prose dark:prose-invert inline">{{ qlog.question.option_d|safe }}</span>
+  </div>
+</div>
+
+{# ───────── Explanation Card ───────── #}
+<div class="bg-gray-50 dark:bg-gray-700 p-6 rounded shadow mt-4">
+  {% if qlog.attempt_result == 'right' %}
+    <h3 class="text-lg font-semibold text-green-600 mb-2">Correct ✔</h3>
+  {% else %}
+    <h3 class="text-lg font-semibold text-red-500 mb-2">Wrong ✖</h3>
+    <p class="mb-3"><strong>Correct answer:</strong> {{ qlog.question.correct_option|upper }}</p>
+  {% endif %}
+
+  <div class="markdown">
+    {{ qlog.question.explanation_generated|render_markdown}}
+  </div>
+</div>
+
+

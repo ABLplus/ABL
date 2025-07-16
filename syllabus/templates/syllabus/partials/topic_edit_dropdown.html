@@ -1,0 +1,12 @@
+<label class="form-label small fw-semibold mb-1">Topic</label>
+<select name="topic_id" class="form-select"
+        hx-get="{% url 'get_subtopic_dropdown' %}?mode=edit"
+        hx-target="#edit-subtopic"
+        hx-trigger="change"
+        hx-include="closest form"
+        hx-swap="outerHTML">
+  <option value="">Select Topic</option>
+  {% for t in topics %}
+    <option value="{{ t.id }}" {% if t.id|stringformat:'s' == selected_id|stringformat:'s' %}selected{% endif %}>{{ t.name }}</option>
+  {% endfor %}
+</select>

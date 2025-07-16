@@ -1,0 +1,6 @@
+<option value="">— choose section —</option>
+{% for section in sections %}
+  <option value="{{ section.id }}">{{ section.name }}</option>
+{% empty %}
+  <option value="">No sections available</option>
+{% endfor %}

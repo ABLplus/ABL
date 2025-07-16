@@ -1,0 +1,19 @@
+{% load markdown_extras %}
+<select name="subtopic"
+        id="subtopic-{{ q.id }}"
+        class="form-select form-select-sm">
+  <option value="">-- Subtopic --</option>
+  {% if subtopics %}
+    {% for st in subtopics %}
+      <option value="{{ st.id }}" {% if q.subtopic_id == st.id %}selected{% endif %}>
+        {{ st.name }}
+      </option>
+    {% endfor %}
+  {% else %}
+    {% for st in q.topic.subtopics.all %}
+      <option value="{{ st.id }}" {% if q.subtopic_id == st.id %}selected{% endif %}>
+        {{ st.name }}
+      </option>
+    {% endfor %}
+  {% endif %}
+</select>

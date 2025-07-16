@@ -1,0 +1,77 @@
+{% load markdown_extras %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Practice Session</title>
+  <script src="https://unpkg.com/htmx.org@1.9.2"></script>
+  <script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        typography: ({ theme }) => ({
+          DEFAULT: {
+            css: {
+              color: theme('colors.gray.800'),
+              a: { color: theme('colors.blue.500') },
+            },
+          },
+          dark: {
+            css: {
+              color: theme('colors.gray.100'),
+              a: { color: theme('colors.blue.400') },
+            },
+          },
+        }),
+      },
+    },
+    plugins: [window.tailwindcss?.typography],
+  };
+</script>
+<style>
+  /* Markdown styling */
+  .markdown {}
+
+  .markdown h1 {
+    font-size: 1.5rem;
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .markdown h2 {
+    font-size: 1.3rem;
+    margin-top: 0.9rem;
+    margin-bottom: 0.45rem;
+  }
+
+  .markdown h3 {
+    font-size: 1.15rem;
+    margin-top: 0.8rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .markdown p {
+    margin-bottom: 0.75rem;
+    line-height: 1.4;
+  }
+</style>
+<script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+ 
+</head>
+
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+
+  <div class="mx-auto px-4 lg:max-w-5xl xl:max-w-6xl">
+    <h1 class="text-2xl font-bold mb-4">
+      Practice – {{ session.name }}
+    </h1>
+<div id="question-container"
+     hx-get="{% url 'practice:practice_question_htmx' session.id first_serial %}"
+     hx-trigger="load,once"
+     hx-target="this"
+     hx-swap="innerHTML">
+</div>
+
+</body>
+</html>

@@ -1,0 +1,201 @@
+{% extends 'user/base.html' %}
+{% load static %}
+
+{% block content %}
+
+<!-- PART 1: FILTER BAR -->
+<form method="get" id="ques-filter-form" class="row g-2 align-items-end mb-4">
+  <div class="col-md">
+    <label class="form-label">Exam</label>
+    <select name="exam" class="form-select">
+      <option value="">All</option>
+      {% for exam in exams %}
+        <option value="{{ exam }}"
+          {% if exam|stringformat:'s' == request.GET.exam %} selected{% endif %}>
+          {{ exam }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md">
+    <label class="form-label">Year</label>
+    <select name="year" class="form-select">
+      <option value="">All</option>
+      {% for y in years %}
+        <option value="{{ y }}"
+          {% if y|stringformat:'s' == request.GET.year %} selected{% endif %}>
+          {{ y }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md">
+    <label class="form-label">Unit</label>
+    <select name="unit" class="form-select">
+      <option value="">All</option>
+      {% for u in units %}
+        <option value="{{ u }}"
+          {% if u|stringformat:'s' == request.GET.unit %} selected{% endif %}>
+          Unit {{ u }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md">
+    <label class="form-label">Subject</label>
+    <select name="subject_id" class="form-select"
+            hx-get="{% url 'get_topic_dropdown' %}?mode=filter"
+            hx-target="#filter-topic-dropdown"
+            hx-trigger="change"
+            hx-include="#ques-filter-form">
+      <option value="">Select Subject</option>
+      {% for s in subjects %}
+        <option value="{{ s.id }}"
+          {% if s.id|stringformat:'s' == request.GET.subject_id %} selected{% endif %}>
+          {{ s.name }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md" id="filter-topic-dropdown">
+    {% include 'syllabus/partials/topic_dropdown_form.html'
+       with topics=filter_topics
+            selected_id=request.GET.topic_id
+            mode='filter' %}
+  </div>
+  <div class="col-md" id="filter-subtopic-dropdown">
+    {% include 'syllabus/partials/subtopic_dropdown_form.html'
+       with subtopics=filter_subtopics
+            selected_id=request.GET.subtopic_id
+            mode='filter' %}
+  </div>
+  <div class="col-md" id="filter-microtopic-dropdown">
+    {% include 'syllabus/partials/microtopic_dropdown_form.html'
+       with microtopics=filter_microtopics
+            selected_id=request.GET.microtopic_id
+            mode='filter' %}
+  </div>
+  <div class="col-md">
+    <label class="form-label">For Review</label>
+    <select name="for_review" class="form-select">
+      <option value="">All</option>
+      <option value="true"  {% if request.GET.for_review == 'true'  %} selected{% endif %}>Marked for Review</option>
+      <option value="false" {% if request.GET.for_review == 'false' %} selected{% endif %}>Checked Questions</option>
+    </select>
+  </div>
+  <div class="col-auto">
+    <button type="submit" class="btn btn-primary">Apply Filters</button>
+  </div>
+  <div class="col-auto">
+    <a href="{% url 'ques_filter' %}" class="btn btn-outline-danger">Remove Filters</a>
+  </div>
+</form>
+
+<!-- PART 2: STATUS COUNTS -->
+<div class="mb-3">
+  <strong>{{ total_ques }} Questions</strong> |
+  {% if not review and not check %}
+    <strong style="font-size:1.2em;">{{ unchecked }} Unchecked</strong> |
+  {% else %}
+    <span class="text-muted">{{ unchecked }} Unchecked</span> |
+  {% endif %}
+  {% if review %}
+    <strong style="font-size:1.2em;" class="text-warning">{{ for_review }} For Review</strong> |
+  {% else %}
+    <span class="text-warning">{{ for_review }} For Review</span> |
+  {% endif %}
+  {% if check %}
+    <strong style="font-size:1.2em;" class="text-success">{{ checked }} Checked</strong>
+  {% else %}
+    <span class="text-success">{{ checked }} Checked</span>
+  {% endif %}
+</div>
+
+<!-- PART 3: PROGRESS BAR -->
+{% if total > 0 %}
+  <div class="progress mb-4" style="height:6px;">
+    <div class="progress-bar bg-info" style="width:{{ width_percent }}%;"></div>
+  </div>
+{% endif %}
+
+<!-- PART 4: NAVIGATION -->
+{% if total > 0 %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    {% if index > 0 %}
+      <a href="?{% if get_params %}{{ get_params }}&{% endif %}index={{ index|add:'-1' }}"
+         class="btn btn-outline-secondary">&laquo; Previous</a>
+    {% else %}
+      <div></div>
+    {% endif %}
+    <h5 class="mb-0">Question {{ index|add:'1' }} of {{ total }}</h5>
+    {% if index < total|add:'-1' %}
+      <a href="?{% if get_params %}{{ get_params }}&{% endif %}index={{ index|add:'1' }}"
+         class="btn btn-outline-secondary">Next &raquo;</a>
+    {% else %}
+      <div></div>
+    {% endif %}
+  </div>
+{% endif %}
+
+<!-- PART 5 & 6: EDIT FORM + ACTIONS -->
+{% if question %}
+  <form method="post">
+    {% csrf_token %}
+
+    <div class="row">
+      <!-- 5a: Question + Correct Option -->
+      <div class="col-md-6">
+        <div class="mb-3">
+          {{ form.q_statement }}
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Correct Option</label>
+          {{ form.correct_option }}
+        </div>
+      </div>
+
+      <!-- 5b: Metadata & Choices -->
+      <div class="col-md-6">
+        <div class="row g-2 mb-3">
+          <div class="col">
+            <label class="form-label">Exam</label>
+            {{ form.exam }}
+          </div>
+          <div class="col">
+            <label class="form-label">Year</label>
+            {{ form.year }}
+          </div>
+        </div>
+
+        {% for opt in 'abcd' %}
+          <div class="mb-2">
+            <label class="form-label">{{ opt|upper }}</label>
+            {{ form[opt] }}
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- ACTION BUTTONS -->
+    <div class="d-flex justify-content-end gap-3 mt-4">
+      {% if not review %}
+        <button type="submit"
+                name="action" value="for_review"
+                class="btn btn-warning">
+          For Review
+        </button>
+      {% endif %}
+      {% if not check %}
+        <button type="submit"
+                name="action" value="checked"
+                class="btn btn-success">
+          ✅ Save
+        </button>
+      {% endif %}
+    </div>
+  </form>
+{% else %}
+  <div class="alert alert-warning">No questions found.</div>
+{% endif %}
+
+{% endblock %}

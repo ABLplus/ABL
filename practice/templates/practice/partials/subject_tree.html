@@ -1,0 +1,27 @@
+<ul>
+  {% for section in sections %}
+    <li>
+      <strong>{{ section.name }}</strong>
+      <ul>
+        {% for topic in section.topics %}
+          <li style="color:{{ topic.color }};">
+            <a href="{% url 'practice:create_practice' %}?topic={{ topic.id }}">
+              {{ topic.name }}
+            </a>
+            {% if topic.subtopics %}
+              <ul>
+                {% for sub in topic.subtopics %}
+                  <li>{{ sub.name }}</li>
+                {% endfor %}
+              </ul>
+            {% endif %}
+          </li>
+        {% empty %}
+          <li><em>No topics in this section.</em></li>
+        {% endfor %}
+      </ul>
+    </li>
+  {% empty %}
+    <li><em>No sections under this subject.</em></li>
+  {% endfor %}
+</ul>

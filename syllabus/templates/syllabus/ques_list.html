@@ -1,0 +1,12 @@
+{% extends "user/base.html" %}
+{% block content %}
+<h2>All Questions</h2>
+<ul>
+  {% for q in questions %}
+    <li>
+      <strong>Q{{ q.q_no }}:</strong> {{ q.q_statement|safe|truncatewords:10 }}
+      <a href="{% url 'edit_ques' q.pk %}">Edit</a>
+    </li>
+  {% endfor %}
+</ul>
+{% endblock %}

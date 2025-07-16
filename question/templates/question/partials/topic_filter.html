@@ -1,0 +1,16 @@
+<select name="topic"
+        class="form-select"
+        hx-get="{% url 'question:ajax_subtopics' %}"
+        hx-target="#subtopic-container"
+        hx-trigger="change"
+        hx-include="this">
+  <option value="">-- All Topics --</option>
+  {% for top in topics %}
+    <option value="{{ top.id }}" {% if filter_topic == top.id|stringformat:"s" %}selected{% endif %}>
+      {{ top.name }}
+    </option>
+  {% endfor %}
+  <option value="none" {% if filter_topic == 'none' %}selected{% endif %}>
+    No Topic Assigned
+  </option>
+</select>

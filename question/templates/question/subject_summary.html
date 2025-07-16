@@ -1,0 +1,46 @@
+{% extends "user/base.html" %}
+{% block content %}
+<div class="container py-4">
+  <h1 class="mb-4">Questions by Subject</h1>
+
+  <table class="table table-bordered table-hover">
+    <thead class="table-light">
+      <tr>
+        <th>Subject</th>
+        <th class="text-center">Total</th>
+        <th class="text-center">Pending</th>
+        <th class="text-center">Under Review</th>
+        <th class="text-center">Checked</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for subj in subjects %}
+      <tr>
+        <td>
+          <a href="{% url 'question:question_list' %}?subject={{ subj.id }}">
+            {{ subj.name }}
+          </a>
+        </td>
+        <td class="text-center">{{ subj.total }}</td>
+        <td class="text-center">{{ subj.pending }}</td>
+        <td class="text-center">{{ subj.review }}</td>
+        <td class="text-center">{{ subj.checked }}</td>
+      </tr>
+      {% endfor %}
+
+      {# No‐subject row #}
+      <tr>
+        <td>
+          <a href="{% url 'question:question_list' %}?subject=none">
+            <em>No Subject Assigned</em>
+          </a>
+        </td>
+        <td class="text-center">{{ nosub.total }}</td>
+        <td class="text-center">{{ nosub.pending }}</td>
+        <td class="text-center">{{ nosub.review }}</td>
+        <td class="text-center">{{ nosub.checked }}</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+{% endblock %}

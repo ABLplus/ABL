@@ -1,0 +1,11 @@
+<select name="subtopic" class="form-select">
+  <option value="">-- All Subtopics --</option>
+  {% for st in subtopics %}
+    <option value="{{ st.id }}" {% if filter_subtopic == st.id|stringformat:"s" %}selected{% endif %}>
+      {{ st.name }}
+    </option>
+  {% endfor %}
+  <option value="none" {% if filter_subtopic == 'none' %}selected{% endif %}>
+    No Subtopic Assigned
+  </option>
+</select>

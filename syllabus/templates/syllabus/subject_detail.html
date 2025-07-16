@@ -1,0 +1,315 @@
+{% extends "user/base.html" %}
+{% block content %}
+
+<style>
+  /*─────────────────────────────────────────────
+    COLOR PALETTE & MODE SWITCH
+  ─────────────────────────────────────────────*/
+  :root {
+    --color-text: #333333;
+    --color-bg: #f9f9f9;
+    --color-topic-bg: #ffffff;
+    --color-subtopic-bg: #fafafa;
+    --color-border-topic: #4A90E2;
+    --color-border-subtopic: #7B8D93;
+    --color-delete: #c0392b;
+    --color-add: #27ae60;
+    --color-input-bg: #ffffff;
+    --color-input-border: #cccccc;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --color-text: #dddddd;
+      --color-bg: #121212;
+      --color-topic-bg: #1e1e1e;
+      --color-subtopic-bg: #222222;
+      --color-border-topic: #4A90E2;
+      --color-border-subtopic: #7B8D93;
+      --color-delete: #e74c3c;
+      --color-add: #2ecc71;
+      --color-input-bg: #2a2a2a;
+      --color-input-border: #444444;
+    }
+  }
+
+  /*─────────────────────────────────────────────
+    BASE STYLES
+  ─────────────────────────────────────────────*/
+  body {
+    background: var(--color-bg);
+    color: var(--color-text);
+  }
+  ul { list-style: none; margin: 0; padding: 0; }
+  button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--color-text);
+  }
+
+  /*─────────────────────────────────────────────
+    GLOBAL TOGGLES
+  ─────────────────────────────────────────────*/
+  #subject-detail.deletes-hidden .delete-icon {
+    display: none !important;
+  }
+  #subject-detail.adds-hidden .add-icon,
+  #subject-detail.adds-hidden .add-form {
+    display: none !important;
+  }
+
+  /*─────────────────────────────────────────────
+    TOPIC LEVEL
+  ─────────────────────────────────────────────*/
+  .topics-list { margin: 0; padding: 0; }
+  .topic-item {
+    background: var(--color-topic-bg);
+    border-left: 4px solid var(--color-border-topic);
+    border-radius: 4px;
+    margin-bottom: 12px;
+    padding: 12px;
+  }
+
+  /*─────────────────────────────────────────────
+    SUBTOPIC LEVEL
+  ─────────────────────────────────────────────*/
+  .subtopics-list { margin: 0; padding: 0; }
+  .subtopic-item {
+    background: var(--color-subtopic-bg);
+    border-left: 3px dashed var(--color-border-subtopic);
+    border-radius: 4px;
+    margin: 8px 0 8px 20px;
+    padding: 8px;
+  }
+
+  /*─────────────────────────────────────────────
+    MICROT OPTIC LEVEL
+  ─────────────────────────────────────────────*/
+  .microtopics-list { margin: 0; padding: 0; }
+  .microtopic-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 6px 0 6px 40px;
+    font-size: 0.95em;
+  }
+
+  /*─────────────────────────────────────────────
+    HEADER & CONTROLS
+  ─────────────────────────────────────────────*/
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .header .title {
+    font-size: 1.1em;
+    font-weight: bold;
+    cursor: pointer;
+    color: var(--color-text);
+  }
+  .header .title:hover {
+    text-decoration: underline;
+  }
+  .controls {
+    display: flex;
+    gap: 6px;
+  }
+  .controls .delete-icon {
+    color: var(--color-delete);
+    font-size: 1.1em;
+  }
+  .controls .add-icon {
+    color: var(--color-add);
+    font-size: 1.1em;
+  }
+
+  /*─────────────────────────────────────────────
+    FORMS & INPUTS
+  ─────────────────────────────────────────────*/
+  .edit-form,
+  .add-form {
+    margin-top: 8px;
+  }
+  .add-form input[type="text"],
+  .edit-form input[type="text"] {
+    padding: 4px 6px;
+    font-size: 0.95em;
+    background: var(--color-input-bg);
+    color: var(--color-text);
+    border: 1px solid var(--color-input-border);
+    border-radius: 3px;
+  }
+  .add-form button,
+  .edit-form button {
+    font-size: 1em;
+    color: var(--color-text);
+  }
+</style>
+
+<h2>Subject: {{ subject.name }} for {{subject.exam}}</h2>
+
+<div style="margin-bottom:16px;">
+  <button onclick="toggleDeletes()">🗑️ Toggle Delete</button>
+  <button onclick="toggleAdds()">➕ Toggle Add</button>
+</div>
+
+<div id="subject-detail" class="deletes-hidden adds-hidden">
+
+  <!-- Always-visible “Add Topic” -->
+  <form method="post" style="margin-bottom:20px; display:flex; gap:8px;">
+    {% csrf_token %}
+    {{ topic_form.name }}
+    <button type="submit" name="add_topic">➕ Add Topic</button>
+  </form>
+
+  <ul class="topics-list">
+  {% for topic in topics %}
+    <li class="topic-item">
+      <div class="header">
+        <span class="title"
+              onclick="toggleEdit('edit_topic_{{ topic.id }}')">
+          {{ topic.name }}
+        </span>
+        <div class="controls">
+          <form method="post" style="display:inline;">
+            {% csrf_token %}
+            <input type="hidden" name="topic_id" value="{{ topic.id }}">
+            <button type="submit" name="delete_topic" class="delete-icon">❌</button>
+          </form>
+          <span class="add-icon"
+                onclick="toggleAddForm('add_subtopic_form_{{ topic.id }}')">
+            ➕
+          </span>
+        </div>
+      </div>
+
+      <div id="edit_topic_{{ topic.id }}" class="edit-form" style="display:none;">
+        <form method="post" style="display:flex; gap:8px;">
+          {% csrf_token %}
+          <input type="text" name="name" value="{{ topic.name }}">
+          <input type="hidden" name="topic_id" value="{{ topic.id }}">
+          <button type="submit" name="edit_topic">💾</button>
+        </form>
+      </div>
+
+      <div id="add_subtopic_form_{{ topic.id }}" class="add-form">
+        <form method="post" style="display:flex; gap:8px; align-items:center;">
+          {% csrf_token %}
+          <input type="text" name="name" placeholder="New SubTopic">
+          <input type="hidden" name="topic_id" value="{{ topic.id }}">
+          <button type="submit" name="add_subtopic">➕</button>
+        </form>
+      </div>
+
+      <ul class="subtopics-list">
+      {% for sub in topic.subtopics.all %}
+        <li class="subtopic-item">
+          <div class="header">
+            <span class="title"
+                  onclick="toggleEdit('edit_subtopic_{{ sub.id }}')">
+              {{ sub.name }}
+            </span>
+            <div class="controls">
+              <form method="post" style="display:inline;">
+                {% csrf_token %}
+                <input type="hidden" name="subtopic_id" value="{{ sub.id }}">
+                <button type="submit" name="delete_subtopic" class="delete-icon">❌</button>
+              </form>
+              <span class="add-icon"
+                    onclick="toggleAddForm('add_microtopic_form_{{ sub.id }}')">
+                ➕
+              </span>
+            </div>
+          </div>
+
+          <div id="edit_subtopic_{{ sub.id }}" class="edit-form" style="display:none;">
+            <form method="post" style="display:flex; gap:8px;">
+              {% csrf_token %}
+              <input type="text" name="name" value="{{ sub.name }}">
+              <input type="hidden" name="subtopic_id" value="{{ sub.id }}">
+              <button type="submit" name="edit_subtopic">💾</button>
+            </form>
+          </div>
+
+          <div id="add_microtopic_form_{{ sub.id }}" class="add-form">
+            <form method="post" style="display:flex; gap:8px; align-items:center;">
+              {% csrf_token %}
+              <input type="text" name="name" placeholder="New MicroTopic">
+              <input type="hidden" name="subtopic_id" value="{{ sub.id }}">
+              <button type="submit" name="add_microtopic">➕</button>
+            </form>
+          </div>
+
+          <ul class="microtopics-list">
+          {% for micro in sub.microtopics.all %}
+            <li class="microtopic-item">
+              <span class="title"
+                    onclick="toggleEdit('edit_microtopic_{{ micro.id }}')">
+                 {{ micro.name }}
+              </span>
+              <form method="post" style="display:inline;">
+                {% csrf_token %}
+                <input type="hidden" name="microtopic_id" value="{{ micro.id }}">
+                <button type="submit" name="delete_microtopic" class="delete-icon">❌</button>
+              </form>
+
+              <div id="edit_microtopic_{{ micro.id }}" class="edit-form" style="display:none;">
+                <form method="post" style="display:flex; gap:8px; margin-top:4px;">
+                  {% csrf_token %}
+                  <input type="text" name="name" value="{{ micro.name }}">
+                  <input type="hidden" name="microtopic_id" value="{{ micro.id }}">
+                  <button type="submit" name="edit_microtopic">💾</button>
+                </form>
+              </div>
+            </li>
+          {% endfor %}
+          </ul>
+
+        </li>
+      {% endfor %}
+      </ul>
+
+    </li>
+  {% endfor %}
+  </ul>
+
+</div> {# /#subject-detail #}
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const c = document.getElementById('subject-detail');
+    const showDeletes = localStorage.getItem('showDeletes') === 'true';
+    const showAdds    = localStorage.getItem('showAdds')    === 'true';
+    c.classList.toggle('deletes-visible', showDeletes);
+    c.classList.toggle('adds-visible',    showAdds);
+    c.classList.toggle('deletes-hidden', !showDeletes);
+    c.classList.toggle('adds-hidden',    !showAdds);
+  });
+
+  function toggleDeletes() {
+    const c = document.getElementById('subject-detail');
+    const now = !c.classList.contains('deletes-visible');
+    c.classList.toggle('deletes-visible', now);
+    c.classList.toggle('deletes-hidden', !now);
+    localStorage.setItem('showDeletes', now);
+  }
+  function toggleAdds() {
+    const c = document.getElementById('subject-detail');
+    const now = !c.classList.contains('adds-visible');
+    c.classList.toggle('adds-visible', now);
+    c.classList.toggle('adds-hidden', !now);
+    localStorage.setItem('showAdds', now);
+  }
+  function toggleEdit(id) {
+    const el = document.getElementById(id);
+    el.style.display = (el.style.display === 'none') ? 'block' : 'none';
+  }
+  function toggleAddForm(id) {
+    const el = document.getElementById(id);
+    el.style.display = (el.style.display === 'none') ? 'block' : 'none';
+  }
+</script>
+
+{% endblock %}

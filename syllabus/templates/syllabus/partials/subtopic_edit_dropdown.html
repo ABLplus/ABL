@@ -1,0 +1,7 @@
+<label class="form-label small fw-semibold mb-1">Sub-topic</label>
+<select name="subtopic_id" class="form-select">
+  <option value="">Select Sub-topic</option>
+  {% for st in subtopics %}
+    <option value="{{ st.id }}" {% if st.id|stringformat:'s' == selected_id|stringformat:'s' %}selected{% endif %}>{{ st.name }}</option>
+  {% endfor %}
+</select>

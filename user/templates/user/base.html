@@ -1,0 +1,114 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ABL - {% block title %}{% endblock %}</title>
+
+    <!-- Bootstrap 5 CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    {% block extra_head %}<script src="{% static 'ckeditor/ckeditor/ckeditor.js' %}"></script>
+  <script src="{% static 'ckeditor/ckeditor-init.js' %}"></script>{% endblock %}
+</head>
+<body>
+
+
+<!-- Navigation Bar -->
+<nav class="navbar navbar-expand-lg bg-body-tertiary" data-bs-theme="light" id="mainNavbar">
+  <div class="container-fluid">
+
+    <!-- Brand -->
+    <a class="navbar-brand fw-bold" href="{% url 'home' %}">ABL+</a>
+
+    <!-- Theme Toggle (always visible, right-aligned) -->
+    <div class="d-lg-none ms-auto">
+      <button id="themeToggle" class="btn btn-sm btn-outline-secondary" title="Toggle dark/light mode">
+        🌙
+      </button>
+    </div>
+
+    <!-- Hamburger Toggler -->
+    <button class="navbar-toggler ms-2" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+      aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <!-- Collapsible Nav -->
+    <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+      <ul class="navbar-nav align-items-center gap-2">
+        {% if user.is_authenticated %}
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'profile' %}">Profile</a>
+        </li>
+        <li class="nav-item">
+          <form method="post" action="{% url 'logout' %}">
+            {% csrf_token %}
+            <button class="btn btn-outline-danger btn-sm" type="submit">Logout</button>
+          </form>
+        </li>
+        {% else %}
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'login' %}">Login</a>
+        </li>
+
+        {% endif %}
+
+        <!-- Theme toggle (visible on large screens inside nav) -->
+        <li class="nav-item d-none d-lg-block">
+          <button id="themeToggleLg" class="btn btn-sm btn-outline-secondary" title="Toggle dark/light mode">
+            🌙
+          </button>
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+
+
+<!-- Main Content -->
+<div class="container my-5">
+    {% block content %}
+    {% endblock %}
+</div>
+
+<!-- Bootstrap 5 JS Bundle -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://unpkg.com/htmx.org@1.9.2"></script>
+
+<script type="text/javascript" src="{% static 'ckeditor/ckeditor-init.js' %}"></script>
+<script type="text/javascript" src="{% static 'ckeditor/ckeditor/ckeditor.js' %}"></script>
+
+{% block extra_js %}{% endblock %}
+
+<!-- Dark/Light Mode Toggle Script -->
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+      const themeToggle = document.getElementById('themeToggle');
+      const htmlElement = document.documentElement;
+      const navbar = document.getElementById('mainNavbar');
+
+      const applyTheme = (theme) => {
+          htmlElement.setAttribute('data-bs-theme', theme);
+          navbar.setAttribute('data-bs-theme', theme);  // Ensure navbar respects the theme
+          themeToggle.textContent = theme === 'dark' ? '☀️' : '🌙';
+      };
+
+      const storedTheme = localStorage.getItem('theme') || 'light';
+      applyTheme(storedTheme);
+
+      themeToggle.addEventListener('click', () => {
+          const currentTheme = htmlElement.getAttribute('data-bs-theme');
+          const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+          localStorage.setItem('theme', newTheme);
+          applyTheme(newTheme);
+      });
+  });
+</script>
+
+
+</body>
+</html>

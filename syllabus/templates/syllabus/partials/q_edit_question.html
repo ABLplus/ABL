@@ -1,0 +1,181 @@
+{# templates/syllabus/partials/q_edit_question.html #}
+{% if question %}
+<div class="question-block">
+
+  <!-- STATUS COUNTS -->
+  <div class="mb-3">
+    <strong>{{ total_ques }} Questions</strong> |
+    {% if not review and not check %}
+      <strong class="text-danger">{{ unchecked }} Unchecked</strong> |
+    {% else %}
+      <span class="text-muted">{{ unchecked }} Unchecked</span> |
+    {% endif %}
+    {% if review %}
+      <strong class="text-warning">{{ for_review }} For Review</strong> |
+    {% else %}
+      <span class="text-warning">{{ for_review }} For Review</span> |
+    {% endif %}
+    {% if check %}
+      <strong class="text-success">{{ checked }} Checked</strong>
+    {% else %}
+      <span class="text-success">{{ checked }} Checked</span>
+    {% endif %}
+  </div>
+
+  <!-- PROGRESS BAR & NAVIGATION -->
+  {% if total > 0 %}
+    <div class="progress mb-4" style="height:6px;">
+      <div class="progress-bar bg-info" style="width:{{ width_percent }}%;"></div>
+    </div>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      {% if index > 0 %}
+        <button class="btn btn-outline-secondary"
+                hx-get="{% url 'ques_edit_part' %}?{{ get_params }}&index={{ index|add:'-1' }}"
+                hx-target="#question-container" hx-swap="innerHTML">
+          &laquo; Previous
+        </button>
+      {% else %}
+        <div></div>
+      {% endif %}
+      <h5 class="mb-0">
+        (Unit {{ question.unit }} – Q{{ question.q_no }}) Question {{ index|add:'1' }} of {{ total }}
+      </h5>
+      {% if index < total|add:'-1' %}
+        <button class="btn btn-outline-secondary"
+                hx-get="{% url 'ques_edit_part' %}?{{ get_params }}&index={{ index|add:'1' }}"
+                hx-target="#question-container" hx-swap="innerHTML">
+          Next &raquo;
+        </button>
+      {% else %}
+        <div></div>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  <!-- GENERATE EXPLANATION -->
+  <div class="text-center mb-3">
+    <form method="post"
+          action="{% url 'generate_explanation' question.id %}?{{ get_params }}&index={{ index }}">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-primary">Generate Explanation</button>
+    </form>
+  </div>
+
+  <!-- Syllabus selects (chained) -->
+  <div class="row g-3 mb-4">
+    <div class="col-md-3">
+      <label class="form-label">Subject</label>
+      <select name="subject_id" class="form-select"
+              hx-get="{% url 'get_section_dropdown' %}?mode=question&subject_id={{ question.subject_id }}"
+              hx-target="#section-select" hx-swap="innerHTML">
+        <option value="">— Subject —</option>
+        {% for s in subjects %}
+          <option value="{{ s.id }}" {% if s.id == question.subject_id %}selected{% endif %}>{{ s.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3" id="section-select">
+      <label class="form-label">Section</label>
+      <select name="section_id" class="form-select"
+              hx-get="{% url 'get_topic_dropdown' %}?mode=question&section_id={{ question.section_id }}"
+              hx-target="#topic-select" hx-swap="innerHTML">
+        <option value="">— Section —</option>
+        {% for sec in sections %}
+          <option value="{{ sec.id }}" {% if sec.id == question.section_id %}selected{% endif %}>{{ sec.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3" id="topic-select">
+      <label class="form-label">Topic</label>
+      <select name="topic_id" class="form-select"
+              hx-get="{% url 'get_subtopic_dropdown' %}?mode=question&topic_id={{ question.topic_id }}"
+              hx-target="#subtopic-select" hx-swap="innerHTML">
+        <option value="">— Topic —</option>
+        {% for top in filter_topics %}
+          <option value="{{ top.id }}" {% if top.id == question.topic_id %}selected{% endif %}>{{ top.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3" id="subtopic-select">
+      <label class="form-label">Subtopic</label>
+      <select name="subtopic_id" class="form-select">
+        <option value="">— Subtopic —</option>
+        {% for sub in filter_subtopics %}
+          <option value="{{ sub.id }}" {% if sub.id == question.subtopic_id %}selected{% endif %}>{{ sub.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+
+  <!-- Display metadata as plain text -->
+  <div class="row g-3 mb-4">
+    <div class="col-md-4">
+      <label class="form-label">Exam</label>
+      <p class="form-control-plaintext">{{ question.exam }}</p>
+    </div>
+    <div class="col-md-4">
+      <label class="form-label">Year</label>
+      <p class="form-control-plaintext">{{ question.year }}</p>
+    </div>
+    <div class="col-md-4">
+      <label class="form-label">OLT Type</label>
+      <p class="form-control-plaintext">{{ question.olt_type }}</p>
+    </div>
+  </div>
+
+  <!-- Statement widget -->
+  {% include "syllabus/partials/q_edit_qstatement.html" %}
+
+  <!-- MCQ Options -->
+  <div class="row g-3">
+    <div class="col-md-6">
+      <label class="form-label">Option A</label>
+      <input type="text" name="a" class="form-control" value="{{ question.a }}">
+    </div>
+    <div class="col-md-6">
+      <label class="form-label">Option B</label>
+      <input type="text" name="b" class="form-control" value="{{ question.b }}">
+    </div>
+    <div class="col-md-6">
+      <label class="form-label">Option C</label>
+      <input type="text" name="c" class="form-control" value="{{ question.c }}">
+    </div>
+    <div class="col-md-6">
+      <label class="form-label">Option D</label>
+      <input type="text" name="d" class="form-control" value="{{ question.d }}">
+    </div>
+  </div>
+
+  <!-- Correct Option & Explanation -->
+  <div class="row g-3 mt-3">
+    <div class="col-md-4">
+      <label class="form-label">Correct Option</label>
+      <select name="correct_option" class="form-select">
+        <option value="a" {% if question.correct_option == 'a' %}selected{% endif %}>A</option>
+        <option value="b" {% if question.correct_option == 'b' %}selected{% endif %}>B</option>
+        <option value="c" {% if question.correct_option == 'c' %}selected{% endif %}>C</option>
+        <option value="d" {% if question.correct_option == 'd' %}selected{% endif %}>D</option>
+      </select>
+    </div>
+    <div class="col-md-8">
+      <label class="form-label">Explanation</label>
+      <input type="text" name="explanation" class="form-control" value="{{ question.explanation }}">
+    </div>
+  </div>
+
+  <!-- Save All -->
+  <div class="text-end mt-4">
+    <button class="btn btn-success"
+            hx-post="{% url 'ques_edit_part' %}?mode=save_all&{{ get_params }}&index={{ index }}"
+            hx-include=".question-block input, .question-block select, #id_q_statement"
+            hx-target="#question-container"
+            hx-swap="innerHTML"
+            name="action" value="checked">
+      ✅ Save All
+    </button>
+  </div>
+
+</div>
+{% else %}
+  <div class="alert alert-warning">No question to display.</div>
+{% endif %}

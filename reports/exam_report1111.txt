@@ -1,0 +1,119 @@
+Exam Report (Ques Count by Exam)
+==================================================
+
+1. UPSC CSE Prelims: 235 questions
+2. CAPF: 124 questions
+3. UPPCS Mains: 103 questions
+4. UPPCS Prelims: 100 questions
+5. (NULL): 87 questions
+6. CDS Prelims I: 60 questions
+7. CGPCS Prelims: 52 questions
+8. MPPCS Prelims: 48 questions
+9. RAS/RTS Prelims: 28 questions
+10. CDS Prelims II: 17 questions
+11. CDS (General): 16 questions
+12. UKPCS Prelims: 14 questions
+13. CDS  (I): 11 questions
+14. Jharkhand P.C.S. (Pre): 10 questions
+15. U.P.P.C.S. (Spl) (Mains): 9 questions
+16. U.P. Lower Sub. (Pre): 9 questions
+17. CDS Pre. IT: 8 questions
+18. CDS Pre.  IT: 8 questions
+19. R.A.S./R.T.S.(Pre): 7 questions
+20. CDS  (ID: 6 questions
+21. UPPCS (Pre): 5 questions
+22. U.P.P.C.S. (Pre) (Re-Exam): 5 questions
+23. U.P.B.C.S. (Pre): 5 questions
+24. CDS  (I1): 5 questions
+25. U.P.P.C.S. (Pre) (Re. Exam): 3 questions
+26. M.P.P.C.S. (Pre),: 3 questions
+27. Jharkhand PCS Pre: 3 questions
+28. CDS  (IT): 3 questions
+29. CDS  (1: 3 questions
+30. 40th B.P.S.C. (Pre): 3 questions
+31. U.P.B.C.S. (Mains): 2 questions
+32. U.P. P.C.S. (Pre): 2 questions
+33. U.P. P.C.S. (Mains): 2 questions
+34. U.P. Lower Sub. (Mains): 2 questions
+35. U.P. B.C.S. (Mains): 2 questions
+36. R.A.S./R.T.S, (Pre): 2 questions
+37. Jharkhand PCS (Mains): 2 questions
+38. CDS Pre.  11: 2 questions
+39. CDS (D: 2 questions
+40. 63rd B.P.S.C. (Pre): 2 questions
+41. 60th to 62nd B.P.S.C. (Pre): 2 questions
+42. 53rd to 55th B.P.S.C. (Pre): 2 questions
+43. 53rd to 55th B.B.S.C. (Pre): 2 questions
+44. 45th B.P.S.C. (Pre): 2 questions
+45. 41st B.P.S.C. (Pre): 2 questions
+46. Uttarakhand P.C.S, (Pre): 1 questions
+47. UPSC CSE: 1 questions
+48. UP Lower Sub. Pre: 1 questions
+49. UOPPCS Pre: 1 questions
+50. U.RB.C.S. (Mains): 1 questions
+51. U.P.U.D.A./L.D.A. (Pre): 1 questions
+52. U.P.PBC.S. (Mains): 1 questions
+53. U.P.P.S.C. (SpI) (Pre): 1 questions
+54. U.P.P.C.S. Lower (Pre): 1 questions
+55. U.P.P.C.S. (Sp: 1 questions
+56. U.P.P.C.S, (Spl) (Mains): 1 questions
+57. U.P.P.C.S: 1 questions
+58. U.P.B.C.S. Pre: 1 questions
+59. U.P.B.C.S, (Pre): 1 questions
+60. U.P. Lower Sub. Pre: 1 questions
+61. U.P. Lower Sub. (Spl) (Pre): 1 questions
+62. U.P. Lower Sub, (Pre): 1 questions
+63. U.P. Lower (Spl) (Pre): 1 questions
+64. U.P, Lower Sub. (Spl) (Pre): 1 questions
+65. U.P, Lower Sub. (Pre): 1 questions
+66. U.P, Lower Sub. (Mains): 1 questions
+67. U.BS.C (Pre): 1 questions
+68. U.BP.C.S. (Mains): 1 questions
+69. U.B.P.C.S. (Pre): 1 questions
+70. U.B.B.C.S. (Pre): 1 questions
+71. U.B.B.C.S. (Mains): 1 questions
+72. R.A.S./R.T.S.(Pre: 1 questions
+73. R.A.S./R.T.S. (Pre) (Re. Exam.): 1 questions
+74. R.A.S./R.7.S. (Pre): 1 questions
+75. MPPCS Pre , MPPCS Pre 1998: 1 questions
+76. MPPCS Mains: 1 questions
+77. MPPCS: 1 questions
+78. M.P.B.C.S. (Pre): 1 questions
+79. M.P. P.C.S. (Pre): 1 questions
+80. DS Pre.  I: 1 questions
+81. Chhattisgarh B.C.S. (Pre): 1 questions
+82. CSDS  (I): 1 questions
+83. CDS Pre. 11: 1 questions
+84. CDS Pre.  T: 1 questions
+85. CDS Pre.  (D: 1 questions
+86. CDS  II: 1 questions
+87. CDS  ID: 1 questions
+88. CDS  11: 1 questions
+89. CDS  (ID): 1 questions
+90. CDS  (D): 1 questions
+91. CDS  (D: 1 questions
+92. CDS  (11: 1 questions
+93. 67th BB.S.C. (Pre) (Re-Exam),: 1 questions
+94. 67th B.P.S.C. (Pre) (Re-Exam),: 1 questions
+95. 67th B.P.S.C, (Pre),: 1 questions
+96. 67th B.B.S.C. (Pre),: 1 questions
+97. 67 B.P.S.C. (Pre): 1 questions
+98. 66th B.P.S.C. (Pre) (Re-Exam),: 1 questions
+99. 66th B.B.S.C. (Pre) (Re-Exam),: 1 questions
+100. 66"* BPSC (Pre, Re-Exam): 1 questions
+101. 66" B.P.S.C. (Pre): 1 questions
+102. 64th B.P.C.S. (Pre): 1 questions
+103. 60 to 62° B.B.S.C. (Pre): 1 questions
+104. 53"4 to 55" BPSC Pre: 1 questions
+105. 48th to 52nd B.P.S.C, (Pre): 1 questions
+106. 47th B.P.S.C. (Pre): 1 questions
+107. 47 B.P.S.C. (Pre): 1 questions
+108. 45 B.P.S.C, (Pre): 1 questions
+109. 43 BPSC Pre: 1 questions
+110. 42nd B.P.S.C. (Pre): 1 questions
+111. 42nd B.P.C.S. (Pre): 1 questions
+112. 42nd B.BS.C. (Pre): 1 questions
+113. 41st B.B.S.C. (Pre): 1 questions
+114. 40th B.B.S.C, (Pre): 1 questions
+115. 39" B.P.S.C. (Pre): 1 questions
+116. 38th B.P.S.C. (Pre): 1 questions

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Topic Summary – {{ target_user.username }}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-6">
+
+  <!-- Header + User Switcher -->
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-3xl font-bold">
+      Topic Summary
+      <span class="text-lg font-normal text-gray-500">({{ target_user.username }})</span>
+    </h1>
+
+    {% if request.user.is_staff %}
+      <form method="get">
+        <label for="user" class="mr-2 text-sm font-medium">View as:</label>
+        <select name="user" id="user"
+                class="border rounded px-2 py-1 bg-white dark:bg-gray-700"
+                onchange="this.form.submit()">
+          {% for u in all_users %}
+            <option value="{{ u.id }}" {% if u.id == target_user.id %}selected{% endif %}>
+              {{ u.username }}
+            </option>
+          {% endfor %}
+        </select>
+      </form>
+    {% endif %}
+  </div>
+
+  {% if summaries %}
+    <div class="overflow-x-auto rounded-lg shadow border dark:border-gray-700">
+      <table class="min-w-full divide-y divide-gray-300 dark:divide-gray-700 text-sm">
+        <thead class="bg-gray-200 dark:bg-gray-800">
+          <tr class="text-left">
+            <th class="px-3 py-2">Topic</th>
+            <th class="px-3 py-2">Mode</th>
+            <th class="px-3 py-2">Total</th>
+            <th class="px-3 py-2">Correct</th>
+            <th class="px-3 py-2">Wrong</th>
+            <th class="px-3 py-2">Accuracy %</th>
+            <th class="px-3 py-2">Net Marks</th>
+
+            <!-- Attempt-type breakdowns -->
+            <th class="px-3 py-2">Sureshot</th>
+            <th class="px-3 py-2">Applied</th>
+            <th class="px-3 py-2">Guesswork</th>
+            <th class="px-3 py-2">Blind</th>
+
+            <!-- Wrong attempt breakdowns -->
+            <th class="px-3 py-2 text-red-600">Sureshot Wrong</th>
+            <th class="px-3 py-2 text-red-600">Applied Wrong</th>
+            <th class="px-3 py-2 text-red-600">Guess Wrong</th>
+            <th class="px-3 py-2 text-red-600">Blind Wrong</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+          {% for ts in summaries %}
+            <tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
+              <td class="px-3 py-2 whitespace-nowrap">{{ ts.topic.name }}</td>
+              <td class="px-3 py-2">{{ ts.get_mode_display }}</td>
+              <td class="px-3 py-2 text-center">{{ ts.total_attempts }}</td>
+              <td class="px-3 py-2 text-center">{{ ts.correct_attempts }}</td>
+              <td class="px-3 py-2 text-center">{{ ts.wrong_attempts }}</td>
+              <td class="px-3 py-2 text-center">{{ ts.accuracy|floatformat:2 }}</td>
+              <td class="px-3 py-2 text-center">{{ ts.net_marks|floatformat:2 }}</td>
+
+              <!-- Attempt types -->
+              <td class="px-3 py-2 text-center">{{ ts.sureshot_attempts }}</td>
+              <td class="px-3 py-2 text-center">{{ ts.applied_attempts }}</td>
+              <td class="px-3 py-2 text-center">{{ ts.guesswork_attempts }}</td>
+              <td class="px-3 py-2 text-center">{{ ts.blind_attempts }}</td>
+
+              <!-- Wrong attempt breakdowns -->
+              <td class="px-3 py-2 text-center text-red-600">{{ ts.sureshot_wrong }}</td>
+              <td class="px-3 py-2 text-center text-red-600">{{ ts.applied_wrong }}</td>
+              <td class="px-3 py-2 text-center text-red-600">{{ ts.guesswork_wrong }}</td>
+              <td class="px-3 py-2 text-center text-red-600">{{ ts.blind_wrong }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="text-red-600 mt-4">No TopicAttemptSummary data found for this user.</p>
+  {% endif %}
+
+</body>
+</html>

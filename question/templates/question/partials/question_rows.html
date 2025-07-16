@@ -1,0 +1,24 @@
+
+{# templates/question/partials/question_rows.html #}
+{% comment %}
+  Renders one “page” of rows, then—if there’s another page—a sentinel <tr>
+  that HTMX will fetch when it scrolls into view.
+{% endcomment %}
+
+{# Out-of-band update of total_count #}
+<span id="total-count" hx-swap-oob="true">{{ total_count }}</span>
+
+{% for q in page_obj %}
+  {% include "question/partials/question_row.html" %}
+{% endfor %}
+
+{% if page_obj.has_next %}
+<tr
+  id="load-more"
+  style="visibility:hidden"          {# hides the row contents but keeps the trigger #}
+  hx-get="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}page={{ page_obj.next_page_number }}"
+  hx-trigger="revealed"
+  hx-swap="afterend">
+  <td colspan="10"></td>
+</tr>
+{% endif %}

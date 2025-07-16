@@ -1,0 +1,32 @@
+<h2>Exams</h2>
+
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <input type="hidden" name="exam_id" id="exam_id">
+    <button type="submit" name="save_exam">Save</button>
+</form>
+
+<hr>
+
+<ul>
+    {% for exam in exams %}
+        <li>
+            <a href="{% url 'exam_detail' exam.id %}">{{ exam.name }}</a>
+            <form method="post" style="display:inline;">
+                {% csrf_token %}
+                <input type="hidden" name="exam_id" value="{{ exam.id }}">
+                <button type="submit" name="delete_exam">Delete</button>
+            </form>
+            <button onclick="editExam('{{ exam.id }}', '{{ exam.name }}', '{{ exam.description|default_if_none:'' }}')">Edit</button>
+        </li>
+    {% endfor %}
+</ul>
+
+<script>
+function editExam(id, name, description) {
+    document.getElementById('exam_id').value = id;
+    document.querySelector('[name="name"]').value = name;
+    document.querySelector('[name="description"]').value = description;
+}
+</script>

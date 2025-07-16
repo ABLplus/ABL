@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Practice Home</title>
+  <script src="https://unpkg.com/htmx.org@1.9.2"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body class="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen">
+
+  <div class="max-w-6xl mx-auto px-4 py-6">
+
+    <h1 class="text-3xl font-bold mb-6 text-blue-600 dark:text-blue-400">Practice Home</h1>
+
+
+{# ───────── Flash Messages (fixed overlay, auto-dismiss) ───────── #}
+{% if messages %}
+  <div id="flash-zone"
+       class="fixed top-4 inset-x-0 flex justify-center z-50 pointer-events-none transition-opacity duration-500 ease-in-out opacity-100">
+    <div class="space-y-2 w-full max-w-md px-4">
+      {% for message in messages %}
+        <div class="
+          {% if message.tags == 'error' %}
+            bg-red-500 text-white
+          {% elif message.tags == 'warning' %}
+            bg-yellow-400 text-gray-900
+          {% elif message.tags == 'success' %}
+            bg-green-600 text-white
+          {% else %}
+            bg-blue-500 text-white
+          {% endif %}
+          px-4 py-2 rounded shadow"
+          role="alert">
+          {{ message }}
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <script>
+    // Fade out after 700ms, remove after transition completes
+    setTimeout(() => {
+      const flash = document.getElementById('flash-zone');
+      if (flash) {
+        flash.classList.add('opacity-0');
+        setTimeout(() => flash.remove(), 500);  // matches CSS duration
+      }
+    }, 700);
+  </script>
+{% endif %}
+
+{# 1. Ongoing Sessions #}
+{% if pending_sessions %}
+  <section class="mb-10">
+    <h2 class="text-2xl font-bold mb-5 text-blue-600 dark:text-blue-300">
+      Ongoing Practice Sessions
+    </h2>
+
+    <div class="space-y-4">
+      {% for s in pending_sessions %}
+        <div class="flex items-center justify-between p-5 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 shadow">
+          <div>
+            <div class="font-semibold text-xl text-gray-900 dark:text-gray-100">
+              {{ s.name }}
+            </div>
+            <div class="text-base text-gray-700 dark:text-gray-300">
+              {{ s.total_questions }} Questions
+              (started at: {{ s.start_time|date:"M d, Y H:i" }})
+              
+            </div>
+          </div>
+          <a href="{% url 'practice:take_practice' s.id %}" 
+             class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-base font-semibold rounded-md shadow">
+            Continue →
+          </a>
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+{% endif %}
+
+
+    {# 2. New Practice Form #}
+    {% if can_create %}
+      <section class="mb-10">
+        <h2 class="text-2xl font-semibold mb-4 text-green-500 dark:text-green-300">New Practice Session</h2>
+
+        <form method="post" action="{% url 'practice:create_practice' %}" class="space-y-6">
+          {% csrf_token %}
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div>
+              <label for="id_subject" class="block font-semibold mb-1">Subject:</label>
+              <select name="subject" id="id_subject"
+                      hx-get="{% url 'practice:ajax_load_sections' %}?subject={{ request.GET.subject }}"
+                      hx-target="#id_section"
+                      hx-trigger="change"
+                      class="w-full border rounded px-3 py-2 bg-white dark:bg-gray-800 dark:border-gray-600">
+                <option value="">— choose subject —</option>
+                {% for subj in subjects %}
+                  <option value="{{ subj.id }}">{{ subj.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div>
+              <label for="id_section" class="block font-semibold mb-1">Section:</label>
+              <select name="section" id="id_section"
+                      hx-get="{% url 'practice:ajax_load_topics' %}?section={{ request.GET.section }}"
+                      hx-target="#id_topic"
+                      hx-trigger="change"
+                      class="w-full border rounded px-3 py-2 bg-white dark:bg-gray-800 dark:border-gray-600">
+                {% include "practice/partials/section_options.html" %}
+              </select>
+            </div>
+
+            <div>
+              <label for="id_topic" class="block font-semibold mb-1">Topic:</label>
+              <select name="topic" id="id_topic"
+                      hx-get="{% url 'practice:ajax_load_subtopics' %}?topic={{ request.GET.topic }}"
+                      hx-target="#id_subtopic"
+                      hx-trigger="change"
+                      class="w-full border rounded px-3 py-2 bg-white dark:bg-gray-800 dark:border-gray-600">
+                {% include "practice/partials/topic_options.html" %}
+              </select>
+            </div>
+
+            <div>
+              <label for="id_subtopic" class="block font-semibold mb-1">Subtopic:</label>
+              <select name="subtopic" id="id_subtopic"
+                      class="w-full border rounded px-3 py-2 bg-white dark:bg-gray-800 dark:border-gray-600">
+                {% include "practice/partials/subtopic_options.html" %}
+              </select>
+            </div>
+
+            <div>
+              <label for="id_olt_type" class="block font-semibold mb-1">OLT Type:</label>
+              <select name="olt_type" id="id_olt_type"
+                      class="w-full border rounded px-3 py-2 bg-white dark:bg-gray-800 dark:border-gray-600">
+                <option value="">— choose OLT —</option>
+                {% for olt in olts %}
+                  <option value="{{ olt.id }}">{{ olt.name }}</option>
+                {% empty %}
+                  <option>No OLTs available</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div>
+              <label class="block font-semibold mb-1">Order:</label>
+              <label class="mr-4"><input type="radio" name="order" value="serial" checked> Serial</label>
+              <label><input type="radio" name="order" value="random"> Random</label>
+            </div>
+          </div>
+
+          <div>
+            <button type="submit" class="px-5 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white">
+              Start Practice
+            </button>
+          </div>
+        </form>
+      </section>
+
+      {# 2B. Collapsible Subject Tree #}
+      <details class="mb-10 border-t border-gray-300 dark:border-gray-600 pt-4">
+        <summary class="text-lg font-semibold cursor-pointer text-gray-700 dark:text-gray-200">
+          Or Pick a Topic from Subject Tree
+        </summary>
+        <div class="mt-3 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {% for subj in subjects %}
+            <details class="border rounded dark:border-gray-600 p-3 bg-gray-50 dark:bg-gray-800">
+              <summary
+                class="font-semibold text-blue-700 dark:text-blue-300 cursor-pointer"
+                hx-get="{% url 'practice:ajax_subject_tree' subj.id %}"
+                hx-target="#subject-tree-{{ subj.id }}"
+                hx-swap="innerHTML"
+                hx-trigger="click">
+                {{ subj.name }}
+              </summary>
+              <div id="subject-tree-{{ subj.id }}" class="mt-2 text-sm text-gray-800 dark:text-gray-100">
+                <!-- Tree loads here -->
+              </div>
+            </details>
+          {% endfor %}
+        </div>
+      </details>
+
+      
+      {% else %}
+      <section class="mb-10">
+        <h2 class="text-2xl font-semibold mb-4 text-red-500 dark:text-red-300 text-center">Finish Pending Practice Sessions to Create New Session!</h2>
+       
+
+    {% endif %}
+
+    {# 3. Completed Sessions #}
+    <section class="mb-8">
+      <h2 class="text-2xl font-semibold text-purple-500 dark:text-purple-300 mb-3">Previous Sessions</h2>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm border border-gray-300 dark:border-gray-700">
+          <thead class="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200">
+            <tr>
+              <th class="border px-3 py-2 text-left">Topic</th>
+              <th class="border px-3 py-2 text-left">Correct</th>
+              <th class="border px-3 py-2 text-left">Attempts</th>
+              <th class="border px-3 py-2 text-left">Date</th>
+              <th class="border px-3 py-2 text-left">Review</th>
+            </tr>
+          </thead>
+          <tbody class="bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100">
+            {% for s in previous_sessions %}
+              <tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
+                <td class="border px-3 py-2">{{ s.topic.name }}</td>
+                <td class="border px-3 py-2">
+                 
+                    {{ s.correct_answers}}
+                </td>
+                <td class="border px-3 py-2">{{ s.total_questions }}</td>
+                <td class="border px-3 py-2">{{ s.end_time|date:"M d, Y" }}</td>
+                <td class="border px-3 py-2">
+                  <a href="{% url 'practice:practice_summary' s.id %}" class="text-blue-500 hover:underline">Review</a>
+                </td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="5" class="text-center text-gray-500 dark:text-gray-400 py-4">No completed sessions yet.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </div>
+</body>
+</html>

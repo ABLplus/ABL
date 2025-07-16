@@ -1,0 +1,80 @@
+{% extends "user/base.html" %}
+{% load static %}
+{% block content %}
+
+<!-- Tailwind CDN (if not already in base.html) -->
+<script src="https://cdn.tailwindcss.com"></script>
+
+<div class="max-w-6xl mx-auto mt-10 p-6 bg-white shadow-lg rounded-xl">
+
+  <!-- 🔼 Top Header Bar -->
+  <div class="flex justify-between items-center mb-6 border-b pb-3">
+    <div class="text-gray-600 font-semibold">Q{{ ques.q_no }}</div>
+    <div class="text-xl font-bold text-blue-700">{{ ques.subject_name }}</div>
+    <div>
+      <label class="inline-flex items-center space-x-2">
+        <span class="text-sm font-medium text-gray-700">Checked?</span>
+        <input type="checkbox" disabled {% if ques.is_check %}checked{% endif %} class="accent-blue-600">
+      </label>
+    </div>
+  </div>
+
+  <!-- 🔁 Navigation Arrows -->
+  <div class="flex justify-end mb-4 space-x-2">
+    {% if ques.pk|add:"-1" > 0 %}
+      <a href="{% url 'edit_ques' ques.pk|add:"-1" %}"
+         class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 transition">⬅ Previous</a>
+    {% endif %}
+    {% if ques.pk|add:"1" <= total_questions %}
+      <a href="{% url 'edit_ques' ques.pk|add:"1" %}"
+         class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 transition">Next ➡</a>
+    {% endif %}
+  </div>
+
+  <!-- ✍️ Editing Form -->
+  <form method="post" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    {% csrf_token %}
+
+    <!-- 🧱 Left Column -->
+    <div class="space-y-4">
+      {% for field in form %}
+        {% if field.name in "q_statement a b c d correct_option" %}
+          <div>
+            <label class="block text-gray-700 font-medium mb-1">{{ field.label }}</label>
+            {{ field }}
+            {% if field.errors %}
+              <p class="text-sm text-red-600">{{ field.errors.0 }}</p>
+            {% endif %}
+          </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+
+  <!-- 🧱 Right Column -->
+<div class="space-y-4">
+  {% for field in form %}
+    {% if field.name in right_column_fields %}
+      <div>
+        <label class="block text-gray-700 font-medium mb-1">{{ field.label }}</label>
+        {{ field }}
+        {% if field.errors %}
+          <p class="text-sm text-red-600">{{ field.errors.0 }}</p>
+        {% endif %}
+      </div>
+    {% endif %}
+  {% endfor %}
+</div>
+
+    <!-- 💾 Action Buttons -->
+    <div class="md:col-span-2 flex justify-between items-center pt-4 border-t mt-6">
+      <a href="{% url 'ques_list' %}" class="text-sm text-blue-600 hover:underline">← Back to List</a>
+      <button type="submit"
+              class="px-6 py-2 bg-blue-600 text-white font-semibold rounded hover:bg-blue-700 transition">
+        Save Changes 💾
+      </button>
+    </div>
+  </form>
+
+</div>
+
+{% endblock %}

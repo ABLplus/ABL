@@ -1,0 +1,8 @@
+<!-- templates/practice/session_complete.html -->
+<div class="card text-center">
+  <div class="card-body">
+    <h4 class="card-title">Session Complete!</h4>
+    <p class="card-text">Your stats have been updated. Review them in the <a href="{% url 'analysis:dashboard' %}">Analysis Dashboard</a>.</p>
+    <a href="{% url 'practice' %}" class="btn btn-success">Start Another Practice</a>
+  </div>
+</div>

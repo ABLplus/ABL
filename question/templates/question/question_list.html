@@ -1,0 +1,254 @@
+{% load range_tags %}
+{% load markdown_extras %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Question Review</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- HTMX -->
+  <script src="https://unpkg.com/htmx.org@1.9.2"></script>
+  <style>
+  body {
+    margin: 0;
+    padding: 1rem;
+    background-color: #f8f9fa;
+    color: #212529;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    body {
+      background-color: #121212;
+      color: #e0e0e0;
+    }
+    .table th, .table td {
+      border-color: #444;
+      background-color: #1e1e1e;
+      color: #e0e0e0;
+    }
+    .table-light.dark-mode-header th {
+      background-color: #2c2c2c !important;
+      color: #fff !important;
+    }
+  }
+
+  .table-responsive {
+    overflow-x: auto;
+    margin-bottom: 1.5rem;
+  }
+
+  .table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  .table th, .table td {
+    border: 1px solid #dee2e6;
+    padding: 0.5rem;
+    vertical-align: top;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    white-space: normal;
+    background-color: #fff;
+  }
+
+  /* Markdown styling */
+  .markdown {}
+
+  .markdown h1 {
+    font-size: 1.5rem;
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .markdown h2 {
+    font-size: 1.3rem;
+    margin-top: 0.9rem;
+    margin-bottom: 0.45rem;
+  }
+
+  .markdown h3 {
+    font-size: 1.15rem;
+    margin-top: 0.8rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .markdown p {
+    margin-bottom: 0.75rem;
+    line-height: 1.4;
+  }
+
+  /* Constrain rich‐text columns */
+  .question-cell {
+    max-width: 300px;
+  }
+
+  .explanation-cell {
+    max-width: 300px;
+  }
+
+  /* Slightly tighter filter form */
+  .filter-form .form-select {
+    font-size: 0.9rem;
+  }
+</style>
+
+</head>
+<body>
+  <div id="htmx-csrf" style="display:none">
+  {% csrf_token %}
+</div>
+<script>
+  document.body.addEventListener('htmx:configRequest', (evt) => {
+    const token = document.querySelector('#htmx-csrf input[name="csrfmiddlewaretoken"]').value;
+    evt.detail.headers['X-CSRFToken'] = token;
+  });
+</script>
+<div class="container-fluid px-0">
+ <h3 >No. of Questions: {{ total_count }}</h2>
+
+<!-- Filter Form -->
+
+<form
+  method="get"
+  class="row g-2 mb-3 px-3 filter-form">
+  
+  <!-- Exam -->
+  <div class="col-md-2">
+    <select name="exam" class="form-select">
+      <option value="">-- Exam --</option>
+      {% for e in exams %}
+        <option value="{{ e }}" {% if exam == e %}selected{% endif %}>{{ e }}</option>
+      {% endfor %}
+      <option value="none" {% if exam == 'none' %}selected{% endif %}>No Exam</option>
+    </select>
+  </div>
+
+  <!-- Year -->
+  <div class="col-md-2">
+    <select name="year" class="form-select">
+      <option value="">-- Year --</option>
+      {% for y in years %}
+        <option value="{{ y }}" {% if year == y|stringformat:"s" %}selected{% endif %}>{{ y }}</option>
+      {% endfor %}
+      <option value="none" {% if year == 'none' %}selected{% endif %}>No Year</option>
+    </select>
+  </div>
+
+  <!-- Subject -->
+  <div class="col-md-2">
+    <select
+      name="subject"
+      class="form-select"
+      hx-get="{% url 'question:ajax_sections' %}"
+      hx-target="#section-container"
+      hx-trigger="change">
+      <option value="">-- Subject --</option>
+      {% for subj in subjects %}
+        <option value="{{ subj.id }}" {% if filter_subject == subj.id|stringformat:"s" %}selected{% endif %}>
+          {{ subj.name }}
+        </option>
+      {% endfor %}
+      <option value="none" {% if filter_subject == 'none' %}selected{% endif %}>No Subject</option>
+    </select>
+  </div>
+
+  <!-- Section -->
+  <div id="section-container" class="col-md-2">
+    {% include "question/partials/section_filter.html" %}
+  </div>
+
+  <!-- Topic -->
+  <div id="topic-container" class="col-md-2">
+    {% include "question/partials/topic_filter.html" %}
+  </div>
+
+  <!-- Subtopic -->
+  <div id="subtopic-container" class="col-md-2">
+    {% include "question/partials/subtopic_filter.html" %}
+  </div>
+
+  <!-- OLT -->
+  <div class="col-md-2">
+    <select name="olt" class="form-select">
+      <option value="">-- OLT --</option>
+      {% for o in olts %}
+        <option value="{{ o.code }}" {% if filter_olt == o.code %}selected{% endif %}>{{ o.code }}</option>
+      {% endfor %}
+      <option value="none" {% if filter_olt == 'none' %}selected{% endif %}>No OLT</option>
+    </select>
+  </div>
+
+  <!-- Status -->
+  <div class="col-md-2">
+    <select name="status" class="form-select">
+      <option value="">-- Status --</option>
+      <option value="pending" {% if filter_status == 'pending' %}selected{% endif %}>Pending</option>
+      <option value="review"  {% if filter_status == 'review'  %}selected{% endif %}>Under Review</option>
+      <option value="checked" {% if filter_status == 'checked' %}selected{% endif %}>Checked</option>
+    </select>
+  </div>
+
+  <!-- Apply / Clear -->
+  <div class="col-auto align-self-end">
+    <button type="submit" class="btn btn-success btn-sm">Apply</button>
+    <a href="{% url 'question:question_list' %}" class="btn btn-secondary btn-sm ms-2">Clear</a>
+  </div>
+</form>
+
+<!-- 
+  Add New
+  <div class="px-3 mb-3">
+    <a href="{% url 'question:add_question' %}" class="btn btn-primary">Add New Question</a>
+  </div> -->
+
+  <!-- Questions Table -->
+  <div class="table-responsive px-3">
+    <table class="table table-hover">
+      <colgroup>
+        <col style="width:4%">
+        <col style="width:4%">
+        <col style="width:22%" class="question-cell">
+        <col style="width:6%">
+        <col style="width:7%">
+        <col style="width:7%">
+        <col style="width:7%">
+        <col style="width:7%" class="explanation-cell">
+        <col style="width:22%">
+        <col style="width:5%">
+      </colgroup>
+      <thead class="table-light dark-mode-header">
+        <tr>
+          <th>Sr./ID</th>
+          <th>Exam-Year</th>
+          <th>Q &amp; Options</th>
+          <th>OLT</th>
+          <th>Subject</th>
+          <th>Section</th>
+          <th>Topic</th>
+          <th>Subtopic</th>
+          <th>Explanation</th>          
+          <th>Actions</th>
+        </tr>
+      </thead>
+     <tbody>
+  {% for q in questions %}
+    {% include "question/partials/question_row.html" %}
+  {% empty %}
+    <tr>
+      <td colspan="10" class="text-center text-muted">No questions found.</td>
+    </tr>
+  {% endfor %}
+</tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Bootstrap JS Bundle -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

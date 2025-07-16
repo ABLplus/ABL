@@ -1,0 +1,96 @@
+{# question/partials/question_row.html #}
+{% load markdown_extras %}
+<tr id="question-{{ q.id }}">
+  <td>{{ forloop.counter }}</td>
+  <td>{{ q.exam_name }}-{{ q.year }}</td>
+
+  <td class="question-cell">
+    {{ q.question_html|safe }}
+    <ul class="ps-3 mb-0">
+      <p><strong>A.</strong> {{ q.option_a }}</p>
+      <p><strong>B.</strong> {{ q.option_b }}</p>
+      <p><strong>C.</strong> {{ q.option_c }}</p>
+      <p><strong>D.</strong> {{ q.option_d }}</p>
+    </ul>
+  </td>
+    <!-- OLT -->
+<td>
+  <select name="olt"
+          class="form-select form-select-sm">
+    <option value="">-- OLT --</option>
+    {% for olt in olts %}
+      <option value="{{ olt.id }}"
+        {% if q.olt_id == olt.id %}selected{% endif %}>
+        {{ olt.code}}-{{ olt.name }}
+      </option>
+    {% endfor %}
+  </select>
+</td>
+
+  <!-- Subject -->
+  <td>
+    <select name="subject"
+            class="form-select form-select-sm"
+            hx-get="{% url 'question:ajax_question_sections' q.id %}"
+            hx-trigger="change"
+            hx-target="#section-{{ q.id }}"
+            hx-include="this">
+      <option value="">-- Subject --</option>
+      {% for subj in subjects %}
+        <option value="{{ subj.id }}" {% if q.subject_id == subj.id %}selected{% endif %}>
+          {{ subj.name }}
+        </option>
+      {% endfor %}
+    </select>
+  </td>
+
+  <!-- Section -->
+  <td id="section-{{ q.id }}">
+    {% include "question/partials/section_filter_for_row.html" %}
+  </td>
+
+  <!-- Topic -->
+  <td id="topic-{{ q.id }}">
+    {% include "question/partials/topic_filter_for_row.html" %}
+  </td>
+
+  <!-- Subtopic -->
+  <td id="subtopic-{{ q.id }}">
+    {% include "question/partials/subtopic_filter_for_row.html" %}
+  </td>
+
+  <!-- Explanation -->
+  <td class="explanation-cell">
+    {% if q.explanation_generated %}
+      <div class="markdown">{{ q.explanation_generated|render_markdown }}</div>
+    {% else %}
+      <span class="text-muted">—</span>
+    {% endif %}
+  </td>
+
+
+
+  <!-- Actions -->
+  <td>
+    <a href="{% url 'question:edit_question' q.pk %}"
+       class="btn btn-sm btn-warning">Edit</a>
+    <a href="{% url 'question:delete_question' q.pk %}"
+       class="btn btn-sm btn-danger ms-1">Delete</a>
+
+    <button class="btn btn-sm btn-success ms-1"
+            hx-post="{% url 'question:check_save' q.id %}"
+            hx-include="closest tr"
+            hx-target="closest tr"
+            hx-swap="outerHTML">
+      Check &amp; Save
+    </button>
+
+    <button class="btn btn-sm btn-info ms-1"
+            hx-post="{% url 'question:mark_review' q.id %}"
+            hx-include="closest tr"
+            hx-target="closest tr"
+            hx-swap="outerHTML">
+      Mark Review
+    </button>
+  </td>
+</tr>

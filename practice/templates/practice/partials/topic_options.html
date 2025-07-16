@@ -1,0 +1,6 @@
+<option value="">— choose topic —</option>
+{% for topic in topics %}
+  <option value="{{ topic.id }}">{{ topic.name }}</option>
+{% empty %}
+  <option value="">No topics available</option>
+{% endfor %}
