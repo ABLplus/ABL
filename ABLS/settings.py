@@ -47,7 +47,8 @@ CKEDITOR_CONFIGS = {
 # Application definition
 
 INSTALLED_APPS = [
-    
+
+    'analysis',   
     'practice',
     'syllabus',
     'result',
@@ -55,6 +56,7 @@ INSTALLED_APPS = [
     'user',
     'ckeditor',
     'question',
+    'django.contrib.humanize',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -69,6 +71,9 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+
+    "analysis.middleware.DailyCountersMiddleware",
+
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]

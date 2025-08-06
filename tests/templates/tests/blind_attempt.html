@@ -1,24 +1,69 @@
-{% extends 'user/base.html' %}
+{% extends "user/base.html" %}
+
+{% block title %}Blind Attempt{% endblock %}
 
 {% block content %}
-<div class="container my-5">
+<div class="mx-auto max-w-4xl px-4 mt-6">
 
-    <h4 class="mb-4 text-center">Blind Attempt Mode</h4>
+  <h4 class="text-xl font-semibold text-center mb-6
+             text-primary-600 dark:text-primary-400">
+    Blind Attempt Mode
+  </h4>
 
-    <div class="card p-4">
-        <h5>Q{{ question_log.serial }}. {{ question_log.question.question_html|safe }}</h5>
+  <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow">
 
-        <form method="POST">
-            {% csrf_token %}
-            <div class="d-grid gap-3 mt-4">
-                <button type="submit" name="selected_option" value="a" class="btn btn-outline-primary">{{ question_log.question.option_a }}</button>
-                <button type="submit" name="selected_option" value="b" class="btn btn-outline-primary">{{ question_log.question.option_b }}</button>
-                <button type="submit" name="selected_option" value="c" class="btn btn-outline-primary">{{ question_log.question.option_c }}</button>
-                <button type="submit" name="selected_option" value="d" class="btn btn-outline-primary">{{ question_log.question.option_d }}</button>
-            </div>
-        </form>
+    <h5 class="text-lg font-medium mb-4">
+      Q{{ question_log.serial }}.
+    </h5>
 
+    <div class="prose dark:prose-invert max-w-none mb-6">
+      {{ question_log.question.question_html|safe }}
     </div>
 
+    <form method="post" class="space-y-3">
+      {% csrf_token %}
+
+      {# ── Option A ── #}
+      <button type="submit" name="selected_option" value="a"
+              class="w-full px-4 py-3 border-2 rounded-lg
+                     border-primary-600 text-primary-600
+                     hover:bg-primary-600 hover:text-white
+                     dark:border-primary-400 dark:text-primary-400
+                     dark:hover:bg-primary-400 dark:hover:text-gray-900">
+        <span class="prose dark:prose-invert">{{ question_log.question.option_a|safe }}</span>
+      </button>
+
+      {# ── Option B ── #}
+      <button type="submit" name="selected_option" value="b"
+              class="w-full px-4 py-3 border-2 rounded-lg
+                     border-primary-600 text-primary-600
+                     hover:bg-primary-600 hover:text-white
+                     dark:border-primary-400 dark:text-primary-400
+                     dark:hover:bg-primary-400 dark:hover:text-gray-900">
+        <span class="prose dark:prose-invert">{{ question_log.question.option_b|safe }}</span>
+      </button>
+
+      {# ── Option C ── #}
+      <button type="submit" name="selected_option" value="c"
+              class="w-full px-4 py-3 border-2 rounded-lg
+                     border-primary-600 text-primary-600
+                     hover:bg-primary-600 hover:text-white
+                     dark:border-primary-400 dark:text-primary-400
+                     dark:hover:bg-primary-400 dark:hover:text-gray-900">
+        <span class="prose dark:prose-invert">{{ question_log.question.option_c|safe }}</span>
+      </button>
+
+      {# ── Option D ── #}
+      <button type="submit" name="selected_option" value="d"
+              class="w-full px-4 py-3 border-2 rounded-lg
+                     border-primary-600 text-primary-600
+                     hover:bg-primary-600 hover:text-white
+                     dark:border-primary-400 dark:text-primary-400
+                     dark:hover:bg-primary-400 dark:hover:text-gray-900">
+        <span class="prose dark:prose-invert">{{ question_log.question.option_d|safe }}</span>
+      </button>
+    </form>
+
+  </div>
 </div>
 {% endblock %}

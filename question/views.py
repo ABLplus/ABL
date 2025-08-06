@@ -158,8 +158,8 @@ def question_list(request):
             qs = qs.filter(olt__isnull=True)
         else:
             # filter by the code string on the FK or the raw field
-            qs = qs.filter(olt__code=olt_code) | qs.filter(olt_type=olt_code)
-
+            qs = qs.filter(olt__code=olt_code) 
+            
     if check_status:
         qs = qs.filter(check_status=check_status)
 

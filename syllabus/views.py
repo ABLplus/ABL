@@ -104,7 +104,7 @@ def section_topic_subtopic_view(request):
         # Preload related objects
         sections = Section.objects.filter(subject=selected_subject).prefetch_related('topics__subtopics')
         # Count questions by section/topic/subtopic
-        ques_queryset = Ques.objects.filter(subject=selected_subject).values(
+        ques_queryset = Question.objects.filter(subject=selected_subject).values(
             'section_id', 'topic_id', 'subtopic_id'
         )
 

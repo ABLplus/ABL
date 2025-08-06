@@ -1,93 +1,95 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Practice Summary – {{ session.name|default:"Practice Session" }}</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-</head>
+{% extends "user/base.html" %}
 
-<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+{% block title %}Practice Summary – {{ session.name|default:"Practice Session" }}{% endblock %}
 
-  <div class="max-w-6xl mx-auto p-6">
+{% block content %}
+<div class="mx-auto max-w-6xl px-4 mt-6">
 
-    <h1 class="text-3xl font-bold mb-6 text-blue-600 dark:text-blue-400">
-      Practice Summary
-    </h1>
+  <!-- ── Heading ── -->
+  <h1 class="text-3xl font-bold mb-6 text-primary-600 dark:text-primary-400">
+    Practice Summary
+  </h1>
 
-    <div class="mb-8">
-     <h2 class="text-xl font-semibold mb-2">
-  {% if session.name %}
-      {{ session.name }}
-  {% else %}
-      Session #{{ session.id }}
-  {% endif %}
-</h2>
-      <p class="text-gray-700 dark:text-gray-300">
-        Started: {{ session.start_time|date:"M d, Y H:i" }} &nbsp;•&nbsp;
-        Completed: {{ session.end_time|date:"M d, Y H:i" }}
-        <br>
-        Total Questions: <strong>{{ session.total_questions }}</strong> &nbsp;|&nbsp;
-        Correct: <span class="text-green-600">{{ session.correct_answers }}</span> &nbsp;|&nbsp;
-        Wrong: <span class="text-red-500">{{ session.wrong_answers }}</span>
-      </p>
-    </div>
+  <!-- ── Session meta ── -->
+  <div class="mb-8">
+    <h2 class="text-xl font-semibold mb-2">
+      {% if session.name %}
+        {{ session.name }}
+      {% else %}
+        Session #{{ session.id }}
+      {% endif %}
+    </h2>
 
-    <div class="overflow-x-auto">
-      <table class="min-w-full text-sm border border-gray-300 dark:border-gray-700">
-        <thead class="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200">
-          <tr>
-            <th class="border px-3 py-2">#</th>
-            <th class="border px-3 py-2">Your Answer</th>
-            <th class="border px-3 py-2">Correct</th>
-            <th class="border px-3 py-2">Result</th>
-            <th class="border px-3 py-2">Attempt Type</th>
-            <th class="border px-3 py-2">Time&nbsp;(s)</th>
-          </tr>
-        </thead>
-        <tbody class="bg-white dark:bg-gray-900">
-          {% for log in logs %}
-            <tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
-              <td class="border px-3 py-2 text-center">{{ log.serial }}</td>
-              <td class="border px-3 py-2 text-center uppercase">
-                {{ log.user_answered|default:"—" }}
-              </td>
-              <td class="border px-3 py-2 text-center uppercase">
-                {{ log.question.correct_option }}
-              </td>
-              <td class="border px-3 py-2 text-center">
-                {% if log.attempt_result == 'right' %}
-                  <span class="text-green-600 font-semibold">✔</span>
-                {% elif log.attempt_result == 'wrong' %}
-                  <span class="text-red-500 font-semibold">✖</span>
-                {% else %}
-                  —
-                {% endif %}
-              </td>
-              <td class="border px-3 py-2 text-center capitalize">
-                {{ log.attempt_type|default:"—" }}
-              </td>
-              <td class="border px-3 py-2 text-center">
-                {{ log.time_taken_seconds|default:"—" }}
-              </td>
-            </tr>
-          {% empty %}
-            <tr>
-              <td colspan="6" class="text-center py-6 text-gray-500">
-                No logs for this session.
-              </td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-
-    <div class="mt-8">
-      <a href="{% url 'practice:practice_home' %}"
-         class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded">
-        Back to Practice Home
-      </a>
-    </div>
-
+    <p class="text-gray-700 dark:text-gray-300">
+      Started: {{ session.start_time|date:"M d, Y H:i" }} &nbsp;•&nbsp;
+      Completed: {{ session.end_time|date:"M d, Y H:i" }}<br>
+      Total Questions: <strong>{{ session.total_questions }}</strong> &nbsp;|&nbsp;
+      Correct: <span class="text-green-600">{{ session.correct_answers }}</span> &nbsp;|&nbsp;
+      Wrong: <span class="text-red-500">{{ session.wrong_answers }}</span>
+    </p>
   </div>
-</body>
-</html>
+
+  <!-- ── Log table ── -->
+  <div class="overflow-x-auto">
+    <table class="min-w-full text-sm divide-y divide-gray-300 dark:divide-gray-700">
+      <thead class="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200">
+        <tr>
+          <th class="py-3 w-14">#</th>
+          <th class="py-3 w-24">Your&nbsp;Answer</th>
+          <th class="py-3 w-24">Correct</th>
+          <th class="py-3 w-24">Result</th>
+          <th class="py-3 w-32">Attempt&nbsp;Type</th>
+          <th class="py-3 w-24">Time&nbsp;(s)</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-900">
+        {% for log in logs %}
+          <tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
+            <td class="py-2 text-center">{{ log.serial }}</td>
+            <td class="py-2 text-center uppercase">
+              {{ log.user_answered|default:"—" }}
+            </td>
+            <td class="py-2 text-center uppercase">
+              {{ log.question.correct_option }}
+            </td>
+            <td class="py-2 text-center">
+              {% if log.attempt_result == 'right' %}
+                <span class="text-green-600 font-semibold">✔</span>
+              {% elif log.attempt_result == 'wrong' %}
+                <span class="text-red-500 font-semibold">✖</span>
+              {% else %}
+                —
+              {% endif %}
+            </td>
+            <td class="py-2 text-center capitalize">
+              {{ log.attempt_type|default:"—" }}
+            </td>
+            <td class="py-2 text-center">
+              {{ log.time_taken_seconds|default:"—" }}
+            </td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="6" class="py-6 text-center text-gray-500 dark:text-gray-400">
+              No logs for this session.
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── Back to dashboard ── -->
+  <div class="mt-8">
+    <a href="{% url 'dashboard' %}?mode=practice"
+       hx-get="{% url 'dashboard' %}?mode=practice"
+       hx-target="body"
+       hx-swap="outerHTML"
+       hx-push-url="true"
+       class="px-4 py-2 rounded-lg bg-primary-600 hover:bg-primary-700 text-white">
+      Back to Dashboard
+    </a>
+  </div>
+
+</div>
+{% endblock %}

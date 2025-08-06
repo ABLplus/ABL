@@ -5,7 +5,17 @@ from django.contrib.auth.decorators import login_required
 from .forms import *
 from tests.models import Test
 from django.db.models import Max
+from django.contrib import messages
 
+def landing(request):
+   
+    return render(request, 'user/landing.html')
+
+
+def onboard(request):
+    
+   
+    return render(request, 'user/onboard.html')
 
 
 def home(request):
@@ -14,22 +24,21 @@ def home(request):
     return render(request, 'user/home.html')
 
 def register(request):
-    if request.method == 'POST':
+    if request.user.is_authenticated:
+        return redirect("dashboard")
+
+    if request.method == "POST":
         form = CustomUserCreationForm(request.POST)
         if form.is_valid():
             user = form.save()
-            mobile_number = form.cleaned_data.get('mobile_number')
-            if mobile_number:
-                try:
-                    user.profile.mobile_number = mobile_number
-                    user.profile.save()
-                except Profile.DoesNotExist:
-                    pass  # No profile exists, just ignore
+            # log them in immediately
             auth_login(request, user)
-            return redirect('dashboard')
+            return redirect("onboard")
     else:
         form = CustomUserCreationForm()
-    return render(request, 'user/register.html', {'form': form})
+
+    return render(request, "user/register.html", {"form": form})
+
 
 def login(request):
     if request.method == 'POST':
@@ -117,12 +126,23 @@ def delete_test(request, test_id):
 
 @login_required
 def profile(request):
-    if request.method == 'POST':
-        form = ProfileForm(request.POST, instance=request.user.profile)
-        if form.is_valid():
-            form.save()
-            return redirect('profile')
-    else:
-        form = ProfileForm(instance=request.user.profile)
+    profile = request.user.profile
 
-    return render(request, 'user/profile.html', {'form': form})
+    if request.method == "POST":
+        form = ProfileForm(request.POST, instance=profile)
+        if form.is_valid():
+            profile = form.save(commit=False)
+            # if they supplied only a date, derive year
+            if profile.exam_date and not profile.exam_year:
+                profile.exam_year = profile.exam_date.year
+            profile.save()
+            messages.success(request, "Profile updated successfully.")
+            return redirect("profile")
+    else:
+        form = ProfileForm(instance=profile)
+
+    return render(request, "user/profile.html", {
+        "form": form,
+        "profile": profile,
+    })
+

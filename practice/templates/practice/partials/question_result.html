@@ -29,9 +29,9 @@
 </div>
 
 <div class="bg-white dark:bg-gray-800 p-6 rounded shadow">
-  <h2 class="text-xl font-bold mb-4">Question {{ qlog.serial }}</h2>
+  <h2 class="text-xl font-bold mb-4">Question {{ qlog.serial }} ({{qlog.question.exam_name}}-{{qlog.question.year}})</h2>
 
-  <div class="prose dark:prose-invert max-w-none mb-6">
+  <div class="prose dark:prose-invert max-w-none mb-6 prose-tight">
     {{ qlog.question.question_html|safe }}
 </div>
 

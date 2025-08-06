@@ -1,114 +1,201 @@
 {% load static %}
 
 <!DOCTYPE html>
-<html lang="en" data-bs-theme="light">
+<html lang="en"
+      x-data="{
+        dark: localStorage.getItem('theme') === 'dark',
+        toggle() { this.dark = !this.dark; localStorage.setItem('theme', this.dark ? 'dark' : 'light'); }
+      }"
+      :class="{ 'dark': dark }"
+      class="scroll-smooth">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ABL - {% block title %}{% endblock %}</title>
-
-    <!-- Bootstrap 5 CDN -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-
-    {% block extra_head %}<script src="{% static 'ckeditor/ckeditor/ckeditor.js' %}"></script>
-  <script src="{% static 'ckeditor/ckeditor-init.js' %}"></script>{% endblock %}
-</head>
-<body>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ABL+ – {% block title %}{% endblock %}</title>
 
 
-<!-- Navigation Bar -->
-<nav class="navbar navbar-expand-lg bg-body-tertiary" data-bs-theme="light" id="mainNavbar">
-  <div class="container-fluid">
+  <!-- Prevent x-cloak flicker -->
+  <style>
+    [x-cloak] { display: none !important; }
+  </style>
 
-    <!-- Brand -->
-    <a class="navbar-brand fw-bold" href="{% url 'home' %}">ABL+</a>
+  <!-- Immediately apply stored theme -->
 
-    <!-- Theme Toggle (always visible, right-aligned) -->
-    <div class="d-lg-none ms-auto">
-      <button id="themeToggle" class="btn btn-sm btn-outline-secondary" title="Toggle dark/light mode">
-        🌙
-      </button>
-    </div>
+   <script>
+    (function(){
+      if (localStorage.getItem('theme') === 'dark') {
+        document.documentElement.classList.add('dark');
+      }
+    })();
+  </script>
+  
 
-    <!-- Hamburger Toggler -->
-    <button class="navbar-toggler ms-2" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
-      aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-      <span class="navbar-toggler-icon"></span>
-    </button>
-
-    <!-- Collapsible Nav -->
-    <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
-      <ul class="navbar-nav align-items-center gap-2">
-        {% if user.is_authenticated %}
-        <li class="nav-item">
-          <a class="nav-link" href="{% url 'profile' %}">Profile</a>
-        </li>
-        <li class="nav-item">
-          <form method="post" action="{% url 'logout' %}">
-            {% csrf_token %}
-            <button class="btn btn-outline-danger btn-sm" type="submit">Logout</button>
-          </form>
-        </li>
-        {% else %}
-        <li class="nav-item">
-          <a class="nav-link" href="{% url 'login' %}">Login</a>
-        </li>
-
-        {% endif %}
-
-        <!-- Theme toggle (visible on large screens inside nav) -->
-        <li class="nav-item d-none d-lg-block">
-          <button id="themeToggleLg" class="btn btn-sm btn-outline-secondary" title="Toggle dark/light mode">
-            🌙
-          </button>
-        </li>
-      </ul>
-    </div>
-  </div>
-</nav>
+  <!-- Tailwind JIT (dark-mode → class strategy) -->
+  <script src="https://cdn.tailwindcss.com/3.4.4?plugins=typography"></script>
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            primary: {
+              50:  '#eef2ff',
+              100: '#e0e7ff',
+              200: '#c7d2fe',
+              300: '#a5b4fc',
+              400: '#818cf8',
+              500: '#6366f1',   /* ≈ indigo-600 – matches landing page */
+              600: '#4f46e5',
+              700: '#4338ca',
+              800: '#3730a3',
+              900: '#312e81'
+            }
+          }
+        }
+      }
+    };
+  </script>
 
 
+  <!-- Alpine.js & htmx -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
-<!-- Main Content -->
-<div class="container my-5">
-    {% block content %}
-    {% endblock %}
-</div>
-
-<!-- Bootstrap 5 JS Bundle -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://unpkg.com/htmx.org@1.9.2"></script>
-
-<script type="text/javascript" src="{% static 'ckeditor/ckeditor-init.js' %}"></script>
-<script type="text/javascript" src="{% static 'ckeditor/ckeditor/ckeditor.js' %}"></script>
-
-{% block extra_js %}{% endblock %}
-
-<!-- Dark/Light Mode Toggle Script -->
+<style>
+  /* Put x-cloak CSS in base so all pages benefit */
+  [x-cloak] { display: none !important; }
+</style>
+  <script src="https://unpkg.com/htmx.org@1.9.2"></script>
+  <meta name="csrf-token" content="{{ csrf_token }}">
 <script>
-  document.addEventListener("DOMContentLoaded", function () {
-      const themeToggle = document.getElementById('themeToggle');
-      const htmlElement = document.documentElement;
-      const navbar = document.getElementById('mainNavbar');
-
-      const applyTheme = (theme) => {
-          htmlElement.setAttribute('data-bs-theme', theme);
-          navbar.setAttribute('data-bs-theme', theme);  // Ensure navbar respects the theme
-          themeToggle.textContent = theme === 'dark' ? '☀️' : '🌙';
-      };
-
-      const storedTheme = localStorage.getItem('theme') || 'light';
-      applyTheme(storedTheme);
-
-      themeToggle.addEventListener('click', () => {
-          const currentTheme = htmlElement.getAttribute('data-bs-theme');
-          const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-          localStorage.setItem('theme', newTheme);
-          applyTheme(newTheme);
-      });
+  // Listen on document so we catch HTMX requests even before <body> exists
+  document.addEventListener('htmx:configRequest', function(evt) {
+    const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    evt.detail.headers['X-CSRFToken'] = token;
   });
 </script>
 
 
+  {# Extra head inclusion point for CKEditor, page-specific CSS, etc. #}
+  {% block extra_head %}{% endblock %}
+</head>
+
+<body hx-boost="true"
+      class="font-sans antialiased bg-gray-50 text-gray-700 dark:bg-gray-900 dark:text-gray-100">
+
+  <!-- ========= NAVBAR ========= -->
+  <header x-data="{ open:false }"
+          class="fixed inset-x-0 top-0 z-50 bg-white/90 dark:bg-gray-800/90 backdrop-blur shadow">
+    <div class="max-w-7xl mx-auto flex items-center justify-between px-4 sm:px-6 py-3">
+      <!-- Brand -->
+      <a href="{% url 'home' %}" class="text-2xl font-extrabold text-primary-600 dark:text-primary-400">ABL+</a>
+
+      <!-- Desktop nav links -->
+      <nav class="hidden md:flex space-x-8">
+        <!-- Add any site-wide static links here -->
+      </nav>
+
+      <!-- Right-side controls -->
+      <div class="flex items-center space-x-4">
+        {% if user.is_authenticated %}
+          <a href="{% url 'profile' %}" class="hover:text-primary-600 dark:hover:text-primary-400">{{request.user}}</a>
+          <form method="post" action="{% url 'logout' %}" class="inline">
+            {% csrf_token %}
+            <button type="submit"
+                    class="px-3 py-1 border border-red-500 text-red-600 rounded hover:bg-red-50 dark:hover:bg-red-900/30">
+              Logout
+            </button>
+          </form>
+        {% else %}
+          <a href="{% url 'login' %}" class="hover:text-primary-600 dark:hover:text-primary-400">Login</a>
+        {% endif %}
+
+        <!-- Theme toggle -->
+        <button @click="toggle"
+                class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none">
+          <span x-show="!dark" aria-label="Switch to dark mode">🌙</span>
+          <span x-show="dark"  aria-label="Switch to light mode">☀️</span>
+        </button>
+
+        <!-- Mobile menu button -->
+        <button @click="open = !open" class="md:hidden p-2 focus:outline-none">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6"
+               fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path x-show="!open" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M4 6h16M4 12h16M4 18h16"/>
+            <path x-show="open" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Mobile dropdown -->
+    <div x-show="open" x-transition.origin.top
+         class="md:hidden bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
+      <nav class="flex flex-col px-4 py-3 space-y-2">
+        {% if user.is_authenticated %}
+          <a href="{% url 'profile' %}" class="py-2 hover:text-primary-600 dark:hover:text-primary-400">{{request.user}}</a>
+          <form method="post" action="{% url 'logout' %}">
+            {% csrf_token %}
+            <button type="submit"
+                    class="w-full text-left py-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded">
+              Logout
+            </button>
+          </form>
+        {% else %}
+          <a href="{% url 'login' %}" class="py-2 hover:text-primary-600 dark:hover:text-primary-400">Login</a>
+        {% endif %}
+      </nav>
+    </div>
+  </header>
+
+  <!-- ========= MAIN ========= -->
+ <main class="pt-12">                <!-- roughly 4rem = 64px -->
+   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-0">
+      {% block content %}{% endblock %}
+    </div>
+</main>
+
+<div id="modal-root"></div>
+
+  <!-- ========= EXTRA SCRIPTS ========= -->
+  {% block extra_js %}{% endblock %}
+<style>
+  /* Reduce vertical gap between paragraphs and lists
+     only inside elements that carry .prose-tight */
+
+  /* p <-> p, p <-> ul/ol, ul/ol <-> p, ul/ol <-> ul/ol */
+  .prose-tight :where(p, ul, ol):not(:where([class~="not-prose"] *))
+  + :where(p, ul, ol):not(:where([class~="not-prose"] *)) {
+    margin-top: 0.25rem !important; /* ≈ Tailwind my-1 */
+  }
+
+  /* Trim bottom gap on those blocks, too */
+  .prose-tight :where(p, ul, ol):not(:where([class~="not-prose"] *)) {
+    margin-bottom: 0.25rem !important;
+  }
+
+  /* Optional: tighten spacing within lists (between list items) */
+  .prose-tight :where(li):not(:where([class~="not-prose"] *))
+  + :where(li):not(:where([class~="not-prose"] *)) {
+    margin-top: 0.125rem !important; /* a bit tighter between items */
+  }
+
+  /* Optional: paragraphs directly inside list items */
+  .prose-tight li > :where(p):not(:where([class~="not-prose"] *)) {
+    margin-top: 0.125rem !important;
+    margin-bottom: 0.125rem !important;
+  }
+</style>
+<script>
+document.body.addEventListener('htmx:afterSwap', evt => {
+  if (evt.detail.target.id === 'modal-root') {
+    // Remove any "hidden" class and focus the dialog
+    evt.detail.target.classList.remove('hidden');
+    evt.detail.target.querySelector('[tabindex]')?.focus();
+  }
+});
+</script>
 </body>
 </html>

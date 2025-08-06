@@ -1,0 +1,344 @@
+{% extends 'user/base.html' %}
+{% load static %}
+
+{% block content %}
+ {# ───────── Flash Messages (fixed overlay, auto-dismiss) ───────── #}
+{% if messages %}
+  <div id="flash-zone"
+       class="fixed top-4 inset-x-0 flex justify-center z-50 pointer-events-none transition-opacity duration-500 ease-in-out opacity-100">
+    <div class="space-y-2 w-full max-w-md px-4">
+      {% for message in messages %}
+        <div class="
+          {% if message.tags == 'error' %}
+            bg-red-500 text-white
+          {% elif message.tags == 'warning' %}
+            bg-yellow-400 text-gray-900
+          {% elif message.tags == 'success' %}
+            bg-green-600 text-white
+          {% else %}
+            bg-blue-500 text-white
+          {% endif %}
+          px-4 py-2 rounded shadow"
+          role="alert">
+          {{ message }}
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <script>
+    // Fade out after 700ms, remove after transition completes
+    setTimeout(() => {
+      const flash = document.getElementById('flash-zone');
+      if (flash) {
+        flash.classList.add('opacity-0');
+        setTimeout(() => flash.remove(), 1000);  // matches CSS duration
+      }
+    }, 700);
+  </script>
+{% endif %}
+
+
+
+<div class="max-w-7xl mx-auto p-6 space-y-8">
+
+   <!-- Switch Mode Button -->
+  <div class="flex justify-end mt-0 mb-0">
+    <a href="{% url 'dashboard' %}?mode=practice" class="px-2 py-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-md hover:bg-gray-300 transition">
+    Switch to Practice Mode
+    </a>
+  </div>
+ 
+  <!-- Part 1: Overall Metrics (Compact) -->
+  <section id="overall-metrics" class="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow">
+    <h2 class="sr-only">Overall Metrics</h2>
+    <div class="flex flex-wrap justify-between items-center gap-4">
+      <!-- Exam Days Left -->
+      <div class="flex items-center space-x-2">
+        <span class="p-2 bg-indigo-100 dark:bg-indigo-700 rounded-full">
+          <svg class="w-5 h-5 text-indigo-600 dark:text-indigo-200" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a8 8 0 100 16 8 8 0 000-16z"/></svg>
+        </span>
+        <div>
+          <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Exam Days Left</p>
+          <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ days_left }}</p>
+        </div>
+      </div>
+      <!-- Active Days -->
+      <div class="flex items-center space-x-2">
+        <span class="p-2 bg-blue-100 dark:bg-blue-700 rounded-full">
+          <svg class="w-5 h-5 text-blue-600 dark:text-blue-200" fill="currentColor" viewBox="0 0 20 20"><path d="M3 5h14v2H3zM3 9h14v2H3zM3 13h14v2H3z"/></svg>
+        </span>
+        <div>
+          <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Active Days</p>
+          <p class="text-lg font-semibold text-gray-900 dark:text-white">{{profile.days_active}}</p>
+        </div>
+      </div>
+      <!-- Streak -->
+      <div class="flex items-center space-x-2">
+        <span class="p-2 bg-purple-100 dark:bg-purple-700 rounded-full">
+          <svg class="w-5 h-5 text-purple-600 dark:text-purple-200" fill="currentColor" viewBox="0 0 20 20"><path d="M5 5h10v10H5z"/></svg>
+        </span>
+        <div>
+          <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{profile.streak_questions_target}} Question Streak</p>
+          <p class="text-lg font-semibold text-gray-900 dark:text-white"> {{profile.streak_days}} days</p>
+        </div>
+      </div>
+ <!-- Total Attempts -->
+  <div class="flex items-center space-x-2">
+    <span class="p-2 bg-gray-100 dark:bg-gray-700 rounded-full">
+      <svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="currentColor" viewBox="0 0 20 20">
+        <path d="M4 3h12v2H4zM4 8h12v2H4zM4 13h12v2H4z"/>
+      </svg>
+    </span>
+    <div>
+      <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Total Attempts</p>
+      <p class="text-lg font-semibold text-gray-900 dark:text-white">
+        {{ test_insights.question_stats.attempted|default:"0" }}
+      </p>
+    </div>
+  </div>
+
+  <!-- Correct -->
+  <div class="flex items-center space-x-2">
+    <span class="p-2 bg-green-100 dark:bg-green-700 rounded-full">
+      <svg class="w-5 h-5 text-green-600 dark:text-green-200" fill="currentColor" viewBox="0 0 20 20">
+        <path d="M5 10l4 4L19 3"/>
+      </svg>
+    </span>
+    <div>
+      <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Correct</p>
+      <p class="text-lg font-semibold text-green-500">
+        {{ test_insights.question_stats.correct|default:"0" }}
+      </p>
+    </div>
+  </div>
+
+  <!-- Incorrect -->
+  <div class="flex items-center space-x-2">
+    <span class="p-2 bg-red-100 dark:bg-red-700 rounded-full">
+      <svg class="w-5 h-5 text-red-600 dark:text-red-200" fill="currentColor" viewBox="0 0 20 20">
+        <path d="M6 6l8 8M6 14L14 6"/>
+      </svg>
+    </span>
+    <div>
+      <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Incorrect</p>
+      <p class="text-lg font-semibold text-red-500">
+        {{ test_insights.question_stats.wrong|default:"0" }}
+      </p>
+    </div>
+  </div>
+    </div>
+  </section>
+
+<!-- Part 2: Performance Insights -->
+<section id="insights" class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow">
+  <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+    Performance Insights
+  </h2>
+
+  {% if test_insights %}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
+
+      {# Highest SureShot % #}
+      <div class="space-y-1">
+        <p class="text-sm font-medium text-gray-500 dark:text-gray-400">
+          Highest SureShot%
+        </p>
+        <p class="text-2xl font-bold text-gray-900 dark:text-white">
+          {{ test_insights.highest_sureshot.pct|default:"–" }}%
+        </p>
+        <p class="text-xs text-gray-600 dark:text-gray-400">
+          ({{ test_insights.highest_sureshot.subject|default:"—" }})
+        </p>
+      </div>
+
+      {# Lowest Wrong % #}
+      <div class="space-y-1">
+        <p class="text-sm font-medium text-gray-500 dark:text-gray-400">
+          Lowest Wrong%
+        </p>
+        <p class="text-2xl font-bold text-gray-900 dark:text-white">
+          {{ test_insights.lowest_wrong.pct|default:"–" }}%
+        </p>
+        <p class="text-xs text-gray-600 dark:text-gray-400">
+          ({{ test_insights.lowest_wrong.subject|default:"—" }})
+        </p>
+      </div>
+
+      {# Highest Wrong % #}
+      <div class="space-y-1">
+        <p class="text-sm font-medium text-gray-500 dark:text-gray-400">
+          Highest Wrong%
+        </p>
+        <p class="text-2xl font-bold text-gray-900 dark:text-white">
+          {{ test_insights.highest_wrong.pct|default:"–" }}%
+        </p>
+        <p class="text-xs text-gray-600 dark:text-gray-400">
+          ({{ test_insights.highest_wrong.subject|default:"—" }})
+        </p>
+      </div>
+
+  {# Total Full Tests Attempted #}
+<div class="space-y-1">
+  <p class="text-sm font-medium text-gray-500 dark:text-gray-400">
+    Total Full Tests Attempted
+  </p>
+  <p class="text-2xl font-bold text-gray-900 dark:text-white">
+    {{ test_insights.total_tests|default:"0" }}
+  </p>
+</div>
+
+  {# Maximum Marks #}
+<div class="space-y-1">
+  <p class="text-sm font-medium text-gray-500 dark:text-gray-400">
+    Maximum Marks (out of 200)
+  </p>
+  <p class="text-2xl font-bold text-gray-900 dark:text-white">
+    {{ test_insights.max_marks.marks|floatformat:2|default:"—" }}
+  </p>
+  {% if test_insights.max_marks.label %}
+    <p class="text-xs text-gray-600 dark:text-gray-400">
+      {{ test_insights.max_marks.label }}
+      &nbsp;·&nbsp;
+      {{ test_insights.max_marks.date|date:"M j, Y" }}
+    </p>
+  {% endif %}
+</div>
+
+{# Minimum Marks #}
+<div class="space-y-1">
+  <p class="text-sm font-medium text-gray-500 dark:text-gray-400">
+    Minimum Marks (out of 200)
+  </p>
+  <p class="text-2xl font-bold text-gray-900 dark:text-white">
+    {{ test_insights.min_marks.marks|floatformat:2|default:"—" }}
+  </p>
+  {% if test_insights.min_marks.label %}
+    <p class="text-xs text-gray-600 dark:text-gray-400">
+      {{ test_insights.min_marks.label }}
+      &nbsp;·&nbsp;
+      {{ test_insights.min_marks.date|date:"M j, Y" }}
+    </p>
+  {% endif %}
+</div>
+
+    </div>
+  {% else %}
+    <p class="text-gray-600 dark:text-gray-400">
+      No completed tests yet—take a full-length test to unlock insights.
+    </p>
+  {% endif %}
+</section>
+
+
+
+  <!-- Part 3: Ongoing Test Sessions -->
+  <section id="ongoing-sessions" class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow">
+    <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Ongoing Test Sessions</h2>
+<div class="space-y-4">
+  {% for s,next_serial in pending_tests %}
+    <div class="pending-row flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3
+                bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700
+                rounded-lg px-4 py-3 shadow">
+
+      <!-- Test meta -->
+      <div>
+        <h3 class="font-semibold text-gray-900 dark:text-white">{{ s.name }}</h3>
+        <p class="text-sm text-gray-600 dark:text-gray-400">
+          {{ s.total_questions }}&nbsp;questions&nbsp;•&nbsp;
+          started&nbsp;{{ s.start_time|date:"M d, Y H:i" }}
+        </p>
+      </div>
+
+      <!-- Action buttons -->
+      <div class="flex gap-2">
+        <a href="{% url 'take_test' test_id=s.id serial=next_serial %}"
+        hx-boost="False"
+           class="inline-flex items-center justify-center px-4 py-2
+                  bg-primary-600 hover:bg-primary-700 text-white rounded-md
+                  text-sm font-medium">
+          Continue
+        </a>
+
+        <button type="button"
+                hx-post="{% url 'delete_test' s.id %}"
+                hx-headers='{"X-CSRFToken":"{{ csrf_token }}"}'
+                hx-target="closest .pending-row"
+                hx-swap="delete"
+                hx-confirm="Delete this pending test? This cannot be undone."
+                class="inline-flex items-center justify-center px-4 py-2
+                       bg-red-600 hover:bg-red-700 text-white rounded-md
+                       text-sm font-medium">
+          Delete
+        </button>
+      </div>
+    </div>
+  {% endfor %}
+</div>
+   <section id="new-test" class="mt-6">
+  <h3 class="font-medium text-gray-900 dark:text-white mb-2">Start New Test</h3>
+
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <!-- Exam-Year -->
+    <button
+      class="px-4 py-3 bg-indigo-600 text-white rounded-lg text-center hover:bg-indigo-700"
+      hx-get="{% url 'test_filter_form' %}?type=exam_year"
+      hx-target="#test-config"
+      hx-swap="innerHTML">
+      Exam-Year Test
+    </button>
+
+    <!-- Subject -->
+    <button
+      class="px-4 py-3 bg-indigo-600 text-white rounded-lg text-center hover:bg-indigo-700"
+      hx-get="{% url 'test_filter_form' %}?type=subject"
+      hx-target="#test-config"
+      hx-swap="innerHTML">
+      Subject Test
+    </button>
+  </div>
+
+  <!-- HTMX injects the chosen form here -->
+  <div id="test-config" class="mt-6"></div>
+</section>
+
+  </section>
+
+  <!-- Part 4: Completed Test Sessions -->
+<section id="test_history"
+         class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow">
+
+  <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+    Completed Test Sessions
+  </h2>
+
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm border border-gray-300 dark:border-gray-700">
+      <thead class="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200">
+        <tr>
+          <th class="px-4 py-2 w-14">#</th>
+          <th class="px-4 py-2">Test&nbsp;Name</th>
+          <th class="px-4 py-2">Total Questions</th>
+          <th class="px-4 py-2">Score</th>
+          <th class="px-4 py-2">Right</th>
+          <th class="px-4 py-2">Wrong</th>
+          <th class="px-4 py-2">Date</th>
+        </tr>
+      </thead>
+
+      <!-- HTMX loads page 1 on first paint -->
+      <tbody id="test_history-body"
+             hx-get="{% url 'test_history_page' %}?page=1"
+             hx-trigger="load"
+             hx-target="this"
+             hx-swap="innerHTML">
+        <tr>
+          <td colspan="5" class="text-center py-4">Loading …</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+</div>
+{% endblock %}

@@ -1,0 +1,46 @@
+{% for s in page_obj.object_list %}
+  {# Serial = global index (start_index gives 1-based index of first item) #}
+  <tr class="border-b border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800">
+    <td class="px-4 py-2 text-center">
+      {{ page_obj.start_index|add:forloop.counter0 }}
+    </td>
+    <td class="px-4 py-2">{{ s.name }}</td>
+    <td class="px-4 py-2">{{ s.total_questions }}</td>
+    <td class="px-4 py-2">{{ s.correct_answers }}</td>
+    <td class="px-4 py-2">{{ s.end_time|date:"M d, Y" }}</td>
+    <td class="px-4 py-2"><a href="{% url 'practice:practice_summary' s.id %}" hx-boost="false">Summary</td>
+  </tr>
+{% empty %}
+  <tr>
+    <td colspan="5" class="text-center py-4">
+      No completed sessions yet.
+    </td>
+  </tr>
+{% endfor %}
+
+<tr>
+  <td colspan="5" class="py-4">
+    <div class="flex justify-end gap-2">
+      {% if page_obj.has_previous %}
+        <button
+          hx-get="{% url 'practice:history_page' %}?page={{ page_obj.previous_page_number }}"
+          hx-target="#history-body"
+          hx-swap="innerHTML"
+          class="px-4 py-2 bg-gray-200 dark:bg-gray-700
+                 text-gray-700 dark:text-gray-300 rounded-lg">
+          Previous
+        </button>
+      {% endif %}
+
+      {% if page_obj.has_next %}
+        <button
+          hx-get="{% url 'practice:history_page' %}?page={{ page_obj.next_page_number }}"
+          hx-target="#history-body"
+          hx-swap="innerHTML"
+          class="px-4 py-2 bg-primary-600 text-white rounded-lg">
+          Next
+        </button>
+      {% endif %}
+    </div>
+  </td>
+</tr>

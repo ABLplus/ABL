@@ -1,0 +1,95 @@
+{% extends 'user/base.html' %}
+{% load static %}
+
+{% block title %}Get Started with ABL+{% endblock %}
+
+{% block content %}
+<div
+  x-data="onboard"
+  x-cloak
+  class="max-w-3xl mx-auto mt-16 px-4 py-12 space-y-8"
+>
+  <!-- Slide viewport -->
+  <div class="relative min-h-[8rem]">
+    <template x-for="(slide, i) in slides" :key="i">
+      <div
+        x-show="current === i"
+        x-transition.opacity.duration.500ms
+        class="absolute inset-0 flex flex-col justify-center items-center px-4 text-center"
+      >
+        <h2
+          class="text-3xl font-extrabold text-primary-600 dark:text-primary-400"
+          x-text="slide.title"
+        ></h2>
+        <p
+          class="mt-4 text-lg text-gray-700 dark:text-gray-300 max-w-xl"
+          x-text="slide.body"
+        ></p>
+      </div>
+    </template>
+  </div>
+
+  <!-- Navigation -->
+  <div class="flex justify-between items-center">
+    <button
+      @click="prev()"
+      :disabled="current === 0"
+      class="px-6 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-md disabled:opacity-50 transition"
+    >
+      ← Previous
+    </button>
+
+    <button
+      @click="current < slides.length - 1 ? next() : window.location.href='{% url 'dashboard' %}'"
+      class="px-6 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-md transition"
+    >
+      <span x-text="current < slides.length - 1 ? 'Next →' : 'Finish'"></span>
+    </button>
+  </div>
+
+  <!-- Pagination dots -->
+  <div class="flex justify-center space-x-2">
+    <template x-for="(_, idx) in slides" :key="idx">
+      <button
+        @click="go(idx)"
+        :class="current === idx ? 'bg-primary-600' : 'bg-gray-300 dark:bg-gray-600'"
+        class="w-3 h-3 rounded-full focus:outline-none transition"
+      ></button>
+    </template>
+  </div>
+</div>
+
+<script>
+  // Register the component when Alpine initializes
+  document.addEventListener('alpine:init', () => {
+    Alpine.data('onboard', () => ({
+      current: 0,
+      slides: [
+        {
+          title: 'Welcome to ABL+!',
+          body: 'We use “Attempt-Based Learning” to help you identify exactly what you know, partially know, and don’t know yet.'
+        },
+        {
+          title: 'Philosophy',
+          body: 'Each attempt is tagged as SureShot, Applied, or Guesswork. This self-tagging drives personalized feedback and builds true mastery.'
+        },
+        {
+          title: 'Practice Mode',
+          body: 'Practice Mode lets you learn at your own pace, see instant updates on your Knowledge Map, and focus on weak areas with low stakes.'
+        },
+        {
+          title: 'Test Mode',
+          body: 'Test Mode simulates real exam conditions. Time yourself, push your limits, and pinpoint exactly where you need more work.'
+        },
+        {
+          title: 'Your Knowledge Map',
+          body: 'Watch topics light up green, blue, or red as you attempt questions. Use that map to guide every study session.'
+        }
+      ],
+      next() { if (this.current < this.slides.length - 1) this.current++ },
+      prev() { if (this.current > 0) this.current-- },
+      go(i)  { this.current = i }
+    }))
+  })
+</script>
+{% endblock %}

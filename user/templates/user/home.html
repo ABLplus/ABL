@@ -1,29 +1,44 @@
-{% extends 'user/base.html' %}
+{% extends "user/base.html" %}
 
 {% block title %}Home{% endblock %}
 
 {% block content %}
+<!-- ─────────── HERO ─────────── -->
+<section class="text-center mt-12 mb-16">
+  <h1 class="text-4xl sm:text-5xl font-extrabold text-gray-900 dark:text-gray-100">
+    Welcome to <span class="text-primary-600 dark:text-primary-400">ABL+</span>
+  </h1>
+  <p class="mt-4 text-lg sm:text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
+    Practice smart. Learn better. Test yourself. Know your strengths and weaknesses.
+  </p>
+</section>
 
-<!-- Hero Section -->
-<div class="text-center mb-5">
-    <h1 class="display-5 fw-semibold">Welcome to ABL</h1>
-    <p class="lead mt-3">Practice Smart. Learn Better. Test Yourself. Know Your Strengths and Weaknesses.</p>
-</div>
+<!-- ─────────── LOGIN CTA ─────────── -->
+<section class="flex flex-col items-center space-y-6">
+  <a href="{% url 'login' %}"
+     class="bg-primary-600 hover:bg-primary-700 text-white font-semibold px-8 py-3 rounded-lg shadow
+            transition-transform hover:-translate-y-0.5">
+    Log&nbsp;in
+  </a>
 
-<!-- Login Section -->
-<div class="d-flex flex-column align-items-center mb-4">
-    <div class="d-grid gap-2 col-10 col-md-4 mx-auto">
-        <a href="{% url 'login' %}" class="btn btn-success px-4 py-2">Login</a>
-    </div>
-    <p class="mt-3">
-        Don't have an account? <a href="{% url 'register' %}">Register here</a>.
-    </p>
-</div>
+  <p class="text-gray-700 dark:text-gray-300">
+    Don’t have an account?
+    <a href="{% url 'register' %}"
+       class="text-primary-600 dark:text-primary-400 hover:underline">Register here</a>.
+  </p>
+</section>
 
-<!-- Demo Test Section -->
-<div class="text-center mt-5">
-    <h5 class="mb-3">Just want to try first?</h5>
-    <a href="#" class="btn btn-outline-secondary px-4 py-2">Take a Demo Test</a>
-</div>
+<!-- ─────────── DEMO TEST CTA ─────────── -->
+<section class="text-center mt-20">
+  <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">
+    Just want to try first?
+  </h2>
 
+  <a href="#"
+     class="border border-gray-400 dark:border-gray-500 text-gray-700 dark:text-gray-200
+            px-8 py-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700/40
+            transition-transform hover:-translate-y-0.5">
+    Take a Demo Test
+  </a>
+</section>
 {% endblock %}

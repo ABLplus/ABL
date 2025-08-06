@@ -9,7 +9,7 @@ class OLTAdmin(admin.ModelAdmin):
 
 @admin.register(Question)
 class QuestionAdmin(admin.ModelAdmin):
-    list_display = ('subject_name', 'subject', 'section', 'topic','subtopic' , 'year', 'topic_name', 'subtopic_name')
+    list_display = ('id','subject_name', 'exam_name','subject', 'section', 'topic','subtopic' , 'year', 'topic_name', 'subtopic_name')
     search_fields = ('subject_name', 'topic_name', 'subtopic_name')
 
 

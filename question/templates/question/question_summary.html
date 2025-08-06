@@ -1,45 +1,73 @@
 {% extends "user/base.html" %}
-{% load static %}
+
+{% block title %}{{ exam_name }} Year-wise Status{% endblock %}
+
 {% block content %}
-<h4 class="mb-4">{{ exam_name }} (2000 – 2025)</h4>
+<div class="mx-auto max-w-3xl px-4 mt-6">
 
-<ul class="list-group">
-  {% for r in rows %}
-    <li class="list-group-item d-flex justify-content-between align-items-center">
-      <span class="fw-semibold fs-5">{{ r.year }}</span>
+  <!-- ── Heading ── -->
+  <h4 class="text-xl font-semibold mb-6 text-primary-600 dark:text-primary-400">
+    {{ exam_name }} <span class="text-sm text-gray-500 dark:text-gray-400">(2000 – 2025)</span>
+  </h4>
 
-      <span>
-        {# Pending #}
-        {% if r.pending %}
-          <a href="{% url 'question:question_list' %}?exam={{ exam_name|urlencode }}&year={{ r.year }}&status=pending"
-             class="text-secondary text-decoration-none me-2">
-            {{ r.pending }} Pending
-          </a>
-        {% else %}
-          <span class="text-secondary me-2">0 Pending</span>
-        {% endif %}
+  <!-- ── Year list ── -->
+  <ul class="space-y-3">
+    {% for r in rows %}
+      <li class="flex items-center justify-between p-4 rounded-lg shadow
+                 bg-white dark:bg-gray-800">
 
-        {# Under Review #}
-        {% if r.review %}
-          <a href="{% url 'question:question_list' %}?exam={{ exam_name|urlencode }}&year={{ r.year }}&status=review"
-             class="text-warning text-decoration-none me-2">
-            {{ r.review }} Review
-          </a>
-        {% else %}
-          <span class="text-warning me-2">0 Review</span>
-        {% endif %}
+        <!-- Year -->
+        <span class="font-semibold text-lg">{{ r.year }}</span>
 
-        {# Checked #}
-        {% if r.checked %}
-          <a href="{% url 'question:question_list' %}?exam={{ exam_name|urlencode }}&year={{ r.year }}&status=checked"
-             class="text-success text-decoration-none">
-            {{ r.checked }} Checked
-          </a>
-        {% else %}
-          <span class="text-success">0 Checked</span>
-        {% endif %}
-      </span>
-    </li>
-  {% endfor %}
-</ul>
+        <!-- Status counts -->
+        <div class="flex items-center gap-4 text-sm">
+
+          {# Pending #}
+          {% if r.pending %}
+            <a href="{% url 'question:question_list' %}?exam={{ exam_name|urlencode }}&year={{ r.year }}&status=pending"
+               class="text-gray-600 dark:text-gray-300 hover:underline">
+              <span class="px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700">{{ r.pending }}</span>
+              Pending
+            </a>
+          {% else %}
+            <span class="text-gray-500 dark:text-gray-500">
+              <span class="px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700">0</span>
+              Pending
+            </span>
+          {% endif %}
+
+          {# Review #}
+          {% if r.review %}
+            <a href="{% url 'question:question_list' %}?exam={{ exam_name|urlencode }}&year={{ r.year }}&status=review"
+               class="text-amber-600 dark:text-amber-400 hover:underline">
+              <span class="px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-900">{{ r.review }}</span>
+              Review
+            </a>
+          {% else %}
+            <span class="text-amber-600 dark:text-amber-400">
+              <span class="px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-900">0</span>
+              Review
+            </span>
+          {% endif %}
+
+          {# Checked #}
+          {% if r.checked %}
+            <a href="{% url 'question:question_list' %}?exam={{ exam_name|urlencode }}&year={{ r.year }}&status=checked"
+               class="text-green-600 dark:text-green-400 hover:underline">
+              <span class="px-2 py-0.5 rounded bg-green-100 dark:bg-green-900">{{ r.checked }}</span>
+              Checked
+            </a>
+          {% else %}
+            <span class="text-green-600 dark:text-green-400">
+              <span class="px-2 py-0.5 rounded bg-green-100 dark:bg-green-900">0</span>
+              Checked
+            </span>
+          {% endif %}
+
+        </div>
+      </li>
+    {% endfor %}
+  </ul>
+
+</div>
 {% endblock %}

@@ -1,0 +1,139 @@
+<!-- templates/landing.html -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ABL+ – Attempt‑Based Learning for Competitive Exams</title>
+    <!-- Tailwind via CDN for MVP; replace with CLI build in production -->
+    <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+  </head>
+  <body class="min-h-screen bg-slate-50 text-slate-800 antialiased">
+    <!-- NAVBAR -->
+    <header class="sticky top-0 z-30 bg-white/80 backdrop-blur shadow-sm">
+      <div class="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
+        <h1 class="text-xl font-bold tracking-wide text-indigo-600">ABL+</h1>
+        <nav class="hidden gap-8 text-sm md:flex">
+          <a href="#features" class="hover:text-indigo-600">Features</a>
+          <a href="#how" class="hover:text-indigo-600">How It Works</a>
+          <a href="#faq" class="hover:text-indigo-600">FAQ</a>
+        </nav>
+        <div class="flex items-center gap-4">
+          <a href="{% url 'login' %}" class="text-sm font-medium hover:text-indigo-600">Log in</a>
+          <a href="{% url 'register' %}" class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-indigo-700">Sign Up</a>
+        </div>
+      </div>
+    </header>
+
+    <!-- HERO -->
+    <section class="relative isolate overflow-hidden bg-gradient-to-br from-indigo-50 via-sky-50 to-white pt-24 pb-32">
+      <div class="mx-auto max-w-7xl px-6 text-center">
+        <h2 class="mx-auto max-w-3xl text-4xl font-extrabold leading-tight text-slate-900 sm:text-5xl">
+          Every <span class="text-indigo-600">Attempt</span> Counts.
+        </h2>
+        <p class="mx-auto mt-6 max-w-xl text-lg text-slate-600">
+          Convert every click into insight. Sharpen your preparation with adaptive <span class="font-semibold">Practice</span> or full‑power <span class="font-semibold">Mocks</span> — all inside a single dashboard.
+        </p>
+        <div class="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-6">
+          <a href="{% url 'register' %}" class="rounded-md bg-indigo-600 px-8 py-3 text-base font-semibold text-white shadow hover:bg-indigo-700">Start My Smart Attempts</a>
+          <a href="{% url 'dashboard' %}" class="text-base font-medium text-indigo-600 hover:underline">Skip to Mock Test →</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- FEATURES -->
+    <section id="features" class="mx-auto max-w-7xl px-6 py-24">
+      <h3 class="text-center text-3xl font-bold text-slate-900">Two Tools, One Goal</h3>
+      <p class="mx-auto mt-4 max-w-2xl text-center text-lg text-slate-600">Choose the session that matches today’s objective. Practice for mastery, Test for measurement – your data engine powers both.</p>
+
+      <div class="mt-16 grid gap-12 md:grid-cols-2">
+        <!-- Practice Card -->
+        <div class="group relative overflow-hidden rounded-lg bg-white p-8 shadow transition hover:shadow-lg">
+          <div class="flex h-12 w-12 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6v6l4 2"/></svg>
+          </div>
+          <h4 class="mt-6 text-xl font-semibold text-slate-900">Adaptive Practice</h4>
+          <p class="mt-2 text-slate-600">Target weak topics with instant explanations and XP‑fuelled streaks. Reinforce concepts faster than reading.</p>
+        </div>
+
+        <!-- Test Card -->
+        <div class="group relative overflow-hidden rounded-lg bg-white p-8 shadow transition hover:shadow-lg">
+          <div class="flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 text-amber-600">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 9l3 3-3 3m5-6l3 3-3 3"/></svg>
+          </div>
+          <h4 class="mt-6 text-xl font-semibold text-slate-900">Realistic Mocks</h4>
+          <p class="mt-2 text-slate-600">Full‑length (100 × 2 h) or half‑length (50 × 1 h) tests, locked answers, and scorecards that reveal true exam readiness.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- HOW IT WORKS -->
+    <section id="how" class="bg-slate-100 py-24">
+      <div class="mx-auto max-w-7xl px-6">
+        <h3 class="text-center text-3xl font-bold text-slate-900">From Click to Insight</h3>
+        <p class="mx-auto mt-4 max-w-2xl text-center text-lg text-slate-600">Every attempt—whether in Practice or Test—feeds your personalised knowledge map.</p>
+
+        <div class="mt-16 grid gap-12 md:grid-cols-3">
+          <div class="text-center">
+            <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
+              1
+            </div>
+            <h4 class="mt-4 font-semibold text-slate-900">Tag Confidence</h4>
+            <p class="mt-2 text-slate-600">Sureshot, Applied, or Guess—track certainty, not just correctness.</p>
+          </div>
+          <div class="text-center">
+            <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">2</div>
+            <h4 class="mt-4 font-semibold text-slate-900">Attempt & Learn</h4>
+            <p class="mt-2 text-slate-600">Instant feedback in Practice, exam‑style silence in Test.</p>
+          </div>
+          <div class="text-center">
+            <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">3</div>
+            <h4 class="mt-4 font-semibold text-slate-900">Watch Zones Shift</h4>
+            <p class="mt-2 text-slate-600">Your map turns Red → Blue → Green as mastery grows.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA STRIP -->
+    <section class="bg-indigo-600 py-16 text-center text-white">
+      <h3 class="text-2xl font-bold">Pick your next smart step</h3>
+      <p class="mt-2 text-indigo-100">Start Practising now or jump straight into a full mock—your call.</p>
+      <div class="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-6">
+        <a href="{% url 'practice:practice_home' %}" class="rounded-md bg-white px-8 py-3 text-base font-semibold text-indigo-600 shadow hover:bg-indigo-50">Start Practice</a>
+        <a href="{% url 'dashboard' %}" class="rounded-md border border-white/80 px-8 py-3 text-base font-semibold text-white hover:bg-white/10">Start Full Mock</a>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section id="faq" class="mx-auto max-w-3xl px-6 py-24">
+      <h3 class="text-center text-3xl font-bold text-slate-900">Frequently Asked Questions</h3>
+      <div class="mt-10 space-y-6">
+        <details class="overflow-hidden rounded-lg border bg-white p-4 shadow">
+          <summary class="cursor-pointer select-none font-medium text-slate-800">I already solve past papers—why use ABL+?</summary>
+          <p class="mt-2 text-slate-600">ABL+ converts each attempt into trend analytics and adaptive drills—something a PDF can’t do. Know exactly where to focus next.</p>
+        </details>
+        <details class="overflow-hidden rounded-lg border bg-white p-4 shadow">
+          <summary class="cursor-pointer select-none font-medium text-slate-800">Will Practice mode spoil my mock scores?</summary>
+          <p class="mt-2 text-slate-600">No. Explanations appear only in Practice. Test mode stays locked until you submit, preserving exam integrity.</p>
+        </details>
+        <details class="overflow-hidden rounded-lg border bg-white p-4 shadow">
+          <summary class="cursor-pointer select-none font-medium text-slate-800">Is there a free trial?</summary>
+          <p class="mt-2 text-slate-600">Absolutely. You get 300 free attempts and one full mock to experience the entire workflow before deciding.</p>
+        </details>
+      </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="border-t bg-white py-12">
+      <div class="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-6 sm:flex-row">
+        <p class="text-sm text-slate-500">© 2025 ABL+ • All rights reserved</p>
+        <nav class="flex gap-6 text-sm">
+          <a href="#" class="hover:text-indigo-600">Terms</a>
+          <a href="#" class="hover:text-indigo-600">Privacy</a>
+          <a href="#" class="hover:text-indigo-600">Contact</a>
+        </nav>
+      </div>
+    </footer>
+  </body>
+</html>

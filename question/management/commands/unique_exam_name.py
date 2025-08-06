@@ -1,7 +1,5 @@
 import os
 from django.core.management.base import BaseCommand
-
-from syllabus.models import Ques
 from django.db.models import Count
 from syllabus.models import Ques
 

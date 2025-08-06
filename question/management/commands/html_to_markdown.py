@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from question.models import Question  # Replace with your actual app name
+from question.models import Question # Replace with your actual app name
 import html2text
 
 class Command(BaseCommand):
@@ -17,9 +17,9 @@ class Command(BaseCommand):
             html_content = question.question_html or ""
             markdown = converter.handle(html_content).strip()
 
-            if question.q_markdown != markdown:
-                question.q_markdown = markdown
-                question.save(update_fields=["q_markdown"])
-                updated += 1
+            question.q_markdown = markdown
+            question.save(update_fields=["q_markdown"])
+            updated += 1
+            self.stdout.write(self.style.SUCCESS(f"✅  question {updated} to markdown"))
 
         self.stdout.write(self.style.SUCCESS(f"✅ Converted {updated} questions to markdown"))

@@ -1,0 +1,41 @@
+<form
+  hx-post="{% url 'start_test' %}"
+  hx-target="body"
+  hx-swap="none"
+  class="space-y-4"
+>
+  {% csrf_token %}
+  <input type="hidden" name="type" value="exam_year">
+
+  <!-- Exam -->
+  <label class="block">
+    <span class="text-gray-700 dark:text-gray-300">Exam</span>
+    <select
+      name="exam"
+      class="mt-1 w-full form-select rounded-lg border-gray-300 dark:bg-gray-800 dark:border-gray-600"
+      required>
+      {% for e in exams %}
+        <option value="{{ e.id }}">{{ e.name }}</option>
+      {% endfor %}
+    </select>
+  </label>
+
+  <!-- Year -->
+  <label class="block">
+    <span class="text-gray-700 dark:text-gray-300">Year</span>
+    <select
+      name="year"
+      class="mt-1 w-full form-select rounded-lg border-gray-300 dark:bg-gray-800 dark:border-gray-600"
+      required>
+      {% for y in years %}
+        <option>{{ y }}</option>
+      {% endfor %}
+    </select>
+  </label>
+
+  <button
+    type="submit"
+    class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+    Start Test
+  </button>
+</form>

@@ -1,0 +1,394 @@
+
+{% extends 'user/base.html' %}
+{% load static %}
+
+{% block content %}
+  {# ───────── Flash Messages (fixed overlay, auto-dismiss) ───────── #}
+{% if messages %}
+  <div id="flash-zone"
+       class="fixed top-4 inset-x-0 flex justify-center z-50 pointer-events-none transition-opacity duration-500 ease-in-out opacity-100">
+    <div class="space-y-2 w-full max-w-md px-4">
+      {% for message in messages %}
+        <div class="
+          {% if message.tags == 'error' %}
+            bg-red-500 text-white
+          {% elif message.tags == 'warning' %}
+            bg-yellow-400 text-gray-900
+          {% elif message.tags == 'success' %}
+            bg-green-600 text-white
+          {% else %}
+            bg-blue-500 text-white
+          {% endif %}
+          px-4 py-2 rounded shadow"
+          role="alert">
+          {{ message }}
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <script>
+    // Fade out after 700ms, remove after transition completes
+    setTimeout(() => {
+      const flash = document.getElementById('flash-zone');
+      if (flash) {
+        flash.classList.add('opacity-0');
+        setTimeout(() => flash.remove(), 1000);  // matches CSS duration
+      }
+    }, 700);
+  </script>
+{% endif %}
+
+
+<div class="max-w-7xl mx-auto p-6 space-y-8">
+
+
+   <!-- Switch Mode Button -->
+  <div class="flex justify-end mt-0 mb-0">
+    <a href="{% url 'dashboard' %}?mode=test" class="px-2 py-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-md hover:bg-gray-300 transition">
+      Switch to Test Mode
+    </a>
+  </div>
+
+
+ <!-- Part 1: Overall Metrics (Compact Layout) -->
+  <section id="overall-metrics" class="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow">
+    <h2 class="sr-only">Overall Metrics</h2>
+    <div class="flex flex-wrap justify-between items-center gap-4">
+      <div class="flex items-center space-x-2">
+        <span class="p-2 bg-indigo-100 dark:bg-indigo-700 rounded-full">
+          <!-- Icon placeholder -->
+          <svg class="w-5 h-5 text-indigo-600 dark:text-indigo-200" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a8 8 0 100 16 8 8 0 000-16z"/></svg>
+        </span>
+        <div>
+          <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Exam Days Left</p>
+          <p class="text-lg font-semibold text-gray-900 dark:text-white">{{days_left}}</p>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-2">
+        <span class="p-2 bg-green-100 dark:bg-green-700 rounded-full">
+          <svg class="w-5 h-5 text-green-600 dark:text-green-200" fill="currentColor" viewBox="0 0 20 20"><path d="M5 10l4 4L19 3"/></svg>
+        </span>
+        <div>
+          <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Correct</p>
+          <p class="text-lg font-semibold text-green-500">{{ correct_attempts }}</p>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-2">
+        <span class="p-2 bg-red-100 dark:bg-red-700 rounded-full">
+          <svg class="w-5 h-5 text-red-600 dark:text-red-200" fill="currentColor" viewBox="0 0 20 20"><path d="M6 6l8 8M6 14L14 6"/></svg>
+        </span>
+        <div>
+          <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Incorrect</p>
+          <p class="text-lg font-semibold text-red-500">{{ wrong_attempts }}</p>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-2">
+        <span class="p-2 bg-gray-100 dark:bg-gray-700 rounded-full">
+          <svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="currentColor" viewBox="0 0 20 20"><path d="M4 3h12v2H4zM4 8h12v2H4zM4 13h12v2H4z"/></svg>
+        </span>
+        <div>
+          <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Total Attempts</p>
+          <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ total_attempts }}</p>
+        </div>
+      </div>
+      
+
+      <div class="flex items-center space-x-2">
+        <span class="p-2 bg-blue-100 dark:bg-blue-700 rounded-full">
+          <svg class="w-5 h-5 text-blue-600 dark:text-blue-200" fill="currentColor" viewBox="0 0 20 20"><path d="M3 5h14v2H3zM3 9h14v2H3zM3 13h14v2H3z"/></svg>
+        </span>
+        <div>
+          <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Active Days</p>
+          <p class="text-lg font-semibold text-gray-900 dark:text-white">{{profile.days_active}}</p>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-2">
+        <span class="p-2 bg-purple-100 dark:bg-purple-700 rounded-full">
+          <svg class="w-5 h-5 text-purple-600 dark:text-purple-200" fill="currentColor" viewBox="0 0 20 20"><path d="M5 5h10v10H5z"/></svg>
+        </span>
+        <div>
+          <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{profile.streak_questions_target}} Question Streak</p>
+          <p class="text-lg font-semibold text-gray-900 dark:text-white"> {{profile.streak_days}} days</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Part 2: Insights -->
+<section id="insights" class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow">
+  <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Insights</h2>
+
+  {# 4 columns now: Coverage · Best · Mid · Worst #}
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+
+    {# ───────── Coverage ───────── #}
+    <div class="space-y-2">
+      <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">Coverage</h3>
+      <p class="text-2xl font-bold text-gray-900 dark:text-white">
+        {{ coverage_pct }}% Topics Covered
+        <span class="text-sm font-medium text-gray-500 dark:text-gray-400">
+          ({{ practiced_topics }}/{{ total_topics }})
+        </span>
+      </p>
+    </div>
+
+    {# ───────── Top 5 Strong ───────── #}
+    <div>
+      <h3 class="text-sm font-medium text-green-500 dark:text-green-400 mb-2">
+        Top 5 Strong Topics
+      </h3>
+      {% if best_topics %}
+        <ul class="list-disc pl-5 space-y-1 text-gray-700 dark:text-gray-300">
+          {% for t in best_topics %}
+            <li>
+              {{ t.name }}
+              <span class="text-xs text-gray-500">({{ t.pct }}% wrong)</span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="text-gray-500 dark:text-gray-400 text-sm">
+          No strong topics indicated yet. Keep practising to unlock insights.
+        </p>
+      {% endif %}
+    </div>
+
+    {# ───────── 5 In-Transition ───────── #}
+<div>
+  <h3 class="text-sm font-medium text-yellow-500 dark:text-yellow-400 mb-2">
+    5 In-Transition Topics
+  </h3>
+  {% if mid_topics %}
+    <ul class="list-disc pl-5 space-y-1 text-orange-700 dark:text-orange-300">
+      {% for t in mid_topics %}
+        <li class="flex items-center">
+          <a
+            href="#"
+            class="no-underline hover:opacity-80 focus:outline-none flex-1"
+            style="color: {{ t.color }};"
+            hx-get="{% url 'practice:topic_modal' t.id %}"
+            hx-target="#modal-root"
+            hx-swap="innerHTML"
+          >
+            {{ t.name }}
+            <span class="text-xs text-yellow-500 ml-1">({{ t.pct }}% wrong)</span>
+          </a>
+          <a
+            href="#"
+            class="ml-2 inline-flex items-center px-2 py-0.5 text-xs font-medium
+                   rounded bg-green-600 text-white hover:bg-green-700"
+            hx-get="{% url 'practice:topic_modal' t.id %}"
+            hx-target="#modal-root"
+            hx-swap="innerHTML"
+          >
+            Practice
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="text-gray-500 dark:text-gray-400 text-sm">
+      No in-transition topics yet. Keep practising to surface a middle range.
+    </p>
+  {% endif %}
+</div>
+
+{# ───────── Top 5 Weak ───────── #}
+<div>
+  <h3 class="text-sm font-medium text-red-500 dark:text-red-400 mb-2">
+    Top 5 Weak Topics
+  </h3>
+  {% if worst_topics %}
+    <ul class="list-disc pl-5 space-y-1 text-red-700 dark:text-red-300">
+      {% for t in worst_topics %}
+        <li class="flex items-center">
+          <a
+            href="#"
+            class="flex-1 no-underline hover:opacity-80 focus:outline-none"
+            hx-get="{% url 'practice:topic_modal' t.id %}"
+            hx-target="#modal-root"
+            hx-swap="innerHTML"
+          >
+            {{ t.name }}
+            <span class="text-xs text-red-500 ml-1">({{ t.pct }}% wrong)</span>
+          </a>
+          <a
+            href="#"
+            class="ml-2 inline-flex items-center px-2 py-0.5 text-xs font-medium
+                   rounded bg-green-600 text-white hover:bg-green-700"
+            hx-get="{% url 'practice:topic_modal' t.id %}"
+            hx-target="#modal-root"
+            hx-swap="innerHTML"
+          >
+            Practice
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="text-gray-500 dark:text-gray-400 text-sm">
+      No weak topics identified yet. Practise more to surface blind-spots.
+    </p>
+  {% endif %}
+</div>
+
+
+  </div>
+</section>
+  <!-- Part 3: Ongoing Sessions and Session Creation -->
+  <section id="ongoing-sessions" class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow">
+    {% if pending_sessions %}
+    <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+      Ongoing Practice Sessions
+    </h2>
+
+    <div class="space-y-4">
+      {% for s in pending_sessions %}
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3
+                    bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700
+                    rounded-lg px-4 py-3 shadow">
+
+          <div>
+            <h3 class="font-semibold text-gray-900 dark:text-white">
+              {{ s.name }}
+            </h3>
+            <p class="text-sm text-gray-600 dark:text-gray-400">
+              {{ s.total_questions }}&nbsp;questions&nbsp;•&nbsp;
+              started&nbsp;{{ s.start_time|date:"M d, Y H:i" }}
+            </p>
+          </div>
+
+          <a href="{% url 'practice:take_practice' s.id %}"
+             class="inline-flex items-center justify-center px-4 py-2
+                    bg-primary-600 hover:bg-primary-700 text-white rounded-md
+                    text-sm font-medium">
+            Continue
+            <svg class="w-4 h-4 ml-1" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd"
+                    d="M12.293 4.293a1 1 0 011.414 1.414L10.414 9H17a1 1 0 110 2h-6.586l3.293 3.293a1 1 0 01-1.414 1.414l-5-5a1 1 0 010-1.414l5-5z"
+                    clip-rule="evenodd"/>
+            </svg>
+          </a>
+        </div>
+      {% endfor %}
+    </div>
+
+  {% else %}
+    <p class="text-sm text-gray-600 dark:text-gray-400">
+      No ongoing practice sessions at the moment.
+    </p>
+  {% endif %}
+
+
+
+
+
+
+<br>
+    <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Start New Practice Sessions</h2>
+
+   <!-- Subject-Tree / Capsule switcher -->
+<section x-data="{ openPanel: null }" class="mt-6">
+
+  {# 1️⃣  Centre-aligned buttons with gap #}
+  <div class="flex justify-center gap-4 mb-6">
+    <button
+      @click="openPanel = (openPanel === 'capsule' ? null : 'capsule')"
+      :class="openPanel === 'capsule'
+              ? 'bg-indigo-600 text-white'
+              : 'bg-indigo-100 dark:bg-indigo-800 text-indigo-700 dark:text-indigo-200'"
+      class="px-6 py-2 rounded-lg font-semibold transition-colors">
+      Practice Capsule Subject or its Section
+    </button>
+
+    <button
+      @click="openPanel = (openPanel === 'direct' ? null : 'direct')"
+      :class="openPanel === 'direct'
+              ? 'bg-teal-600 text-white'
+              : 'bg-teal-100 dark:bg-teal-800 text-teal-700 dark:text-teal-200'"
+      class="px-6 py-2 rounded-lg font-semibold transition-colors">
+      Practice any Topic from the syllabus
+    </button>
+  </div>
+
+  {# 2️⃣  Capsule view (shows / hides on toggle) #}
+  <div x-show="openPanel === 'capsule'" x-transition.opacity>
+    <h3 class="font-medium text-gray-900 dark:text-white mb-4">
+      Capsule Practice – pick Subject / Section
+    </h3>
+
+    {# renders ALL subjects + sections; click starts capsule #}
+    {% include "practice/partials/subject_sections.html" with subjects=subjects %}
+  </div>
+
+  {# 3️⃣  Direct-Topic view (shows / hides on toggle) #}
+  <div x-show="openPanel === 'direct'" x-transition.opacity>
+    <h3 class="font-medium text-gray-900 dark:text-white mb-4">
+      Direct Topic – pick from Subject Tree
+    </h3>
+
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {% for subj in subjects %}
+        <details class="border rounded dark:border-gray-600 p-3
+                        bg-gray-50 dark:bg-gray-800">
+          <summary
+            class="font-semibold text-blue-700 dark:text-blue-300 cursor-pointer"
+            hx-get="{% url 'practice:ajax_subject_tree' subj.id %}"
+            hx-target="#direct-tree-{{ subj.id }}"
+            hx-swap="innerHTML"
+            hx-trigger="click once">
+            {{ subj.name }}
+          </summary>
+
+          <div id="direct-tree-{{ subj.id }}"
+               class="mt-2 text-sm text-gray-800 dark:text-gray-100">
+            <!-- Full tree loads here -->
+          </div>
+        </details>
+      {% endfor %}
+    </div>
+  </div>
+
+</section>
+
+</section>
+<!-- Part 4 – History -->
+<section id="history"
+         class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow">
+
+  <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+    Completed Practice Sessions
+  </h2>
+
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm border border-gray-300 dark:border-gray-700">
+      <thead class="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200">
+        <tr>
+          <th class="px-4 py-2 w-14">#</th>
+          <th class="px-4 py-2">Session&nbsp;Name</th>
+          <th class="px-4 py-2">Total attempts</th>
+          <th class="px-4 py-2">Correct</th>
+          <th class="px-4 py-2">Date</th>
+          <th class="px-4 py-2">Review</th>
+        </tr>
+      </thead>
+
+      <tbody id="history-body"
+             hx-get="{% url 'practice:history_page' %}?page=1"
+             hx-trigger="load"
+             hx-target="this"
+             hx-swap="innerHTML">
+        <tr>
+          <td colspan="5" class="text-center py-4">Loading …</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+</div>
+{% endblock %}

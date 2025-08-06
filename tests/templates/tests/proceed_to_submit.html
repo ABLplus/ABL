@@ -1,28 +1,48 @@
-{% extends 'user/base.html' %}
+{% extends "user/base.html" %}
+
+{% block title %}Test Summary{% endblock %}
 
 {% block content %}
-<div class="container my-5">
+<div class="mx-auto max-w-4xl px-4 mt-6">
 
-    <h2 class="mb-4 text-center">Test Summary</h2>
+  <h2 class="text-2xl font-bold text-center mb-8
+             text-primary-600 dark:text-primary-400">
+    Test&nbsp;Summary
+  </h2>
 
-    <div class="card p-4">
-        <p><strong>Total Questions:</strong> {{ total_questions }}</p>
-        <p><strong>Attempted Questions:</strong> {{ attempted_questions }}</p>
-        <p><strong>Sureshot Attempts:</strong> {{ sureshot }}</p>
-        <p><strong>Applied Attempts:</strong> {{ applied }}</p>
-        <p><strong>Guesswork Attempts:</strong> {{ guesswork }}</p>
-        <p><strong>Unattempted Questions:</strong> {{ unattempted }}</p>
+  <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow space-y-4">
 
-        <div class="mt-4 d-flex flex-wrap gap-3">
-            <a href="{% url 'take_test' test.id back_serial %}" class="btn btn-secondary">🔙 Back to Test</a>
+    <p><strong>Total Questions:</strong> {{ total_questions }}</p>
+    <p><strong>Attempted Questions:</strong> {{ attempted_questions }}</p>
+    <p><strong>SureShot Attempts:</strong> {{ sureshot }}</p>
+    <p><strong>Applied Attempts:</strong> {{ applied }}</p>
+    <p><strong>Guesswork Attempts:</strong> {{ guesswork }}</p>
+    <p><strong>Unattempted Questions:</strong> {{ unattempted }}</p>
 
-            {% if unattempted > 0 %}
-            <a href="{% url 'blind_attempt' test.id %}"class="btn btn-warning">🎯 Attempt Blind Attempts</a>
-            {% endif %}
+    <div class="flex flex-wrap gap-4 pt-4">
 
-            <a href="#" class="btn btn-success">✅ Submit Test</a>
-        </div>
+      <a href="{% url 'take_test' test.id back_serial %}"
+         class="px-4 py-2 rounded-lg bg-gray-300 hover:bg-gray-400
+                dark:bg-gray-700 dark:hover:bg-gray-600
+                text-gray-900 dark:text-gray-100">
+        🔙 Back to Test
+      </a>
+
+      {% if unattempted > 0 %}
+        <a href="{% url 'blind_attempt' test.id %}"
+           class="px-4 py-2 rounded-lg bg-yellow-500 hover:bg-yellow-600
+                  text-gray-900">
+          🎯 Attempt Blind Attempts
+        </a>
+      {% endif %}
+
+      <a href="{% url 'submit_test' test.id %}"
+         class="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white">
+        ✅ Submit Test
+      </a>
+
     </div>
+  </div>
 
 </div>
-{% endblock %}blind_attempt
+{% endblock %}

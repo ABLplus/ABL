@@ -22,6 +22,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('',include('question.urls', namespace="question")),
     path('',include('practice.urls', namespace="practice")),
+    path('',include('analysis.urls')),
  
     path('',include('user.urls')),
     path('',include('tests.urls')),

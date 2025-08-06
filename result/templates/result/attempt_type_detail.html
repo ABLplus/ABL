@@ -1,116 +1,205 @@
-{% extends 'user/base.html' %}
-{% load question_extras %}
+{% extends "user/base.html" %}
+{% load question_extras markdown_extras %}
 
-{% block title %}{{ attempt_type }} Attempts - {{ test.name }}{% endblock %}
+{% block title %}{{ attempt_type }} Attempts – {{ test.name }}{% endblock %}
 
 {% block content %}
-<div class="container py-4">
-    <h4 class="mb-4 text-center">
-        {% if attempt_type == 'Unattempted' %}
-            Blind/Unattempted Questions  – {{ test.name }}
-        {% else %}
-            {{ attempt_type }} Attempts  – {{ test.name }}
-        {% endif %}
-    </h4>
-    <h6>Test date: {{ test.end_time|date:"d M Y" }}</h6>
-    <a href="{% url 'test_result' test_id=test.id %}"><button class="btn btn-primary">Back to Test Summary</button></a>
+<div class="mx-auto max-w-6xl px-4 mt-6">
 
-    <form method="get" class="row g-3 mb-4 align-items-end">
-        {% if attempt_type|lower != 'right' and attempt_type|lower != 'wrong' and attempt_type|lower != 'unattempted' %}
-<div class="col-md-3">
-    <label for="result" class="form-label">Filter by Result</label>
-    <select name="result" id="result" class="form-select form-select-sm">
+  <!-- ── Heading ── -->
+  <h4 class="text-xl font-semibold text-center mb-2
+             text-primary-600 dark:text-primary-400">
+    {% if attempt_type == 'Unattempted' %}
+      Blind / Unattempted Questions – {{ test.name }}
+    {% else %}
+      {{ attempt_type }} Attempts – {{ test.name }}
+    {% endif %}
+  </h4>
+  <p class="text-center text-sm text-gray-500 dark:text-gray-400 mb-8">
+    Test date: {{ test.end_time|date:"d M Y" }}
+  </p>
+
+  <!-- Back to summary -->
+  <div class="flex justify-center mb-10">
+    <a href="{% url 'test_result' test.id %}"
+       class="px-4 py-2 rounded-lg bg-primary-600 hover:bg-primary-700 text-white">
+      Back to Test Summary
+    </a>
+  </div>
+
+  <!-- ── Filter bar ── -->
+  <form method="get" class="flex flex-wrap gap-4 items-end mb-10">
+
+    {% if attempt_type|lower not in 'right wrong unattempted' %}
+      <div>
+        <label for="result" class="block text-sm font-medium mb-1">
+          Filter by Result
+        </label>
+        <select name="result" id="result"
+                class="w-40 rounded-lg border-gray-300 dark:border-gray-600
+                       bg-white dark:bg-gray-800 text-sm p-2">
+          <option value="">All</option>
+          <option value="right" {% if selected_result == 'right' %}selected{% endif %}>Right</option>
+          <option value="wrong" {% if selected_result == 'wrong' %}selected{% endif %}>Wrong</option>
+        </select>
+      </div>
+    {% endif %}
+
+    <div>
+      <label for="subject" class="block text-sm font-medium mb-1">
+        Filter by Subject
+      </label>
+      <select name="subject" id="subject"
+              class="w-56 rounded-lg border-gray-300 dark:border-gray-600
+                     bg-white dark:bg-gray-800 text-sm p-2">
         <option value="">All</option>
-        <option value="right" {% if selected_result == 'right' %}selected{% endif %}>Right</option>
-        <option value="wrong" {% if selected_result == 'wrong' %}selected{% endif %}>Wrong</option>
-    </select>
+        {% for subject in subjects %}
+          <option value="{{ subject.name }}" {% if selected_subject == subject.name %}selected{% endif %}>
+            {{ subject.name }}{% if subject.count %} ({{ subject.count }}){% endif %}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <button type="submit"
+            class="px-4 py-2 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-sm">
+      Apply
+    </button>
+
+    <a href="{% url 'attempt_type_detail' test.id attempt_type|lower %}"
+       class="px-4 py-2 rounded-lg border border-gray-400
+              dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm">
+      Clear
+    </a>
+  </form>
+
+  <!-- ── Count ── -->
+  <h5 class="font-semibold mb-4">{{ log_count }} Questions</h5>
+
+  <!-- ── Table ── -->
+  <div class="overflow-x-auto">
+    <table class="min-w-full divide-y divide-gray-300 dark:divide-gray-700 text-sm">
+      <thead class="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+        <tr class="text-center">
+          <th class="w-12 py-3 font-semibold">#</th>
+          <th class="py-3 font-semibold min-w-[16rem]">Question</th>
+          <th class="py-3 font-semibold min-w-[14rem]">Options</th>
+          <th class="py-3 font-semibold w-32">Subject</th>
+          <th class="py-3 font-semibold min-w-[18rem]">Explanation</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+        {% for log in logs %}
+        <tr class="align-top">
+          <td class="text-center py-3">{{ forloop.counter }}</td>
+
+          <!-- Question -->
+          <td class="py-3">
+         <div class="prose dark:prose-invert
+            prose-headings:text-lg prose-headings:font-semibold
+            max-w-none prose-tight">
+  {{ log.question.question_html|safe }}
 </div>
-        {% endif %}
+          </td>
 
-        <div class="col-md-4">
-            <label for="subject" class="form-label">Filter by Subject</label>
-            <select name="subject" id="subject" class="form-select form-select-sm">
-                <option value="">All</option>
-                {% for subject in subjects %}
-                <option value="{{ subject.name }}" {% if selected_subject == subject.name %}selected{% endif %}>
-                    {{ subject.name }}{% if subject.count %} ({{ subject.count }}){% endif %}
-                </option>
-                {% endfor %}
-            </select>
-        </div>
+          <!-- Options -->
+          <td class="py-3">
+            {# A ———————————————————————— #}
+            <div class="p-1 mb-1 rounded text-sm
+              {% if log.attempt_result == 'right' and 'a' == log.question.correct_option %}
+                bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200
+              {% elif log.attempt_result == 'wrong' %}
+                {% if 'a' == log.question.correct_option %}
+                  bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200
+                {% elif 'a' == log.user_answered %}
+                  bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200
+                {% else %}
+                  bg-gray-100 dark:bg-gray-800
+                {% endif %}
+              {% else %}
+                bg-gray-100 dark:bg-gray-800
+              {% endif %}">
+              <strong class="mr-1">A.</strong> {{ log.question|get_option:"a" }}
+            </div>
 
-        <div class="col-md-2 d-grid">
-            <button type="submit" class="btn btn-sm btn-primary">Apply</button>
-        </div>
+            {# B ———————————————————————— #}
+            <div class="p-1 mb-1 rounded text-sm
+              {% if log.attempt_result == 'right' and 'b' == log.question.correct_option %}
+                bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200
+              {% elif log.attempt_result == 'wrong' %}
+                {% if 'b' == log.question.correct_option %}
+                  bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200
+                {% elif 'b' == log.user_answered %}
+                  bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200
+                {% else %}
+                  bg-gray-100 dark:bg-gray-800
+                {% endif %}
+              {% else %}
+                bg-gray-100 dark:bg-gray-800
+              {% endif %}">
+              <strong class="mr-1">B.</strong> {{ log.question|get_option:"b" }}
+            </div>
 
-        <div class="col-md-2 d-grid">
-            <a href="{% url 'attempt_type_detail' test.id attempt_type|lower %}" class="btn btn-sm btn-outline-secondary">Clear</a>
-        </div>
-    </form>
+            {# C ———————————————————————— #}
+            <div class="p-1 mb-1 rounded text-sm
+              {% if log.attempt_result == 'right' and 'c' == log.question.correct_option %}
+                bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200
+              {% elif log.attempt_result == 'wrong' %}
+                {% if 'c' == log.question.correct_option %}
+                  bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200
+                {% elif 'c' == log.user_answered %}
+                  bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200
+                {% else %}
+                  bg-gray-100 dark:bg-gray-800
+                {% endif %}
+              {% else %}
+                bg-gray-100 dark:bg-gray-800
+              {% endif %}">
+              <strong class="mr-1">C.</strong> {{ log.question|get_option:"c" }}
+            </div>
 
-    <h5>{{ log_count }} Questions: </h5>
+            {# D ———————————————————————— #}
+            <div class="p-1 mb-1 rounded text-sm
+              {% if log.attempt_result == 'right' and 'd' == log.question.correct_option %}
+                bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200
+              {% elif log.attempt_result == 'wrong' %}
+                {% if 'd' == log.question.correct_option %}
+                  bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200
+                {% elif 'd' == log.user_answered %}
+                  bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200
+                {% else %}
+                  bg-gray-100 dark:bg-gray-800
+                {% endif %}
+              {% else %}
+                bg-gray-100 dark:bg-gray-800
+              {% endif %}">
+              <strong class="mr-1">D.</strong> {{ log.question|get_option:"d" }}
+            </div>
+          </td>
 
-    <div class="table-responsive">
-        <table class="table table-bordered table-hover align-middle table-sm text-sm">
-            <thead class="table-light text-center align-middle">
-                <tr>
-                    <th style="width: 40px;">#</th>
-                    <th style="min-width: 300px;">Question</th>
-                    <th style="min-width: 280px;">Options</th>
-                    <th style="width: 100px;">Subject</th>
-                    <th style="min-width: 250px;">Explanation</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for log in logs %}
-                <tr>
-                    <td class="text-center">{{ forloop.counter }}</td>
-    
-                    <!-- Question -->
-                    <td>{{ log.question.question_html|safe }}</td>
-    
-                    <!-- Options -->
-                    <td>
-                        {% for opt in 'abcd' %}
-                        <div class="p-1 mb-1 rounded 
-                            {% if log.attempt_result == 'right' and opt == log.question.correct_option %}
-                                bg-success text-white
-                            {% elif log.attempt_result == 'wrong' %}
-                                {% if opt == log.question.correct_option %}
-                                    bg-success text-white
-                                {% elif opt == log.user_answered %}
-                                    bg-danger-subtle text-dark
-                                {% else %}
-                                    bg-light
-                                {% endif %}
-                            {% else %}
-                                bg-light
-                            {% endif %}
-                        ">
-                            <strong>{{ opt|upper }}.</strong> {{ log.question|get_option:opt }}
-                        </div>
-                        {% endfor %}
-                    </td>
-    
-                    <!-- Subject -->
-                    <td class="text-nowrap">{{ log.question.subject.name }}</td>
-    
-                    <!-- Explanation -->
-                    <td>
-                        <div class="text-wrap overflow-auto" style="max-width: 100%;">
-                            {{ log.question.explanation_html|safe }}
-                        </div>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="5" class="text-center text-muted">No {{ attempt_type }} attempts found for this test.</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    
-    </div>
+          <!-- Subject -->
+          <td class="py-3 whitespace-nowrap">
+            {{ log.question.subject.name }}
+          </td>
+
+          <!-- Explanation -->
+          <td class="py-3">
+            <div class="prose dark:prose-invert prose-headings:text-lg
+            prose-headings:font-semibold max-w-none">
+              {{ log.question.explanation_generated|render_markdown }}
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="5" class="py-6 text-center text-gray-500 dark:text-gray-400">
+            No {{ attempt_type }} attempts found for this test.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
 </div>
 {% endblock %}
