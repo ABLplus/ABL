@@ -1,94 +1,202 @@
+{# templates/practice/practice_summary.html #}
 {% extends "user/base.html" %}
+{% load question_extras markdown_extras %}
 
 {% block title %}Practice Summary – {{ session.name|default:"Practice Session" }}{% endblock %}
 
 {% block content %}
 <div class="mx-auto max-w-6xl px-4 mt-6">
 
-  <!-- ── Heading ── -->
-  <h1 class="text-3xl font-bold mb-6 text-primary-600 dark:text-primary-400">
-    Practice Summary
-  </h1>
+  <!-- ── Heading (mirror test header tone) ── -->
+  <h4 class="text-xl font-semibold text-center mb-2
+             text-primary-600 dark:text-primary-400">
+    Practice Summary – {% if session.name %}{{ session.name }}{% else %}Session #{{ session.id }}{% endif %}
+  </h4>
+  <p class="text-center text-sm text-gray-500 dark:text-gray-400 mb-8">
+    Started: {{ session.start_time|date:"d M Y H:i" }} • Completed: {{ session.end_time|date:"d M Y H:i" }}
+  </p>
 
-  <!-- ── Session meta ── -->
-  <div class="mb-8">
-    <h2 class="text-xl font-semibold mb-2">
-      {% if session.name %}
-        {{ session.name }}
-      {% else %}
-        Session #{{ session.id }}
-      {% endif %}
-    </h2>
-
-    <p class="text-gray-700 dark:text-gray-300">
-      Started: {{ session.start_time|date:"M d, Y H:i" }} &nbsp;•&nbsp;
-      Completed: {{ session.end_time|date:"M d, Y H:i" }}<br>
-      Total Questions: <strong>{{ session.total_questions }}</strong> &nbsp;|&nbsp;
-      Correct: <span class="text-green-600">{{ session.correct_answers }}</span> &nbsp;|&nbsp;
-      Wrong: <span class="text-red-500">{{ session.wrong_answers }}</span>
-    </p>
+  <!-- Back to dashboard -->
+  <div class="flex justify-center mb-10">
+    <a href="{% url 'dashboard' %}?mode=practice"
+       class="px-4 py-2 rounded-lg bg-primary-600 hover:bg-primary-700 text-white">
+      Back to Practice Dashboard
+    </a>
   </div>
 
-  <!-- ── Log table ── -->
+  <!-- ── Filter bar (like test) ── -->
+  <form method="get" class="flex flex-wrap gap-4 items-end mb-10">
+
+
+    <!-- Attempt Type -->
+    <div>
+      <label for="attempt_type" class="block text-sm font-medium mb-1">
+        Filter by Attempt Type
+      </label>
+      <select name="attempt_type" id="attempt_type"
+              class="w-48 rounded-lg border-gray-300 dark:border-gray-600
+                     bg-white dark:bg-gray-800 text-sm p-2">
+        <option value="">All</option>
+        <option value="sureshot"  {% if selected_attempt_type == 'sureshot' %}selected{% endif %}>Sureshot</option>
+        <option value="applied"   {% if selected_attempt_type == 'applied' %}selected{% endif %}>Applied</option>
+        <option value="guesswork" {% if selected_attempt_type == 'guesswork' %}selected{% endif %}>Guesswork</option>
+      </select>
+    </div>
+     <!-- Result of attempt -->
+    <div>
+      <label for="result" class="block text-sm font-medium mb-1">
+        Filter by Result
+      </label>
+      <select name="result" id="result"
+              class="w-40 rounded-lg border-gray-300 dark:border-gray-600
+                     bg-white dark:bg-gray-800 text-sm p-2">
+        <option value="">All</option>
+        <option value="right" {% if selected_result == 'right' %}selected{% endif %}>Right</option>
+        <option value="wrong" {% if selected_result == 'wrong' %}selected{% endif %}>Wrong</option>
+
+      </select>
+    </div>
+
+
+
+    <button type="submit"
+            class="px-4 py-2 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-sm">
+      Apply
+    </button>
+
+    <a href="{% url 'practice:practice_summary' session.id %}"
+       class="px-4 py-2 rounded-lg border border-gray-400
+              dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm">
+      Clear
+    </a>
+  </form>
+
+  <!-- ── Count ── -->
+  <h5 class="font-semibold mb-4">{{ log_count }} of {{ session.total_questions }} Questions</h5>
+
+  <!-- ── Table (same columns/order as test) ── -->
   <div class="overflow-x-auto">
-    <table class="min-w-full text-sm divide-y divide-gray-300 dark:divide-gray-700">
-      <thead class="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200">
-        <tr>
-          <th class="py-3 w-14">#</th>
-          <th class="py-3 w-24">Your&nbsp;Answer</th>
-          <th class="py-3 w-24">Correct</th>
-          <th class="py-3 w-24">Result</th>
-          <th class="py-3 w-32">Attempt&nbsp;Type</th>
-          <th class="py-3 w-24">Time&nbsp;(s)</th>
+    <table class="min-w-full divide-y divide-gray-300 dark:divide-gray-700 text-sm">
+      <thead class="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+        <tr class="text-center">
+          <th class="w-12 py-3 font-semibold">#</th>
+          <th class="py-3 font-semibold min-w-[16rem]">Question</th>
+          <th class="py-3 font-semibold min-w-[14rem]">Options</th>
+
+
+          <th class="py-3 font-semibold min-w-[18rem]">Explanation</th>
         </tr>
       </thead>
-      <tbody class="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-900">
+
+      <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
         {% for log in logs %}
-          <tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
-            <td class="py-2 text-center">{{ log.serial }}</td>
-            <td class="py-2 text-center uppercase">
-              {{ log.user_answered|default:"—" }}
-            </td>
-            <td class="py-2 text-center uppercase">
-              {{ log.question.correct_option }}
-            </td>
-            <td class="py-2 text-center">
-              {% if log.attempt_result == 'right' %}
-                <span class="text-green-600 font-semibold">✔</span>
+        <tr class="align-top">
+          <td class="text-center py-3">{{ forloop.counter }}</td>
+
+          <!-- Question -->
+          <td class="py-3">
+            <div class="prose dark:prose-invert
+                        prose-headings:text-lg prose-headings:font-semibold
+                        max-w-none prose-tight">
+              {{ log.question.question_html|safe }}
+            </div>
+          </td>
+
+          <!-- Options (same highlighting rules you use for test) -->
+          <td class="py-3">
+            {# A ———————————————————————— #}
+            <div class="p-1 mb-1 rounded text-sm
+              {% if log.attempt_result == 'right' and 'a' == log.question.correct_option %}
+                bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200
               {% elif log.attempt_result == 'wrong' %}
-                <span class="text-red-500 font-semibold">✖</span>
+                {% if 'a' == log.question.correct_option %}
+                  bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200
+                {% elif 'a' == log.user_answered %}
+                  bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200
+                {% else %}
+                  bg-gray-100 dark:bg-gray-800
+                {% endif %}
               {% else %}
-                —
-              {% endif %}
-            </td>
-            <td class="py-2 text-center capitalize">
-              {{ log.attempt_type|default:"—" }}
-            </td>
-            <td class="py-2 text-center">
-              {{ log.time_taken_seconds|default:"—" }}
-            </td>
-          </tr>
+                bg-gray-100 dark:bg-gray-800
+              {% endif %}">
+              <strong class="mr-1">A.</strong> {{ log.question|get_option:"a" }}
+            </div>
+
+            {# B ———————————————————————— #}
+            <div class="p-1 mb-1 rounded text-sm
+              {% if log.attempt_result == 'right' and 'b' == log.question.correct_option %}
+                bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200
+              {% elif log.attempt_result == 'wrong' %}
+                {% if 'b' == log.question.correct_option %}
+                  bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200
+                {% elif 'b' == log.user_answered %}
+                  bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200
+                {% else %}
+                  bg-gray-100 dark:bg-gray-800
+                {% endif %}
+              {% else %}
+                bg-gray-100 dark:bg-gray-800
+              {% endif %}">
+              <strong class="mr-1">B.</strong> {{ log.question|get_option:"b" }}
+            </div>
+
+            {# C ———————————————————————— #}
+            <div class="p-1 mb-1 rounded text-sm
+              {% if log.attempt_result == 'right' and 'c' == log.question.correct_option %}
+                bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200
+              {% elif log.attempt_result == 'wrong' %}
+                {% if 'c' == log.question.correct_option %}
+                  bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200
+                {% elif 'c' == log.user_answered %}
+                  bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200
+                {% else %}
+                  bg-gray-100 dark:bg-gray-800
+                {% endif %}
+              {% else %}
+                bg-gray-100 dark:bg-gray-800
+              {% endif %}">
+              <strong class="mr-1">C.</strong> {{ log.question|get_option:"c" }}
+            </div>
+
+            {# D ———————————————————————— #}
+            <div class="p-1 mb-1 rounded text-sm
+              {% if log.attempt_result == 'right' and 'd' == log.question.correct_option %}
+                bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200
+              {% elif log.attempt_result == 'wrong' %}
+                {% if 'd' == log.question.correct_option %}
+                  bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200
+                {% elif 'd' == log.user_answered %}
+                  bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200
+                {% else %}
+                  bg-gray-100 dark:bg-gray-800
+                {% endif %}
+              {% else %}
+                bg-gray-100 dark:bg-gray-800
+              {% endif %}">
+              <strong class="mr-1">D.</strong> {{ log.question|get_option:"d" }}
+            </div>
+          </td>
+
+
+
+          <!-- Explanation -->
+          <td class="py-3">
+            <div class="prose dark:prose-invert prose-headings:text-lg
+                        prose-headings:font-semibold max-w-none">
+              {{ log.question.explanation_generated|render_markdown }}
+            </div>
+          </td>
+        </tr>
+
         {% empty %}
-          <tr>
-            <td colspan="6" class="py-6 text-center text-gray-500 dark:text-gray-400">
-              No logs for this session.
-            </td>
-          </tr>
+        <tr>
+          <td colspan="5" class="py-6 text-center text-gray-500 dark:text-gray-400">
+            No questions to show for this practice session.
+          </td>
+        </tr>
         {% endfor %}
       </tbody>
     </table>
-  </div>
-
-  <!-- ── Back to dashboard ── -->
-  <div class="mt-8">
-    <a href="{% url 'dashboard' %}?mode=practice"
-       hx-get="{% url 'dashboard' %}?mode=practice"
-       hx-target="body"
-       hx-swap="outerHTML"
-       hx-push-url="true"
-       class="px-4 py-2 rounded-lg bg-primary-600 hover:bg-primary-700 text-white">
-      Back to Dashboard
-    </a>
   </div>
 
 </div>

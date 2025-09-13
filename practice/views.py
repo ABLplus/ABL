@@ -8,7 +8,7 @@ from django.contrib.auth.decorators import login_required
 import random
 from django.contrib import messages
 from django.urls import reverse
-from django.utils import timezone 
+from django.utils import timezone
 from django.db import transaction
 from django.db.models import Count, Q, F
 from collections import defaultdict
@@ -18,6 +18,7 @@ from django.http import JsonResponse
 from django.core.paginator import Paginator
 from django.db.models import F, FloatField, Value, Case, When, ExpressionWrapper
 from django.utils.http import urlencode
+from collections import Counter
 
 
 
@@ -143,11 +144,11 @@ def _finalise_session_and_update_summary(session: PracticeSession) -> None:
         sureshot_q      = Count("id", filter=Q(attempt_type="sureshot")),
         applied_q       = Count("id", filter=Q(attempt_type="applied")),
         guesswork_q     = Count("id", filter=Q(attempt_type="guesswork")),
-        
+
         sureshot_wrong  = Count("id", filter=Q(attempt_type="sureshot", attempt_result="wrong")),
         applied_wrong   = Count("id", filter=Q(attempt_type="applied",  attempt_result="wrong")),
         guesswork_wrong = Count("id", filter=Q(attempt_type="guesswork",attempt_result="wrong")),
-        
+
     )
 
     wrong_q      = agg["answered_q"] - agg["correct_q"]
@@ -169,12 +170,12 @@ def _finalise_session_and_update_summary(session: PracticeSession) -> None:
         session.sureshot_attempts = agg["sureshot_q"]
         session.applied_attempts  = agg["applied_q"]
         session.guesswork_attempts= agg["guesswork_q"]
-        
+
 
         session.sureshot_wrong    = agg["sureshot_wrong"]
         session.applied_wrong     = agg["applied_wrong"]
         session.guesswork_wrong   = agg["guesswork_wrong"]
-      
+
 
         session.status            = "completed"
         session.end_time          = timezone.now()
@@ -191,8 +192,8 @@ def _finalise_session_and_update_summary(session: PracticeSession) -> None:
                 "wrong_attempts":   0,
                 "net_marks":        0,
             },
-        )       
-        
+        )
+
 
         # update (add) current-session numbers
         summary.total_attempts   = F("total_attempts")   + agg["answered_q"]
@@ -202,12 +203,12 @@ def _finalise_session_and_update_summary(session: PracticeSession) -> None:
         summary.sureshot_attempts  = F("sureshot_attempts")  + agg["sureshot_q"]
         summary.applied_attempts   = F("applied_attempts")   + agg["applied_q"]
         summary.guesswork_attempts = F("guesswork_attempts") + agg["guesswork_q"]
-        
+
 
         summary.sureshot_wrong  = F("sureshot_wrong")  + agg["sureshot_wrong"]
         summary.applied_wrong   = F("applied_wrong")   + agg["applied_wrong"]
         summary.guesswork_wrong = F("guesswork_wrong") + agg["guesswork_wrong"]
-        
+
 
         summary.net_marks       = F("net_marks") + net_marks
         summary.save()
@@ -286,7 +287,7 @@ def practice_question_htmx(request, session_id, serial):
                     "qlog": qlog,
                     "next_log": None,                  # important to hide next button
                     "prev_serial": serial - 1,
-                    
+
                 },
             )
 
@@ -306,7 +307,7 @@ def practice_question_htmx(request, session_id, serial):
         .first()
     )
 
-       
+
 
 
     if qlog.user_answered:                                 # -------- NEW -----
@@ -330,54 +331,82 @@ def practice_question_htmx(request, session_id, serial):
         },
     )
 # ── SUMMARY PAGE (simple) ─────────────────────────────────────
+
+
 @login_required
 def practice_summary(request, session_id):
     """
-    If session is PENDING:
-      - and all questions are answered -> finalize, then show summary
-      - and some question(s) are pending -> redirect to dashboard
-    If session is COMPLETE: render summary
+    Practice session summary with filters:
+      - result: right|wrong
+      - attempt_type: sureshot|applied|guesswork
     """
     session = get_object_or_404(PracticeSession, id=session_id, user=request.user)
 
-    # Adjust these to your actual status values/enums if different
     PENDING  = "pending"
     COMPLETE = "completed"
 
-    # First unanswered question (None means all answered)
+    # If pending and anything unanswered exists, send back to dashboard.
     next_log = (
         session.questionlog_set
         .filter(user_answered__isnull=True)
         .order_by("serial")
         .first()
     )
-    print(session.status)
     if session.status == PENDING:
-        
         if next_log is None:
-            # All questions answered → finalize once, then show summary
             _finalise_session_and_update_summary(session)
             session.refresh_from_db()
-            logs = session.questionlog_set.order_by("serial")
-            return render(
-                request,
-                "practice/practice_summary.html",
-                {"session": session, "logs": logs},
-            )
         else:
-            # Still has pending questions → send user back to dashboard
-            return redirect("dashboard")  # ← change to your actual dashboard URL name
-    elif session.status == COMPLETE:
-        # Already complete → show summary
-        logs = session.questionlog_set.order_by("serial")
-        return render(
-            request,
-            "practice/practice_summary.html",
-            {"session": session, "logs": logs},
-        )
+            return redirect("dashboard")
 
-    # Fallback: if status is something else, be conservative and send to dashboard
-    return redirect("dashboard")
+    # ✅ Always initialize logs_qs BEFORE filtering, to avoid UnboundLocalError
+    logs_qs = session.questionlog_set.select_related("question__subject")
+
+    # --- Filters ------------------------------------------------------
+    # result: right|wrong (practice doesn't use unattempted/blind buckets)
+    selected_result = request.GET.get("result") or ""
+    if selected_result in ("right", "wrong"):
+        logs_qs = logs_qs.filter(attempt_result=selected_result)
+    else:
+        selected_result = ""  # normalize anything else to blank
+
+    # attempt_type: sureshot|applied|guesswork only
+    selected_attempt_type = request.GET.get("attempt_type") or ""
+    if selected_attempt_type in ("sureshot", "applied", "guesswork"):
+        logs_qs = logs_qs.filter(attempt_type=selected_attempt_type)
+    else:
+        selected_attempt_type = ""  # normalize
+
+    # Evaluate once, ordered
+    logs = list(logs_qs.order_by("serial"))
+
+    # Subject counts based on current filtered logs
+    subject_counter = Counter(
+        [log.question.subject.name for log in logs if getattr(log.question, "subject", None)]
+    )
+    subjects = [{"name": name, "count": count} for name, count in sorted(subject_counter.items())]
+
+    # Subject filter (client-provided)
+    selected_subject = request.GET.get("subject") or ""
+    if not selected_subject and len(subjects) == 1:
+        selected_subject = subjects[0]["name"]
+
+    if selected_subject:
+        logs = [l for l in logs if l.question.subject and l.question.subject.name == selected_subject]
+
+    context = {
+        "session": session,
+        "logs": logs,
+        "log_count": len(logs),
+        "subjects": subjects,
+        "selected_subject": selected_subject,
+        "selected_result": selected_result,
+        "selected_attempt_type": selected_attempt_type,
+    }
+    return render(request, "practice/practice_summary.html", context)
+
+
+
 
 @login_required
 def practice_home(request):
@@ -433,7 +462,7 @@ def create_practice(request):
 
     subject_id  = data.get("subject")
     section_id  = data.get("section")
-    topic_id    = data.get("topic")    
+    topic_id    = data.get("topic")
     order_mode  = data.get("order", "serial")
 
     # ----------------------------------------------------------------
@@ -455,8 +484,8 @@ def create_practice(request):
     subject  = get_object_or_404(Subject, pk=subject_id)   if subject_id  else None
     section  = get_object_or_404(Section, pk=section_id)   if section_id  else None
     topic    = topic_obj or (get_object_or_404(Topic, pk=topic_id) if topic_id else None)
-    
-    
+
+
 
     # Need at least a topic to form a session
     if not topic:
@@ -467,7 +496,11 @@ def create_practice(request):
     # 4. Build question queryset – deepest filter wins
     # ----------------------------------------------------------------
     qs = Question.objects.filter(topic=topic)
-    
+
+
+    if PracticeSession.objects.filter(user=user, topic=topic).count() > 1:
+        order_mode = "random"
+
 
     ids = list(qs.values_list("id", flat=True))
     if order_mode == "random":
@@ -487,7 +520,7 @@ def create_practice(request):
             user=user,
             subject=subject,
             section=section,
-            topic=topic,            
+            topic=topic,
             status="pending",
             total_questions=len(ids),
             start_time=timezone.now(),
@@ -670,7 +703,7 @@ def ajax_subject_sections(request, subject_id):
 
 # @login_required
 # def topic_summary(request):
-    
+
 
 #     target_user = request.user
 #     user_qs_param = request.GET.get("user")

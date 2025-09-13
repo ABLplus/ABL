@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-8fu1w&y)p_3x00frq=%^=6bm*unyt5^!-cy#xwitwaommt!8)v
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["ablplus.pythonanywhere.com"]
 
 CKEDITOR_CONFIGS = {
     'default': {
@@ -48,7 +48,7 @@ CKEDITOR_CONFIGS = {
 
 INSTALLED_APPS = [
 
-    'analysis',   
+    'analysis',
     'practice',
     'syllabus',
     'result',
@@ -137,7 +137,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Kolkata'
 
 USE_I18N = True
 

@@ -95,7 +95,7 @@
           <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ total_attempts }}</p>
         </div>
       </div>
-      
+
 
       <div class="flex items-center space-x-2">
         <span class="p-2 bg-blue-100 dark:bg-blue-700 rounded-full">
@@ -297,14 +297,14 @@
 
   {# 1️⃣  Centre-aligned buttons with gap #}
   <div class="flex justify-center gap-4 mb-6">
-    <button
-      @click="openPanel = (openPanel === 'capsule' ? null : 'capsule')"
-      :class="openPanel === 'capsule'
-              ? 'bg-indigo-600 text-white'
-              : 'bg-indigo-100 dark:bg-indigo-800 text-indigo-700 dark:text-indigo-200'"
-      class="px-6 py-2 rounded-lg font-semibold transition-colors">
-      Practice Capsule Subject or its Section
-    </button>
+    <!--<button-->
+    <!--  @click="openPanel = (openPanel === 'capsule' ? null : 'capsule')"-->
+    <!--  :class="openPanel === 'capsule'-->
+    <!--          ? 'bg-indigo-600 text-white'-->
+    <!--          : 'bg-indigo-100 dark:bg-indigo-800 text-indigo-700 dark:text-indigo-200'"-->
+    <!--  class="px-6 py-2 rounded-lg font-semibold transition-colors">-->
+    <!--  Practice Capsule Subject or its Section-->
+    <!--</button>-->
 
     <button
       @click="openPanel = (openPanel === 'direct' ? null : 'direct')"
@@ -316,15 +316,15 @@
     </button>
   </div>
 
-  {# 2️⃣  Capsule view (shows / hides on toggle) #}
-  <div x-show="openPanel === 'capsule'" x-transition.opacity>
-    <h3 class="font-medium text-gray-900 dark:text-white mb-4">
-      Capsule Practice – pick Subject / Section
-    </h3>
+  <!--{# 2️⃣  Capsule view (shows / hides on toggle) #}-->
+  <!--<div x-show="openPanel === 'capsule'" x-transition.opacity>-->
+  <!--  <h3 class="font-medium text-gray-900 dark:text-white mb-4">-->
+  <!--    Capsule Practice – pick Subject / Section-->
+  <!--  </h3>-->
 
-    {# renders ALL subjects + sections; click starts capsule #}
-    {% include "practice/partials/subject_sections.html" with subjects=subjects %}
-  </div>
+  <!--  {# renders ALL subjects + sections; click starts capsule #}-->
+  <!--  {% include "practice/partials/subject_sections.html" with subjects=subjects %}-->
+  <!--</div>-->
 
   {# 3️⃣  Direct-Topic view (shows / hides on toggle) #}
   <div x-show="openPanel === 'direct'" x-transition.opacity>

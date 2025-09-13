@@ -1,13 +1,13 @@
 {# ───────── Question Card (highlight correct / wrong) ───────── #}
 {% load markdown_extras %}
 {# ───────── Navigation ───────── #}
-<div class="mt-6 flex items-center space-x-4">
+<div class="mt-6 flex justify-between w-full">
   {% if prev_serial %}
     <button
       hx-get="{% url 'practice:practice_question_htmx' qlog.practiceSession.id prev_serial %}"
       hx-target="#question-container"
       hx-swap="innerHTML"
-      class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded">
+      class="w-28 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">
       ← Back
     </button>
   {% endif %}
@@ -17,16 +17,18 @@
       hx-get="{% url 'practice:practice_question_htmx' qlog.practiceSession.id next_log.serial %}"
       hx-target="#question-container"
       hx-swap="innerHTML"
-      class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded">
+      class="w-28 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">
       Next →
     </button>
   {% else %}
     <a href="{% url 'practice:practice_summary' qlog.practiceSession.id %}"
-       class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded">
-      ✅ Finish and View Summary
+       class="w-28 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg">
+       ✅ Finish
     </a>
   {% endif %}
 </div>
+
+
 
 <div class="bg-white dark:bg-gray-800 p-6 rounded shadow">
   <h2 class="text-xl font-bold mb-4">Question {{ qlog.serial }} ({{qlog.question.exam_name}}-{{qlog.question.year}})</h2>
@@ -101,5 +103,33 @@
     {{ qlog.question.explanation_generated|render_markdown}}
   </div>
 </div>
+{# ───────── Navigation ───────── #}
+<div class="mt-6 flex justify-between w-full">
+  {% if prev_serial %}
+    <button
+      hx-get="{% url 'practice:practice_question_htmx' qlog.practiceSession.id prev_serial %}"
+      hx-target="#question-container"
+      hx-swap="innerHTML"
+      class="w-28 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">
+      ← Back
+    </button>
+  {% endif %}
+
+  {% if next_log %}
+    <button
+      hx-get="{% url 'practice:practice_question_htmx' qlog.practiceSession.id next_log.serial %}"
+      hx-target="#question-container"
+      hx-swap="innerHTML"
+      class="w-28 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">
+      Next →
+    </button>
+  {% else %}
+    <a href="{% url 'practice:practice_summary' qlog.practiceSession.id %}"
+       class="w-28 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg">
+      ✅ Finish
+    </a>
+  {% endif %}
+</div>
+
 
 

@@ -23,7 +23,7 @@ from django.db.models import (
 )
 from django.utils import timezone
 from syllabus.models import Subject
-from django.db.models.functions import Coalesce               
+from django.db.models.functions import Coalesce
 
 
 
@@ -89,7 +89,7 @@ def test_filter_form(request):
 
     elif ttype == "subject":
         ctx = {"subjects": Subject.objects.all()}
-        
+
         return render(request, "analysis/partials/_subject_form.html", ctx)
 
     return HttpResponseBadRequest("Unknown test type")
@@ -225,7 +225,7 @@ def _test_insights(user):
     # ── 2. Aggregate question counts from all test-mode topics ─────────
     test_agg = (
         Test.objects
-            .filter(user=user)
+            .filter(user=user, status="completed")
             .aggregate(
                 total_questions  = Sum("total_questions"),
                 correct_answers  = Sum("correct_answers"),
@@ -237,7 +237,7 @@ def _test_insights(user):
     correct_attempts  = test_agg["correct_answers"]  or 0
     total_unattempted = test_agg["unattempted"]      or 0
 
-    
+
     attempted = total_questions - total_unattempted
     wrong     = attempted - correct_attempts
 
@@ -305,7 +305,7 @@ def _test_insights(user):
 
     return insights
 
-    
+
 @login_required
 def dashboard(request):
     mode = _get_mode(request)
@@ -315,13 +315,13 @@ def dashboard(request):
     exam_date = profile.exam_date
     days_left = (exam_date - timezone.now().date()).days if exam_date else "--"
 
-    
-    
+
+
     context = {
         "profile":     profile,
         "current_mode":  mode,
         "days_left":     days_left,
-        
+
     }
 
     if mode == "test":
@@ -342,13 +342,13 @@ def dashboard(request):
             pending_tests_with_next_serial.append((t, next_serial))
 
         insights = _test_insights(request.user)
-        
+
 
         context.update({
             "pending_tests":   pending_tests_with_next_serial,
             'can_create':        can_create,
-            "test_insights": insights,   
-                        
+            "test_insights": insights,
+
         })
 
 
@@ -372,7 +372,7 @@ def dashboard(request):
         subjects = Subject.objects.all().order_by('name')
 
         # 4. All OLT types for the dropdown
-        
+
 
         template = "analysis/practice_dash.html"
 
@@ -382,7 +382,7 @@ def dashboard(request):
             'previous_sessions': previous_sessions,
             'subjects':          subjects,
             **_insights_context(request),
-            
+
         })
 
     return render(request, template, context)
