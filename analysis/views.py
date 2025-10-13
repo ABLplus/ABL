@@ -150,7 +150,13 @@ def _insights_context(request):
         else:  # wr > 50
             worst.append((wr, row))
 
+    #counts
+    best_no = len(best)
+    mid_no  = len(mid)
+    worst_no= len(worst)
+
     # pick & sort
+    
     best  = sorted(best,  key=lambda x: x[0])[:5]
     worst = sorted(worst, key=lambda x: x[0], reverse=True)[:5]
 
@@ -175,6 +181,9 @@ def _insights_context(request):
         "best_topics":      [to_dict(x) for x in best],
         "mid_topics":       [to_dict(x) for x in mid],
         "worst_topics":     [to_dict(x) for x in worst],
+        "best_no":         best_no if len(best) else 0,
+        "mid_no":          mid_no  if len(mid)  else 0, 
+        "worst_no":        worst_no if len(worst)else 0,
     }
 
 

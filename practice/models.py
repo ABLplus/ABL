@@ -23,12 +23,12 @@ class PracticeSession(models.Model):
     sureshot_attempts = models.PositiveIntegerField(default=0)
     applied_attempts = models.PositiveIntegerField(default=0)
     guesswork_attempts = models.PositiveIntegerField(default=0)
-    blind_attempts = models.PositiveIntegerField(default=0)
+    
 
     sureshot_wrong = models.PositiveIntegerField(default=0)
     applied_wrong = models.PositiveIntegerField(default=0)
     guesswork_wrong = models.PositiveIntegerField(default=0)
-    blind_wrong = models.PositiveIntegerField(default=0)
+    
 
     # Timestamps
     start_time = models.DateTimeField(auto_now_add=True)

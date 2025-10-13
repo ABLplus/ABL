@@ -249,7 +249,7 @@ def practice_question_htmx(request, session_id, serial):
     qlog = get_object_or_404(
         QuestionLog, practiceSession=session, serial=serial
     )
-    print("yaha to araha hai ")
+    
     # ---------- POST  : save answer -----------------------------------------
     if request.method == "POST":
         user_answered = request.POST.get("option")
@@ -277,7 +277,7 @@ def practice_question_htmx(request, session_id, serial):
 
         # ----------- nothing left  →  COMPLETE SESSION ----------------------
         if not next_log:
-            print("Khatam")
+            
             _finalise_session_and_update_summary(session)
 
             return render(
@@ -330,9 +330,11 @@ def practice_question_htmx(request, session_id, serial):
             "prev_serial": prev_serial,
         },
     )
+
+
+
+
 # ── SUMMARY PAGE (simple) ─────────────────────────────────────
-
-
 @login_required
 def practice_summary(request, session_id):
     """
@@ -394,6 +396,18 @@ def practice_summary(request, session_id):
     if selected_subject:
         logs = [l for l in logs if l.question.subject and l.question.subject.name == selected_subject]
 
+
+    # --- Find next topic in the same subject ---
+    next_topic = None
+  
+    if session.subject and session.topic_id:
+        next_topic = (
+            Topic.objects
+            .filter(section__subject=session.subject, id__gt=session.topic_id)
+            .order_by("id")
+            .first()
+    )
+
     context = {
         "session": session,
         "logs": logs,
@@ -402,6 +416,7 @@ def practice_summary(request, session_id):
         "selected_subject": selected_subject,
         "selected_result": selected_result,
         "selected_attempt_type": selected_attempt_type,
+        "next_topic": next_topic,
     }
     return render(request, "practice/practice_summary.html", context)
 
@@ -508,7 +523,7 @@ def create_practice(request):
     else:  # serial = newest first
         ids.sort(reverse=True)
 
-    if len(ids) < 4:
+    if len(ids) < 3:
         messages.error(request, "Not enough questions for that filter.")
         return redirect("dashboard")
 

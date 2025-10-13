@@ -22,13 +22,14 @@
       Practice – {{ session.name }}
     </h1>
 
-    <div id="question-container"
-         hx-get="{% url 'practice:practice_question_htmx' session.id first_serial %}"
-         hx-trigger="load,once"
-         hx-target="this"
-         hx-swap="innerHTML">
-      {# First question loads here via HTMX #}
-    </div>
+  <div id="question-container"
+     hx-get="{% url 'practice:practice_question_htmx' session.id first_serial %}"
+     hx-trigger="load,once"
+     hx-target="this"
+     hx-swap="innerHTML"
+     hx-on="htmx:afterSwap: window.scrollTo({ top: 0, behavior: 'smooth' })">
+  {# First question loads here via HTMX #}
+</div>
 
   </div>
 {% endblock %}

@@ -16,13 +16,84 @@
     Started: {{ session.start_time|date:"d M Y H:i" }} • Completed: {{ session.end_time|date:"d M Y H:i" }}
   </p>
 
-  <!-- Back to dashboard -->
-  <div class="flex justify-center mb-10">
-    <a href="{% url 'dashboard' %}?mode=practice"
-       class="px-4 py-2 rounded-lg bg-primary-600 hover:bg-primary-700 text-white">
-      Back to Practice Dashboard
+<!-- Back to dashboard and next topic -->
+<div class="flex justify-between items-center mb-10">
+  <a href="{% url 'dashboard' %}?mode=practice"
+     class="px-4 py-2 rounded-lg bg-primary-600 hover:bg-primary-700 text-white">
+    Back to Practice Dashboard
+  </a>
+
+  {% if next_topic %}
+    <a href="{% url 'practice:create_practice' %}?topic={{ next_topic.id }}"
+       class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white">
+      Practice Next Topic → {{ next_topic.name }}
     </a>
+  {% endif %}
+</div>
+
+
+   {# ── Session Stats (overall + attempt types) ── #}
+<section class="mb-8">
+  <!-- Key stats -->
+  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+    <div class="rounded-xl border border-gray-200 dark:border-gray-700 p-3 text-center">
+      <div class="text-xs text-gray-500 dark:text-gray-400">Total Questions</div>
+      <div class="text-xl font-semibold">{{ session.total_questions }}</div>
+    </div>
+
+    <div class="rounded-xl border border-gray-200 dark:border-gray-700 p-3 text-center">
+      <div class="text-xs text-gray-500 dark:text-gray-400">Attempted</div>
+      <div class="text-xl font-semibold">
+        {{ session.sureshot_attempts|add:session.applied_attempts|add:session.guesswork_attempts }}
+      </div>
+    </div>
+
+    <div class="rounded-xl border border-gray-200 dark:border-gray-700 p-3 text-center">
+      <div class="text-xs text-gray-500 dark:text-gray-400">Correct</div>
+      <div class="text-xl font-semibold text-green-600 dark:text-green-400">{{ session.correct_answers }}</div>
+    </div>
+
+    <div class="rounded-xl border border-gray-200 dark:border-gray-700 p-3 text-center">
+      <div class="text-xs text-gray-500 dark:text-gray-400">Wrong</div>
+      <div class="text-xl font-semibold text-red-600 dark:text-red-400">
+        {{ session.sureshot_wrong|add:session.applied_wrong|add:session.guesswork_wrong }}
+      </div>
+    </div>
+
+    <div class="rounded-xl border border-gray-200 dark:border-gray-700 p-3 text-center">
+      <div class="text-xs text-gray-500 dark:text-gray-400">% Wrong</div>
+      <div class="text-xl font-semibold text-red-600 dark:text-red-400">
+        {% if session.total_questions %}
+          {% widthratio session.sureshot_wrong|add:session.applied_wrong|add:session.guesswork_wrong session.total_questions 100 %}%
+        {% else %}—{% endif %}
+      </div>
+    </div>
   </div>
+
+   <!-- Attempt types: compact inline pills (centered) -->
+  <div class="mt-4 flex flex-wrap justify-center items-center gap-2 text-xs">
+    <span class="text-gray-500 dark:text-gray-400 mr-1">Attempt types:</span>
+
+    <div class="px-3 py-1 rounded-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+      <span class="font-medium">Sureshot</span>
+      <span class="text-gray-500 dark:text-gray-400 ml-1">{{ session.sureshot_attempts }}A /</span>
+      <span class="text-red-600 dark:text-red-400">{{ session.sureshot_wrong }}W</span>
+    </div>
+
+    <div class="px-3 py-1 rounded-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+      <span class="font-medium">Applied</span>
+      <span class="text-gray-500 dark:text-gray-400 ml-1">{{ session.applied_attempts }}A /</span>
+      <span class="text-red-600 dark:text-red-400">{{ session.applied_wrong }}W</span>
+    </div>
+
+    <div class="px-3 py-1 rounded-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+      <span class="font-medium">Guesswork</span>
+      <span class="text-gray-500 dark:text-gray-400 ml-1">{{ session.guesswork_attempts }}A /</span>
+      <span class="text-red-600 dark:text-red-400">{{ session.guesswork_wrong }}W</span>
+    </div>
+  </div>
+</section>
+
 
   <!-- ── Filter bar (like test) ── -->
   <form method="get" class="flex flex-wrap gap-4 items-end mb-10">
@@ -198,6 +269,21 @@
       </tbody>
     </table>
   </div>
+
+<!-- Back to dashboard and next topic -->
+<div class="flex justify-between items-center mb-10">
+  <a href="{% url 'dashboard' %}?mode=practice"
+     class="px-4 py-2 rounded-lg bg-primary-600 hover:bg-primary-700 text-white">
+    Back to Practice Dashboard
+  </a>
+
+  {% if next_topic %}
+    <a href="{% url 'practice:create_practice' %}?topic={{ next_topic.id }}"
+       class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white">
+      Practice Next Topic → {{ next_topic.name }}
+    </a>
+  {% endif %}
+</div>
 
 </div>
 {% endblock %}

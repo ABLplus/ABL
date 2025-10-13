@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-8fu1w&y)p_3x00frq=%^=6bm*unyt5^!-cy#xwitwaommt!8)v
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["ablplus.pythonanywhere.com"]
+ALLOWED_HOSTS = []
 
 CKEDITOR_CONFIGS = {
     'default': {
