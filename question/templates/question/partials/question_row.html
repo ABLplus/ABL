@@ -1,96 +1,228 @@
-{# question/partials/question_row.html #}
 {% load markdown_extras %}
-<tr id="question-{{ q.id }}">
-  <td>{{ forloop.counter }}</td>
-  <td>{{ q.exam_name }}-{{ q.year }}</td>
+<tr id="question-{{ q.id }}" x-data="{ editOpen: false }">
+  <!-- Sr/ID -->
+  <td class="px-3 py-2 align-top">{{ forloop.counter }}</td>
 
-  <td class="question-cell">
-    {{ q.question_html|safe }}
-    <ul class="ps-3 mb-0">
-      <p><strong>A.</strong> {{ q.option_a }}</p>
-      <p><strong>B.</strong> {{ q.option_b }}</p>
-      <p><strong>C.</strong> {{ q.option_c }}</p>
-      <p><strong>D.</strong> {{ q.option_d }}</p>
-    </ul>
+  <!-- Exam-Year -->
+  <td class="px-3 py-2 align-top">{{ q.exam_name }}-{{ q.year }} ID-{{ q.id }}</td>
+
+  <!-- Q & Options -->
+  <td class="px-3 py-2 align-top">
+
+    {# ─── View mode (HTML) ─── #}
+    <div x-show="!editOpen" class="prose dark:prose-invert prose-headings:text-lg prose-headings:font-semibold max-w-none">
+      <!-- Question stem -->
+      {{ q.question_html|safe }}
+
+      <!-- Options (stacked vertically) -->
+      <div class="mt-4 space-y-2">
+        <p class="text-base text-gray-700 dark:text-gray-200">(a) {{ q.option_a }}</p>
+        <p class="text-base text-gray-700 dark:text-gray-200">(b) {{ q.option_b }}</p>
+        <p class="text-base text-gray-700 dark:text-gray-200">(c) {{ q.option_c }}</p>
+        <p class="text-base text-gray-700 dark:text-gray-200">(d) {{ q.option_d }}</p>
+      </div>
+    </div>
+
+    {# ─── Edit mode: HTML-backed question + editable options ─── #}
+    <div x-show="editOpen" x-cloak class="mt-2 flex flex-col gap-4">
+
+      <!-- Hidden textarea to POST HTML -->
+      <textarea name="question_html" id="qhtml-{{ q.id }}" class="hidden">
+        {{ q.question_html|safe }}
+      </textarea>
+
+      <!-- Toast UI mount for question -->
+      <div
+        class="relative rounded border border-gray-200 dark:border-gray-700 h-[480px] overflow-auto"
+        data-tui-editor="question"
+        data-row-id="{{ q.id }}"
+        data-textarea-id="qhtml-{{ q.id }}"
+        data-format="html">
+      </div>
+
+      <!-- Options editable (stacked vertically) -->
+      <div class="pt-2 border-t border-gray-200 dark:border-gray-700 space-y-3">
+        <div>
+          <label class="block text-xs font-medium text-gray-600 dark:text-gray-300">Option A</label>
+          <textarea name="option_a" rows="2"
+            class="mt-1 w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 py-1.5 text-xs"
+          >{{ q.option_a }}</textarea>
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-gray-600 dark:text-gray-300">Option B</label>
+          <textarea name="option_b" rows="2"
+            class="mt-1 w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 py-1.5 text-xs"
+          >{{ q.option_b }}</textarea>
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-gray-600 dark:text-gray-300">Option C</label>
+          <textarea name="option_c" rows="2"
+            class="mt-1 w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 py-1.5 text-xs"
+          >{{ q.option_c }}</textarea>
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-gray-600 dark:text-gray-300">Option D</label>
+          <textarea name="option_d" rows="2"
+            class="mt-1 w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 py-1.5 text-xs"
+          >{{ q.option_d }}</textarea>
+        </div>
+      </div>
+
+      <!-- Correct option -->
+      <div class="flex flex-wrap items-center gap-x-4 gap-y-2" data-co-wrap>
+        <span class="text-xs font-medium text-gray-600 dark:text-gray-300">
+          Correct: {{ q.correct_option|upper }}
+        </span>
+
+        {# Hidden field that will actually be submitted #}
+        <input type="hidden" name="correct_option" value="{{ q.correct_option|default_if_none:'' }}">
+
+        {% for opt in "ABCD" %}
+          <label class="inline-flex items-center gap-1 text-xs">
+            <input
+              type="radio"
+              name="correct_option_{{ q.id }}"    {# unique per row #}
+              value="{{ opt|lower }}"             {# DB uses lowercase #}
+              {% if q.correct_option == opt|lower %}checked{% endif %}
+              onchange="this.closest('[data-co-wrap]').querySelector('input[type=hidden][name=correct_option]').value=this.value"
+              class="h-3 w-3 text-primary-600 focus:ring-primary-500"
+            >
+            <span>{{ opt }}</span>
+          </label>
+        {% endfor %}
+      </div>
+    </div>
   </td>
-    <!-- OLT -->
-<td>
-  <select name="olt"
-          class="form-select form-select-sm">
-    <option value="">-- OLT --</option>
-    {% for olt in olts %}
-      <option value="{{ olt.id }}"
-        {% if q.olt_id == olt.id %}selected{% endif %}>
-        {{ olt.code}}-{{ olt.name }}
-      </option>
-    {% endfor %}
-  </select>
-</td>
 
-  <!-- Subject -->
-  <td>
-    <select name="subject"
-            class="form-select form-select-sm"
-            hx-get="{% url 'question:ajax_question_sections' q.id %}"
-            hx-trigger="change"
-            hx-target="#section-{{ q.id }}"
-            hx-include="this">
-      <option value="">-- Subject --</option>
-      {% for subj in subjects %}
-        <option value="{{ subj.id }}" {% if q.subject_id == subj.id %}selected{% endif %}>
-          {{ subj.name }}
-        </option>
-      {% endfor %}
-    </select>
+  <!-- OLT -->
+  <td class="px-3 py-2 align-top">
+    <div class="max-w-[5.5rem]">
+      <select name="olt"
+              class="w-full min-w-[5.5rem] rounded-md border border-gray-300 dark:border-gray-700
+                     bg-white dark:bg-gray-800 px-3 py-1.5 text-xs font-medium tracking-tight
+                     focus:outline-none focus:ring-2 focus:ring-primary-500">
+        <option value="">-- OLT --</option>
+        {% for olt in olts %}
+          <option value="{{ olt.id }}" {% if q.olt_id == olt.id %}selected{% endif %}>
+            {{ olt.code }} - {{ olt.name }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
   </td>
 
-  <!-- Section -->
-  <td id="section-{{ q.id }}">
-    {% include "question/partials/section_filter_for_row.html" %}
-  </td>
+  <!-- Syllabus -->
+  <td class="px-3 py-2 align-top">
+    <div class="syllabus-stack max-w-[13rem] w-full">
+      <!-- Subject -->
+      <div class="mb-2">
+        <label class="block text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">Subject</label>
+        <select name="subject"
+                class="w-full min-w-[12rem] rounded-md border border-gray-300 dark:border-gray-700
+                       bg-white dark:bg-gray-800 px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-primary-500"
+                hx-get="{% url 'question:ajax_question_sections' q.id %}"
+                hx-trigger="change"
+                hx-target="#section-{{ q.id }}"
+                hx-include="closest tr">
+          <option value="">-- Subject --</option>
+          {% for subj in subjects %}
+            <option value="{{ subj.id }}" {% if q.subject_id == subj.id %}selected{% endif %}>{{ subj.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
 
-  <!-- Topic -->
-  <td id="topic-{{ q.id }}">
-    {% include "question/partials/topic_filter_for_row.html" %}
-  </td>
+      <!-- Section -->
+      <div class="mb-2" id="section-{{ q.id }}">
+        {% include "question/partials/section_filter_for_row.html" %}
+      </div>
 
-  <!-- Subtopic -->
-  <td id="subtopic-{{ q.id }}">
-    {% include "question/partials/subtopic_filter_for_row.html" %}
+      <!-- Topic -->
+      <div class="mb-2" id="topic-{{ q.id }}">
+        {% include "question/partials/topic_filter_for_row.html" %}
+      </div>
+
+      <!-- Subtopic -->
+      <div id="subtopic-{{ q.id }}">
+        {% include "question/partials/subtopic_filter_for_row.html" %}
+      </div>
+    </div>
   </td>
 
   <!-- Explanation -->
-  <td class="explanation-cell">
-    {% if q.explanation_generated %}
-      <div class="markdown">{{ q.explanation_generated|render_markdown }}</div>
-    {% else %}
-      <span class="text-muted">—</span>
-    {% endif %}
+  <td class="px-3 py-2 align-top">
+    {# View mode: Markdown => HTML #}
+    <div x-show="!editOpen" x-cloak>
+      {% if q.explanation_generated %}
+        <h2 class="text-lg font-semibold mb-2">Correct: {{ q.correct_option|upper }}</h2>
+        <div class="prose dark:prose-invert prose-headings:text-lg prose-headings:font-semibold max-w-none">
+          {{ q.explanation_generated|render_markdown }}
+        </div>
+      {% else %}
+      <h2 class="text-lg font-semibold mb-2">Correct: {{ q.correct_option|upper }}</h2>
+        <div class="prose dark:prose-invert max-w-none">
+          No explanation available
+        </div>
+      {% endif %}
+    </div>
+
+    {# Edit mode: Markdown-backed field with WYSIWYG UI #}
+    <div x-show="editOpen" x-cloak>
+      <textarea name="explanation_generated" id="e-md-{{ q.id }}" class="hidden">{{ q.explanation_generated|default_if_none:"" }}</textarea>
+
+      <div class="mt-2 rounded border border-gray-200 dark:border-gray-700"
+           data-tui-editor="explanation"
+           data-row-id="{{ q.id }}"
+           data-textarea-id="e-md-{{ q.id }}"
+           data-format="markdown"
+           style="min-height: 260px"></div>
+
+      <p class="mt-1 text-[11px] text-gray-500">You’re editing visually; it will be saved as <strong>Markdown</strong>.</p>
+    </div>
   </td>
 
-
-
   <!-- Actions -->
-  <td>
-    <a href="{% url 'question:edit_question' q.pk %}"
-       class="btn btn-sm btn-warning">Edit</a>
-    <a href="{% url 'question:delete_question' q.pk %}"
-       class="btn btn-sm btn-danger ms-1">Delete</a>
+  <td class="px-3 py-2 align-top">
+    <div class="flex flex-col gap-1.5 w-full">
 
-    <button class="btn btn-sm btn-success ms-1"
-            hx-post="{% url 'question:check_save' q.id %}"
-            hx-include="closest tr"
-            hx-target="closest tr"
-            hx-swap="outerHTML">
-      Check &amp; Save
-    </button>
+      <!-- Toggle inline rich editor -->
+      <button type="button"
+              class="inline-flex items-center justify-center rounded-md bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3 py-1.5 w-full text-center"
+              @click="editOpen = !editOpen; if (editOpen) { window.__initRowEditors && window.__initRowEditors($el.closest('tr')); }">
+        <span x-show="!editOpen">Rich Edit</span>
+        <span x-show="editOpen">Close Editor</span>
+      </button>
 
-    <button class="btn btn-sm btn-info ms-1"
-            hx-post="{% url 'question:mark_review' q.id %}"
-            hx-include="closest tr"
-            hx-target="closest tr"
-            hx-swap="outerHTML">
-      Mark Review
-    </button>
+      <!-- Save & mark checked (replaces row HTML) -->
+      <button class="inline-flex items-center justify-center rounded-md bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1.5 w-full text-center"
+              hx-post="{% url 'question:check_save' q.id %}"
+              hx-include="closest tr"
+              hx-target="closest tr"
+              hx-swap="outerHTML">
+        Check &amp; Save
+      </button>
+
+      <!-- Mark review -->
+      <button class="inline-flex items-center justify-center rounded-md bg-sky-600 hover:bg-sky-700 text-white text-xs px-3 py-1.5 w-full text-center"
+              hx-post="{% url 'question:mark_review' q.id %}"
+              hx-include="closest tr"
+              hx-target="closest tr"
+              hx-swap="outerHTML">
+        Mark Review
+      </button>
+
+      <!-- Reset → Pending -->
+      <button class="inline-flex items-center justify-center rounded-md bg-gray-600 hover:bg-gray-700 text-white text-xs px-3 py-1.5 w-full text-center"
+              hx-post="{% url 'question:reset_status' q.id %}"
+              hx-include="closest tr"
+              hx-target="closest tr"
+              hx-swap="outerHTML">
+        Reset → Pending
+      </button>
+
+
+    </div>
   </td>
 </tr>

@@ -33,15 +33,28 @@ class Section(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.subject.name})"  
+    
 
- 
+class TopicTier(models.TextChoices):
+    MOST = "most", "Most Asked"
+    GENERAL = "general", "Generally Asked"
+    RARE = "rare", "Rarely Asked"
+    NEVER = "never", "Never Asked"
 
 class Topic(models.Model):
-    section = models.ForeignKey(Section, on_delete=models.CASCADE, related_name='topics')
-    name = models.CharField(max_length=100)
+    section   = models.ForeignKey("syllabus.Section", on_delete=models.CASCADE, related_name="topics")
+    name      = models.CharField(max_length=100)
+    weightage = models.FloatField(default=0)  # weightage %
+    tier      = models.CharField(             # <-- renamed from asked_band
+        max_length=10,
+        choices=TopicTier.choices,
+        default=TopicTier.NEVER,
+        db_index=True
+    )
+
     class Meta:
-        unique_together = ('section', 'name')
-        ordering = ['id']  
+        unique_together = ("section", "name")
+        ordering = ["id"]
 
     def __str__(self):
         return f"{self.name} ({self.section.name})"

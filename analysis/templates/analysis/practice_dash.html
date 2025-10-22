@@ -43,91 +43,89 @@
 <div class="max-w-7xl mx-auto p-6 space-y-8">
 
 
-   <!-- Switch Mode Button -->
-  <div class="flex justify-end mt-0 mb-0">
-    <a href="{% url 'dashboard' %}?mode=test" class="px-2 py-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-md hover:bg-gray-300 transition">
-      Switch to Test Mode
-    </a>
-  </div>
-
-
  <!-- Part 1: Overall Metrics (Compact Layout) -->
-  <section id="overall-metrics" class="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow">
-    <h2 class="sr-only">Overall Metrics</h2>
-    <div class="flex flex-wrap justify-between items-center gap-4">
-      <div class="flex items-center space-x-2">
-        <span class="p-2 bg-indigo-100 dark:bg-indigo-700 rounded-full">
-          <!-- Icon placeholder -->
-          <svg class="w-5 h-5 text-indigo-600 dark:text-indigo-200" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a8 8 0 100 16 8 8 0 000-16z"/></svg>
-        </span>
-        <div>
-          <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Exam Days Left</p>
-          <p class="text-lg font-semibold text-gray-900 dark:text-white">{{days_left}}</p>
-        </div>
-      </div>
+<section id="overall-metrics" class="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow">
+  <h2 class="sr-only">Overall Metrics</h2>
 
-      <div class="flex items-center space-x-2">
-        <span class="p-2 bg-green-100 dark:bg-green-700 rounded-full">
-          <svg class="w-5 h-5 text-green-600 dark:text-green-200" fill="currentColor" viewBox="0 0 20 20"><path d="M5 10l4 4L19 3"/></svg>
-        </span>
-        <div>
-          <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Correct</p>
-          <p class="text-lg font-semibold text-green-500">{{ correct_attempts }}</p>
-        </div>
-      </div>
+  <div class="flex flex-wrap justify-between items-center gap-4">
 
-      <div class="flex items-center space-x-2">
-        <span class="p-2 bg-red-100 dark:bg-red-700 rounded-full">
-          <svg class="w-5 h-5 text-red-600 dark:text-red-200" fill="currentColor" viewBox="0 0 20 20"><path d="M6 6l8 8M6 14L14 6"/></svg>
-        </span>
-        <div>
-          <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Incorrect</p>
-          <p class="text-lg font-semibold text-red-500">{{ wrong_attempts }}</p>
-        </div>
-      </div>
-
-      <div class="flex items-center space-x-2">
-        <span class="p-2 bg-gray-100 dark:bg-gray-700 rounded-full">
-          <svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="currentColor" viewBox="0 0 20 20"><path d="M4 3h12v2H4zM4 8h12v2H4zM4 13h12v2H4z"/></svg>
-        </span>
-        <div>
-          <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Total Attempts</p>
-          <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ total_attempts }}</p>
-        </div>
-      </div>
-
-
-      <div class="flex items-center space-x-2">
-        <span class="p-2 bg-blue-100 dark:bg-blue-700 rounded-full">
-          <svg class="w-5 h-5 text-blue-600 dark:text-blue-200" fill="currentColor" viewBox="0 0 20 20"><path d="M3 5h14v2H3zM3 9h14v2H3zM3 13h14v2H3z"/></svg>
-        </span>
-        <div>
-          <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Active Days</p>
-          <p class="text-lg font-semibold text-gray-900 dark:text-white">{{profile.days_active}}</p>
-        </div>
-      </div>
-
-      <div class="flex items-center space-x-2">
-        <span class="p-2 bg-purple-100 dark:bg-purple-700 rounded-full">
-          <svg class="w-5 h-5 text-purple-600 dark:text-purple-200" fill="currentColor" viewBox="0 0 20 20"><path d="M5 5h10v10H5z"/></svg>
-        </span>
-        <div>
-          <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{profile.streak_questions_target}} Question Streak</p>
-          <p class="text-lg font-semibold text-gray-900 dark:text-white"> {{profile.streak_days}} days</p>
-        </div>
+    <!-- Exam Days Left -->
+    <div class="flex items-center space-x-2">
+      <span class="text-4xl">📅</span>
+      <div>
+        <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Exam Days Left</p>
+        <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ days_left }}</p>
       </div>
     </div>
-  </section>
 
-  <!-- Part 2: Insights -->
+    <!-- Correct -->
+    <div class="flex items-center space-x-2">
+      <span class="text-4xl">✅</span>
+      <div>
+        <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Correct</p>
+        <p class="text-lg font-semibold text-green-500">{{ correct_attempts }}</p>
+      </div>
+    </div>
+
+    <!-- Incorrect -->
+    <div class="flex items-center space-x-2">
+      <span class="text-4xl">❌</span>
+      <div>
+        <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Incorrect</p>
+        <p class="text-lg font-semibold text-red-500">{{ wrong_attempts }}</p>
+      </div>
+    </div>
+
+    <!-- Total Attempts -->
+    <div class="flex items-center space-x-2">
+      <span class="text-4xl">🧮</span>
+      <div>
+        <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Total Attempts</p>
+        <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ total_attempts }}</p>
+      </div>
+    </div>
+
+    <!-- Active Days -->
+    <div class="flex items-center space-x-2">
+      <span class="text-4xl">🌞</span>
+      <div>
+        <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Active Days</p>
+        <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ profile.days_active }}</p>
+      </div>
+    </div>
+
+    <!-- Streak -->
+    <div class="flex items-center space-x-2">
+      <span class="text-4xl text-red-500">🔥</span>
+      <div>
+        <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ profile.streak_questions_target }} Question Streak</p>
+        <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ profile.streak_days }} days</p>
+      </div>
+    </div>
+
+ <!-- Switch Mode Button (as last item) -->
+<div class="flex items-center space-x-2">
+ 
+  <div class="flex flex-col">
+    <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-0.5">Switch to</p>
+    <a href="{% url 'dashboard' %}?mode=test"
+       class="inline-block text-sm font-semibold px-2 py-0.5 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition">
+      Test Mode
+    </a>
+  </div>
+</div>
+
+  </div>
+</section>
+
+
+ <!-- Part 2: Insights -->
 <section id="insights" class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow">
   <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Insights</h2>
 
-  {# 4 columns now: Coverage · Best · Mid · Worst #}
   <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-
-    {# ───────── Coverage ───────── #}
-    <div class="space-y-2">
+    {# ───────── Coverage & Mastery ───────── #}
+    <div class="space-y-3">
       <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">Coverage</h3>
       <p class="text-2xl font-bold text-gray-900 dark:text-white">
         {{ coverage_pct }}% Topics Covered
@@ -135,107 +133,111 @@
           ({{ practiced_topics }}/{{ total_topics }})
         </span>
       </p>
+
+      <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">Mastery</h3>
+      <p class="text-2xl font-bold text-gray-900 dark:text-white">
+        {{ mastery_pct }}% Topics Mastered (PMI ≥ 80)
+        <span class="text-sm font-medium text-gray-500 dark:text-gray-400">
+          ({{ strong_count }}/{{ total_topics }})
+        </span>
+      </p>
     </div>
 
-    {# ───────── Top 5 Strong ───────── #}
+    {# ───────── Strong (PMI ≥ 80) ───────── #}
     <div>
       <h3 class="text-sm font-medium text-green-500 dark:text-green-400 mb-2">
-        Top 5 Strong Topics
+        Strong Topics ({{ strong_n }})
       </h3>
-      {% if best_topics %}
-        <ul class="list-disc pl-5 space-y-1 text-gray-700 dark:text-gray-300">
-          {% for t in best_topics %}
-            <li>
-              {{ t.name }}
-              <span class="text-xs text-gray-500">({{ t.pct }}% wrong)</span>
+      {% if strong_topics %}
+        <ul class="list-disc pl-5 space-y-1">
+          {% for t in strong_topics %}
+            <li class="flex items-center">
+              <span class="mr-2 {{ t.category_text_class }}" aria-hidden="true">{{ t.tier_symbol }}</span>
+              <a
+                href="#"
+                class="no-underline hover:opacity-80 focus:outline-none flex-1 {{ t.category_text_class }} {{ t.tier_text_class }}"
+                hx-get="{% url 'practice:topic_modal' t.id %}"
+                hx-target="#modal-root"
+                hx-swap="innerHTML"
+                title="{{ t.tier_label }}"
+              >
+                {{ t.name }}
+              </a>
+              <span class="text-xs text-gray-500 ml-2">{{ t.pmi }} PMI</span>
             </li>
           {% endfor %}
         </ul>
       {% else %}
         <p class="text-gray-500 dark:text-gray-400 text-sm">
-          No strong topics indicated yet. Keep practising to unlock insights.
+          No strong topics yet. Keep practising to lift PMI.
         </p>
       {% endif %}
     </div>
 
-    {# ───────── 5 In-Transition ───────── #}
-<div>
-  <h3 class="text-sm font-medium text-yellow-500 dark:text-yellow-400 mb-2">
-    5 In-Transition Topics
-  </h3>
-  {% if mid_topics %}
-    <ul class="list-disc pl-5 space-y-1 text-orange-700 dark:text-orange-300">
-      {% for t in mid_topics %}
-        <li class="flex items-center">
-          <a
-            href="#"
-            class="no-underline hover:opacity-80 focus:outline-none flex-1"
-            style="color: {{ t.color }};"
-            hx-get="{% url 'practice:topic_modal' t.id %}"
-            hx-target="#modal-root"
-            hx-swap="innerHTML"
-          >
-            {{ t.name }}
-            <span class="text-xs text-yellow-500 ml-1">({{ t.pct }}% wrong)</span>
-          </a>
-          <a
-            href="#"
-            class="ml-2 inline-flex items-center px-2 py-0.5 text-xs font-medium
-                   rounded bg-green-600 text-white hover:bg-green-700"
-            hx-get="{% url 'practice:topic_modal' t.id %}"
-            hx-target="#modal-root"
-            hx-swap="innerHTML"
-          >
-            Practice
-          </a>
-        </li>
-      {% endfor %}
-    </ul>
-  {% else %}
-    <p class="text-gray-500 dark:text-gray-400 text-sm">
-      No in-transition topics yet. Keep practising to surface a middle range.
-    </p>
-  {% endif %}
-</div>
+    {# ───────── Transition (40 < PMI < 80) ───────── #}
+    <div>
+      <h3 class="text-sm font-medium text-yellow-500 dark:text-yellow-400 mb-2">
+        In-Transition Topics ({{ transition_n }})
+      </h3>
+      {% if transition_topics %}
+        <ul class="list-disc pl-5 space-y-1">
+          {% for t in transition_topics %}
+            <li class="flex items-center">
+              <span class="mr-2 {{ t.category_text_class }}" aria-hidden="true">{{ t.tier_symbol }}</span>
+              <a
+                href="#"
+                class="no-underline hover:opacity-80 focus:outline-none flex-1 {{ t.category_text_class }} {{ t.tier_text_class }}"
+                hx-get="{% url 'practice:topic_modal' t.id %}"
+                hx-target="#modal-root"
+                hx-swap="innerHTML"
+                title="{{ t.tier_label }}"
+              >
+                {{ t.name }}
+              </a>
+              <span class="text-xs text-gray-500 ml-2">{{ t.pmi }} PMI</span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="text-gray-500 dark:text-gray-400 text-sm">
+          No in-transition topics yet.
+        </p>
+      {% endif %}
+    </div>
 
-{# ───────── Top 5 Weak ───────── #}
-<div>
-  <h3 class="text-sm font-medium text-red-500 dark:text-red-400 mb-2">
-    Top 5 Weak Topics
-  </h3>
-  {% if worst_topics %}
-    <ul class="list-disc pl-5 space-y-1 text-red-700 dark:text-red-300">
-      {% for t in worst_topics %}
-        <li class="flex items-center">
-          <a
-            href="#"
-            class="flex-1 no-underline hover:opacity-80 focus:outline-none"
-            hx-get="{% url 'practice:topic_modal' t.id %}"
-            hx-target="#modal-root"
-            hx-swap="innerHTML"
-          >
-            {{ t.name }}
-            <span class="text-xs text-red-500 ml-1">({{ t.pct }}% wrong)</span>
-          </a>
-          <a
-            href="#"
-            class="ml-2 inline-flex items-center px-2 py-0.5 text-xs font-medium
-                   rounded bg-green-600 text-white hover:bg-green-700"
-            hx-get="{% url 'practice:topic_modal' t.id %}"
-            hx-target="#modal-root"
-            hx-swap="innerHTML"
-          >
-            Practice
-          </a>
-        </li>
-      {% endfor %}
-    </ul>
-  {% else %}
-    <p class="text-gray-500 dark:text-gray-400 text-sm">
-      No weak topics identified yet. Practise more to surface blind-spots.
-    </p>
-  {% endif %}
-</div>
+    {# ───────── Weak (PMI ≤ 40) ───────── #}
+    <div>
+      <h3 class="text-sm font-medium text-red-500 dark:text-red-400 mb-2">
+        Weak Topics ({{ weak_n }})
+      </h3>
+      {% if weak_topics %}
+        <ul class="list-disc pl-5 space-y-1">
+          {% for t in weak_topics %}
+            <li class="flex items-center">
+              <span class="mr-2 {{ t.category_text_class }}" aria-hidden="true">{{ t.tier_symbol }}</span>
+              <a
+                href="#"
+                class="no-underline hover:opacity-80 focus:outline-none flex-1 {{ t.category_text_class }} {{ t.tier_text_class }}"
+                hx-get="{% url 'practice:topic_modal' t.id %}"
+                hx-target="#modal-root"
+                hx-swap="innerHTML"
+                title="{{ t.tier_label }}"
+              >
+                {{ t.name }}
+              </a>
+              <span class="text-xs text-gray-500 ml-2">{{ t.pmi }} PMI</span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="text-gray-500 dark:text-gray-400 text-sm">
+          No weak topics identified yet.
+        </p>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
 
 
   </div>
@@ -297,14 +299,14 @@
 
   {# 1️⃣  Centre-aligned buttons with gap #}
   <div class="flex justify-center gap-4 mb-6">
-    <!--<button-->
-    <!--  @click="openPanel = (openPanel === 'capsule' ? null : 'capsule')"-->
-    <!--  :class="openPanel === 'capsule'-->
-    <!--          ? 'bg-indigo-600 text-white'-->
-    <!--          : 'bg-indigo-100 dark:bg-indigo-800 text-indigo-700 dark:text-indigo-200'"-->
-    <!--  class="px-6 py-2 rounded-lg font-semibold transition-colors">-->
-    <!--  Practice Capsule Subject or its Section-->
-    <!--</button>-->
+    <button
+     @click="openPanel = (openPanel === 'capsule' ? null : 'capsule')"
+     :class="openPanel === 'capsule'
+             ? 'bg-indigo-600 text-white'
+             : 'bg-indigo-100 dark:bg-indigo-800 text-indigo-700 dark:text-indigo-200'"
+     class="px-6 py-2 rounded-lg font-semibold transition-colors">
+     Practice Capsule Subject or its Section
+    </button>
 
     <button
       @click="openPanel = (openPanel === 'direct' ? null : 'direct')"
@@ -316,15 +318,15 @@
     </button>
   </div>
 
-  <!--{# 2️⃣  Capsule view (shows / hides on toggle) #}-->
-  <!--<div x-show="openPanel === 'capsule'" x-transition.opacity>-->
-  <!--  <h3 class="font-medium text-gray-900 dark:text-white mb-4">-->
-  <!--    Capsule Practice – pick Subject / Section-->
-  <!--  </h3>-->
+  {# 2️⃣  Capsule view (shows / hides on toggle) #}
+  <div x-show="openPanel === 'capsule'" x-transition.opacity>
+   <h3 class="font-medium text-gray-900 dark:text-white mb-4">
+     Capsule Practice – pick Subject / Section
+   </h3>
 
   <!--  {# renders ALL subjects + sections; click starts capsule #}-->
-  <!--  {% include "practice/partials/subject_sections.html" with subjects=subjects %}-->
-  <!--</div>-->
+   {% include "practice/partials/subject_sections.html" with subjects=subjects %}
+  </div>
 
   {# 3️⃣  Direct-Topic view (shows / hides on toggle) #}
   <div x-show="openPanel === 'direct'" x-transition.opacity>
@@ -390,5 +392,6 @@
     </table>
   </div>
 </section>
+<div id="modal-root"></div>
 </div>
 {% endblock %}

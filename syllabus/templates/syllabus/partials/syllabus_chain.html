@@ -1,0 +1,64 @@
+<div class="grid grid-cols-4 gap-1">
+  <!-- SUBJECT -->
+  <div>
+    <label class="text-xs font-semibold">Subject</label>
+    <select name="subject_id"
+            class="w-full text-xs rounded-md border-gray-300 dark:border-gray-700"
+            hx-get="{% url 'get_section_dropdown' %}?mode=edit"
+            hx-target="#edit-section"
+            hx-swap="outerHTML"
+            hx-trigger="change"
+            hx-include="closest form">
+      <option value="">Select</option>
+      {% for subj in subjects %}
+        <option value="{{ subj.id }}" {% if subj.id == question.subject_id %}selected{% endif %}>{{ subj.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <!-- SECTION -->
+  <div id="edit-section">
+    <label class="text-xs font-semibold">Section</label>
+    <select name="section_id"
+            class="w-full text-xs rounded-md border-gray-300 dark:border-gray-700"
+            hx-get="{% url 'get_topic_dropdown' %}?mode=edit"
+            hx-target="#edit-topic"
+            hx-swap="outerHTML"
+            hx-trigger="change"
+            hx-include="closest form">
+      <option value="">Select</option>
+      {% for sect in sections %}
+        <option value="{{ sect.id }}" {% if sect.id == question.section_id %}selected{% endif %}>{{ sect.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <!-- TOPIC -->
+  <div id="edit-topic">
+    <label class="text-xs font-semibold">Topic</label>
+    <select name="topic_id"
+            class="w-full text-xs rounded-md border-gray-300 dark:border-gray-700"
+            hx-get="{% url 'get_subtopic_dropdown' %}?mode=edit"
+            hx-target="#edit-subtopic"
+            hx-swap="outerHTML"
+            hx-trigger="change"
+            hx-include="closest form">
+      <option value="">Select</option>
+      {% for t in filter_topics %}
+        <option value="{{ t.id }}" {% if t.id == question.topic_id %}selected{% endif %}>{{ t.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <!-- SUBTOPIC -->
+  <div id="edit-subtopic">
+    <label class="text-xs font-semibold">Subtopic</label>
+    <select name="subtopic_id"
+            class="w-full text-xs rounded-md border-gray-300 dark:border-gray-700">
+      <option value="">Select</option>
+      {% for st in filter_subtopics %}
+        <option value="{{ st.id }}" {% if st.id == question.subtopic_id %}selected{% endif %}>{{ st.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+</div>

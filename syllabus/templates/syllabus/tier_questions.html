@@ -1,0 +1,124 @@
+{# templates/syllabus/tier_questions.html #}
+{% extends "user/base.html" %}
+{% load static %}
+
+{% block title %}Admin · Tier Questions Browser{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-7xl px-4 py-6">
+  <h2 class="text-2xl font-semibold mb-4 text-primary-600 dark:text-primary-400">
+    Tier Questions Browser
+    <span class="text-sm text-gray-500 ml-2">Filter by Exam, Tier & Start Year</span>
+  </h2>
+
+  <form method="get" class="mb-6">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+      <div>
+        <label class="block text-sm mb-1">Exam</label>
+        <select name="exam" class="w-full rounded-lg border px-3 py-2 bg-white dark:bg-gray-900">
+          <option value="">-- Select exam --</option>
+          {% for e in exams %}
+            <option value="{{ e.id }}" {% if e.id == selected_exam_id %}selected{% endif %}>{{ e.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-sm mb-1">Tier</label>
+        <select name="tier" class="w-full rounded-lg border px-3 py-2 bg-white dark:bg-gray-900">
+          {% for val, label in tiers %}
+            <option value="{{ val }}" {% if val == selected_tier %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-sm mb-1">Start Year</label>
+        <input type="number" name="year" min="2000" max="2100" value="{{ start_year }}"
+               class="w-full rounded-lg border px-3 py-2 bg-white dark:bg-gray-900">
+      </div>
+
+      <div class="flex items-center gap-4">
+        <label class="inline-flex items-center gap-2 text-sm">
+          <input type="checkbox" name="only_pyq" {% if only_pyq %}checked{% endif %}>
+          PYQ only
+        </label>
+        <label class="inline-flex items-center gap-2 text-sm">
+          <input type="checkbox" name="only_checked" {% if only_checked %}checked{% endif %}>
+          Only “checked”
+        </label>
+        <button class="ml-auto px-4 py-2 rounded-xl bg-primary-600 text-white shadow hover:shadow-md transition">
+          Apply
+        </button>
+      </div>
+    </div>
+  </form>
+
+  {% if summary %}
+    <div class="mb-5 grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div class="rounded-xl bg-white/70 dark:bg-gray-800/60 shadow ring-1 ring-gray-200/60 dark:ring-gray-700/60 p-4">
+        <div class="text-sm text-gray-500">Question share (since {{ summary.start_year }})</div>
+        <div class="text-lg font-semibold">
+          {{ summary.tier_label }}: 
+          <span class="text-primary-600 dark:text-primary-400">{{ summary.tier_questions }}</span>
+          / {{ summary.total_questions }}
+          <span class="text-sm text-gray-600">({{ summary.tier_questions_pct }}%)</span>
+        </div>
+      </div>
+
+      <div class="rounded-xl bg-white/70 dark:bg-gray-800/60 shadow ring-1 ring-gray-200/60 dark:ring-gray-700/60 p-4">
+        <div class="text-sm text-gray-500">Topic share (across entire exam)</div>
+        <div class="text-lg font-semibold">
+          {{ summary.tier_label }}: 
+          <span class="text-primary-600 dark:text-primary-400">{{ summary.topics_in_tier }}</span>
+          / {{ summary.total_topics_in_exam }}
+          <span class="text-sm text-gray-600">({{ summary.topics_in_tier_pct }}%)</span>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  {% if data %}
+    {% for s in data %}
+      <div class="mb-6 rounded-xl bg-white/70 dark:bg-gray-800/60 shadow ring-1 ring-gray-200/60 dark:ring-gray-700/60">
+        <div class="px-4 py-3 border-b border-gray-200/70 dark:border-gray-700/60 flex items-center justify-between">
+          <div class="text-lg font-semibold">{{ s.name }}</div>
+          <div class="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-700 dark:bg-gray-900/40 dark:text-gray-300">
+            Topics in tier: {{ s.subject_tier_topics }} / {{ s.subject_total_topics }}
+            ({{ s.subject_tier_pct }}%)
+          </div>
+        </div>
+
+        <div class="px-4 py-3">
+          {% for sec in s.sections %}
+            <div class="mb-4">
+              <div class="inline-flex items-center gap-2 mb-2">
+                <span class="font-medium text-gray-800 dark:text-gray-200">{{ sec.name }}</span>
+              </div>
+
+              <div class="mt-1 flex flex-wrap gap-2">
+                {% for t in sec.topics %}
+                  <div class="px-2 py-1 rounded-lg bg-gray-50 dark:bg-gray-900/40 ring-1 ring-inset ring-gray-200 dark:ring-gray-700/60"
+                       title="Weightage: {{ t.weightage }}% • Count: {{ t.count }}">
+                    <span class="
+                      {% if selected_tier == 'most' %} text-2xl font-semibold
+                      {% elif selected_tier == 'general' %} text-xl font-semibold
+                      {% elif selected_tier == 'rare' %} text-base
+                      {% else %} text-sm text-gray-600 dark:text-gray-400 {% endif %}
+                    ">
+                      {{ t.name }}
+                    </span>
+                    <span class="ml-1 text-[11px] text-gray-500">({{ t.count }})</span>
+                  </div>
+                {% endfor %}
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endfor %}
+  {% elif selected_exam_id %}
+    <div class="text-sm text-gray-500">No topics for this tier under the selected exam.</div>
+  {% endif %}
+</div>
+{% endblock content %}

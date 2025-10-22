@@ -1,29 +1,33 @@
-
-
 <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
   {% for subj in subjects %}
     <div class="space-y-2 border rounded dark:border-gray-600 p-3
                 bg-gray-50 dark:bg-gray-800">
 
-      {# ── FULL-SUBJECT capsule ── #}
+      <!-- Subject button triggers modal -->
       <button
-        
-        class="w-full flex justify-between items-center px-3 py-2
-               bg-grey-600 hover:bg-grey-700 rounded text-white
-               font-semibold text-sm">
-        <span>{{ subj.name }}</span>        
+        hx-get="{% url 'practice:subject_modal' subj.id %}"
+        hx-target="#modal-root"
+        hx-swap="innerHTML"
+        class="w-full flex justify-center items-center px-3 py-3
+               bg-gray-600 hover:bg-gray-700 rounded text-white
+               font-bold text-lg">
+        <span class="truncate">{{ subj.name }}</span>
       </button>
 
-      {# ── SECTION rows ── #}
       {% for section in subj.sections.all %}
-        <a href="{% url 'practice:practice_home' %}"><button       
+        <!-- Section button triggers modal -->
+        <button
+          hx-get="{% url 'practice:section_modal' section.id %}"
+          hx-target="#modal-root"
+          hx-swap="innerHTML"
           class="w-full flex justify-between items-center px-3 py-2
-                 bg-white dark:bg-gray-700 rounded text-left shadow-sm">
-
+                 bg-white dark:bg-gray-700
+                 hover:bg-gray-100 dark:hover:bg-gray-600
+                 rounded text-left shadow-sm">
           <span class="text-gray-800 dark:text-gray-100 truncate">
             {{ section.name }}
-          </span>          
-        </button></a>
+          </span>
+        </button>
       {% empty %}
         <p class="text-sm text-gray-500 dark:text-gray-400">
           No sections defined.

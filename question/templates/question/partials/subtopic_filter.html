@@ -1,5 +1,6 @@
-<select name="subtopic" class="form-select">
-  <option value="">-- All Subtopics --</option>
+<select name="subtopic"
+        class="w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+  <option value="">— Subtopic —</option>
   {% for st in subtopics %}
     <option value="{{ st.id }}" {% if filter_subtopic == st.id|stringformat:"s" %}selected{% endif %}>
       {{ st.name }}

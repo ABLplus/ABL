@@ -1,0 +1,15 @@
+<div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-lg p-6">
+    <h2 class="text-xl font-bold mb-4">{{ subject.name }}</h2>
+    <p class="text-gray-600 dark:text-gray-300 mb-4">
+      This subject has {{ subject.sections.count }} sections.
+    </p>
+    <div class="flex justify-end">
+      <button
+        class="px-4 py-2 bg-gray-300 dark:bg-gray-600 rounded"
+        onclick="document.getElementById('modal-root').innerHTML = ''">
+        Close
+      </button>
+    </div>
+  </div>
+</div>

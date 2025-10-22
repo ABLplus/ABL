@@ -10,7 +10,7 @@ urlpatterns = [
     path('practice/', views.practice_home, name='practice_home'),
     path("history-page/", views.history_page, name="history_page"),
 
-    path('capsule/', views.start_capsule_subject, name='start_capsule_subject'),
+    path('create_capsule/', views.create_capsule, name='create_capsule'),
 
     # HTMX endpoints for chained dropdowns
     path('ajax/sections/',   views.ajax_load_sections,   name='ajax_load_sections'),
@@ -21,6 +21,10 @@ urlpatterns = [
     path('ajax/subject_tree/<int:subject_id>/', views.ajax_subject_tree, name='ajax_subject_tree'),
 
     path("topics/<int:topic_id>/modal/", views.topic_modal, name="topic_modal"),
+    
+    path("subject-modal/<int:subject_id>/", views.subject_modal, name="subject_modal"),
+    path("section-modal/<int:section_id>/", views.section_modal, name="section_modal"),
+    
     path("modal/empty/", views.modal_empty, name="modal_empty"),
 
     path("subject/<int:subject_id>/sections/", views.ajax_subject_sections,

@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en" x-data="qaDashboard()" :class="{ 'dark': dark }" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ABL+ CMS — QA Editor Dashboard (Mock)</title>
+
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            primary: {50:'#eef2ff',100:'#e0e7ff',200:'#c7d2fe',300:'#a5b4fc',400:'#818cf8',500:'#6366f1',600:'#4f46e5',700:'#4338ca',800:'#3730a3',900:'#312e81'}
+          },
+          boxShadow: { soft: '0 8px 30px rgba(31,41,55,0.08)' }
+        }
+      }
+    }
+  </script>
+
+  <!-- Apply stored theme immediately -->
+  <script>(function(){ if(localStorage.getItem('theme')==='dark'){ document.documentElement.classList.add('dark'); } })();</script>
+
+  <!-- Alpine -->
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <style>[x-cloak]{display:none!important}</style>
+</head>
+<body class="font-sans antialiased bg-gray-50 text-gray-800 dark:bg-gray-900 dark:text-gray-100">
+
+  <!-- Top Nav -->
+  <header class="sticky top-0 z-40 bg-white/90 dark:bg-gray-900/90 backdrop-blur border-b border-gray-200 dark:border-gray-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="h-9 w-9 rounded-xl bg-primary-600 flex items-center justify-center text-white font-bold shadow-soft">Q</div>
+        <div>
+          <div class="text-lg font-extrabold tracking-tight">ABL+ CMS</div>
+          <div class="text-xs text-gray-500 dark:text-gray-400">QA Editor Dashboard • UPSC Prelims 2026</div>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <!-- Subject filter -->
+        <select x-model="selectedSubject"
+                class="text-sm px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+          <template x-for="s in subjects" :key="s"><option :value="s" x-text="s"></option></template>
+        </select>
+
+        <!-- Stage filter -->
+        <select x-model="selectedStage"
+                class="text-sm px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+          <template x-for="st in stages" :key="st.value">
+            <option :value="st.value" x-text="st.label"></option>
+          </template>
+        </select>
+
+        <!-- Dark mode -->
+        <button @click="toggleTheme()"
+                class="ml-1 inline-flex items-center gap-2 text-sm px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path x-show="!dark" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 3v2m0 14v2m9-9h-2M5 12H3m14.95 6.95-1.414-1.414M7.464 7.464 6.05 6.05m12.9 0-1.414 1.414M7.464 16.536 6.05 17.95"/>
+            <path x-show="dark" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+          <span x-show="!dark">Light</span>
+          <span x-show="dark">Dark</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+
+    <!-- Messages (from SME / Content Head) -->
+    <section class="rounded-2xl border border-blue-200 dark:border-blue-900/40 bg-blue-50 dark:bg-blue-900/20 p-4 shadow-soft">
+      <div class="flex items-start gap-3">
+        <div class="mt-0.5 h-2.5 w-2.5 rounded-full bg-blue-500"></div>
+        <div class="flex-1">
+          <div class="text-sm text-blue-900 dark:text-blue-200">
+            <span class="font-semibold">SME:</span>
+            <span x-text="pinnedMessage.text"></span>
+          </div>
+          <div class="text-xs text-blue-700/70 dark:text-blue-300/70 mt-1" x-text="pinnedMessage.time"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- KPI Cards -->
+    <section class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-4">
+      <template x-for="card in kpis()" :key="card.label">
+        <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 p-4 shadow-soft">
+          <div class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1" x-text="card.label"></div>
+          <div class="text-2xl font-bold">
+            <span x-text="card.value"></span>
+            <span class="text-sm font-medium text-gray-500" x-text="'/'+card.total"></span>
+          </div>
+          <div class="mt-3 h-2 w-full rounded-full bg-gray-100 dark:bg-gray-700">
+            <div class="h-2 rounded-full" :class="card.color" :style="`width:${card.pct}%`"></div>
+          </div>
+        </div>
+      </template>
+    </section>
+
+    <!-- Pipeline snapshot for QA (subject aggregated) -->
+    <section class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 p-5 shadow-soft">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold">Pipeline — <span x-text="selectedSubject"></span></h2>
+        <div class="text-xs text-gray-500 dark:text-gray-400">Stage: <span class="font-medium" x-text="stageLabel(selectedStage)"></span></div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="text-xs uppercase text-gray-500 dark:text-gray-400">
+            <tr class="text-left">
+              <th class="py-2 pr-4">Stage</th>
+              <th class="py-2 pr-4 w-64">Progress (Avg)</th>
+              <th class="py-2 pr-4">QA Pending (Σ)</th>
+              <th class="py-2 pr-4">Revision Loops (Avg)</th>
+              <th class="py-2">Updated</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+            <template x-for="row in qaPipeline()" :key="row.id">
+              <tr>
+                <td class="py-3 pr-4 font-medium" x-text="row.stageLabel"></td>
+                <td class="py-3 pr-4">
+                  <div class="h-2 rounded-full bg-gray-100 dark:bg-gray-700">
+                    <div class="h-2 rounded-full" :class="row.color" :style="`width:${row.progress}%`"></div>
+                  </div>
+                </td>
+                <td class="py-3 pr-4" x-text="row.qaPending"></td>
+                <td class="py-3 pr-4" x-text="row.revisions"></td>
+                <td class="py-3" x-text="row.updated"></td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- TASKS (Single vertical lane for QA) -->
+    <section class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 p-5 shadow-soft space-y-6">
+      <div class="flex items-center justify-between">
+        <h2 class="text-lg font-semibold">Tasks</h2>
+        <div class="text-xs text-gray-500 dark:text-gray-400">Subject: <span class="font-medium" x-text="selectedSubject"></span></div>
+      </div>
+
+      <!-- Subsection A: From SME → Assign Contributor -->
+      <div>
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-sm font-semibold">Needs Contributor (from SME)</h3>
+          <span class="text-xs px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700" x-text="needsContributorCount"></span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="text-xs uppercase text-gray-500 dark:text-gray-400">
+              <tr class="text-left">
+                <th class="py-2 pr-4">Title</th>
+                <th class="py-2 pr-4">Stage</th>
+                <th class="py-2 pr-4">Due</th>
+                <th class="py-2 pr-4">Allocate Contributor</th>
+                <th class="py-2">Action</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+              <template x-for="t in needsContributorFiltered()" :key="t.id">
+                <tr>
+                  <td class="py-3 pr-4 font-medium" x-text="t.title"></td>
+                  <td class="py-3 pr-4" x-text="stageShort(t.stage)"></td>
+                  <td class="py-3 pr-4" x-text="t.due || '—'"></td>
+                  <td class="py-3 pr-4">
+                    <select x-model="t.contributor"
+                            class="text-xs px-2 py-1 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                      <option value="">Select…</option>
+                      <template x-for="c in contributorsBySubject()" :key="c.handle">
+                        <option :value="c.handle" x-text="c.handle + ' ('+c.quality+')'"></option>
+                      </template>
+                    </select>
+                  </td>
+                  <td class="py-3">
+                    <button class="text-xs px-3 py-1.5 rounded-lg bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50"
+                            :disabled="!t.contributor"
+                            @click="assignContributor(t)">Assign</button>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Subsection B: Contributor In-Progress -->
+      <div>
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-sm font-semibold">Contributor In-Progress</h3>
+          <span class="text-xs px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700" x-text="inprogressCount"></span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="text-xs uppercase text-gray-500 dark:text-gray-400">
+              <tr class="text-left">
+                <th class="py-2 pr-4">Title</th>
+                <th class="py-2 pr-4">Contributor</th>
+                <th class="py-2 pr-4">ETA</th>
+                <th class="py-2 pr-4">Notes</th>
+                <th class="py-2">Actions</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+              <template x-for="t in inprogressFiltered()" :key="t.id">
+                <tr>
+                  <td class="py-3 pr-4 font-medium" x-text="t.title"></td>
+                  <td class="py-3 pr-4" x-text="t.contributor"></td>
+                  <td class="py-3 pr-4" x-text="t.due || '—'"></td>
+                  <td class="py-3 pr-4" x-text="t.direction || '—'"></td>
+                  <td class="py-3">
+                    <div class="flex items-center gap-2">
+                      <button class="text-xs px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700"
+                              @click="markSubmitted(t)">Mark Submitted (mock)</button>
+                      <button class="text-xs px-3 py-1.5 rounded-lg border border-amber-200 dark:border-amber-900/40 bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200"
+                              @click="remindContributor(t)">Remind</button>
+                    </div>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Subsection C: Contributor Submissions → QA review -->
+      <div>
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-sm font-semibold">Submissions (Awaiting QA Review)</h3>
+          <span class="text-xs px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700" x-text="submissionsCount"></span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="text-xs uppercase text-gray-500 dark:text-gray-400">
+              <tr class="text-left">
+                <th class="py-2 pr-4">Title</th>
+                <th class="py-2 pr-4">Contributor</th>
+                <th class="py-2 pr-4">Stage</th>
+                <th class="py-2 pr-4">Rev Loops</th>
+                <th class="py-2 pr-4">can_publish</th>
+                <th class="py-2">Actions</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+              <template x-for="t in submissionsFiltered()" :key="t.id">
+                <tr>
+                  <td class="py-3 pr-4 font-medium" x-text="t.title"></td>
+                  <td class="py-3 pr-4" x-text="t.contributor"></td>
+                  <td class="py-3 pr-4" x-text="stageShort(t.stage)"></td>
+                  <td class="py-3 pr-4" x-text="t.revLoops"></td>
+                  <td class="py-3 pr-4">
+                    <label class="inline-flex items-center gap-2 text-xs">
+                      <input type="checkbox" x-model="t.can_publish" class="rounded border-gray-300 dark:bg-gray-800">
+                      <span>Ready</span>
+                    </label>
+                  </td>
+                  <td class="py-3">
+                    <div class="flex flex-wrap items-center gap-2">
+                      <button @click="approveAndSendToSME(t)"
+                              class="text-xs px-3 py-1.5 rounded-lg border border-green-200 dark:border-green-900/40 bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-200">Approve & Send to SME</button>
+                      <button @click="openReturnModal(t)"
+                              class="text-xs px-3 py-1.5 rounded-lg border border-rose-200 dark:border-rose-900/40 bg-rose-50 dark:bg-rose-900/20 text-rose-800 dark:text-rose-200">Request Changes</button>
+                    </div>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Subsection D: Sent to SME -->
+      <div>
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-sm font-semibold">Sent to SME</h3>
+          <span class="text-xs px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700" x-text="sentToSMECount"></span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="text-xs uppercase text-gray-500 dark:text-gray-400">
+              <tr class="text-left">
+                <th class="py-2 pr-4">Title</th>
+                <th class="py-2 pr-4">Stage</th>
+                <th class="py-2 pr-4">can_publish</th>
+                <th class="py-2">Sent On</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+              <template x-for="t in sentToSMEFiltered()" :key="t.id">
+                <tr>
+                  <td class="py-3 pr-4 font-medium" x-text="t.title"></td>
+                  <td class="py-3 pr-4" x-text="stageShort(t.stage)"></td>
+                  <td class="py-3 pr-4">
+                    <span class="px-2 py-1 text-xs rounded-full"
+                          :class="t.can_publish ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'"
+                          x-text="t.can_publish ? 'Yes' : 'No'"></span>
+                  </td>
+                  <td class="py-3" x-text="t.sent_on"></td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Performance (at the end) -->
+    <section class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 p-5 shadow-soft">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold">Performance</h2>
+        <div class="text-xs text-gray-500 dark:text-gray-400">Subject: <span class="font-medium" x-text="selectedSubject"></span></div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- QA (self) metrics -->
+        <div class="lg:col-span-1">
+          <h3 class="text-sm font-semibold mb-2">My QA Metrics</h3>
+          <div class="grid grid-cols-2 gap-3">
+            <template x-for="m in myMetrics" :key="m.label">
+              <div class="rounded-xl border border-gray-200 dark:border-gray-800 p-4">
+                <div class="text-xs text-gray-500" x-text="m.label"></div>
+                <div class="text-xl font-bold" x-text="m.value"></div>
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <!-- Contributors table -->
+        <div class="lg:col-span-2">
+          <h3 class="text-sm font-semibold mb-2">Contributors</h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="text-xs uppercase text-gray-500 dark:text-gray-400">
+                <tr class="text-left">
+                  <th class="py-2 pr-4">Contributor</th>
+                  <th class="py-2 pr-4">Tasks</th>
+                  <th class="py-2 pr-4">On-time %</th>
+                  <th class="py-2 pr-4">QA Acceptance</th>
+                  <th class="py-2">Avg Revisions</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                <template x-for="c in contributorPerf()" :key="c.handle">
+                  <tr>
+                    <td class="py-3 pr-4 font-medium" x-text="c.handle"></td>
+                    <td class="py-3 pr-4" x-text="c.tasks"></td>
+                    <td class="py-3 pr-4" x-text="c.ontime"></td>
+                    <td class="py-3 pr-4" x-text="c.acceptance"></td>
+                    <td class="py-3" x-text="c.revisions"></td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="py-6 text-center text-xs text-gray-500 dark:text-gray-400">
+    © 2025 ABL+ — Shared CMS • QA Editor View (Mock)
+  </footer>
+
+  <!-- Request Changes Modal -->
+  <div x-cloak x-show="returnModal.open" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+    <div @click.away="closeReturnModal()"
+         class="w-full max-w-lg rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 shadow-soft">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-semibold">Request Changes — Note to Contributor</h3>
+        <button class="text-sm px-2 py-1 rounded border border-gray-200 dark:border-gray-700" @click="closeReturnModal()">Close</button>
+      </div>
+      <div class="text-sm mb-2">
+        Task: <span class="font-medium" x-text="returnModal.task?.title || ''"></span>
+      </div>
+      <textarea x-model="returnModal.note" rows="5"
+                class="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900"
+                placeholder="Explain what to fix — ex: strengthen distractors, remove factual mismatch, align with competency tag..."></textarea>
+      <div class="mt-4 flex items-center justify-end gap-2">
+        <button class="px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700" @click="closeReturnModal()">Cancel</button>
+        <button class="px-3 py-2 text-sm rounded-lg bg-rose-600 text-white hover:bg-rose-700" @click="confirmSendBack()">Send Back</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Alpine State + Logic -->
+  <script>
+    function qaDashboard(){
+      return {
+        dark: localStorage.getItem('theme')==='dark',
+        toggleTheme(){ this.dark=!this.dark; localStorage.setItem('theme', this.dark?'dark':'light'); },
+
+        subjects:['Polity','Geography','Environment'],
+        stages:[
+          {value:'all',label:'All Stages'},
+          {value:'s0',label:'Stage 0: Sources'},
+          {value:'s1',label:'Stage 1: Syllabus'},
+          {value:'s2',label:'Stage 2: PYQ Mapping'},
+          {value:'s3',label:'Stage 3: Notes'},
+          {value:'s4',label:'Stage 4: MCQs'},
+          {value:'s5',label:'Stage 5: PYQ Variants'},
+        ],
+        selectedSubject:'Polity',
+        selectedStage:'all',
+
+        pinnedMessage:{ text:'Focus on Polity MCQ batches; ensure option parity & remove cluey stems. Target +5% acceptance.', time:'21 Oct, 09:40' },
+
+        /* Mock source data */
+        subjectData:[
+          {subject:'Polity', pyqDone:1180, pyqTotal:1200, noteDone:220, noteTotal:240, mcqDone:690, mcqTotal:780, varDone:360, varTotal:420},
+          {subject:'Geography', pyqDone:800, pyqTotal:950, noteDone:180, noteTotal:220, mcqDone:520, mcqTotal:700, varDone:290, varTotal:360},
+          {subject:'Environment', pyqDone:390, pyqTotal:400, noteDone:130, noteTotal:150, mcqDone:330, mcqTotal:380, varDone:210, varTotal:240},
+        ],
+        pipelineData:[
+          {subject:'Polity', s0:98, s1:100, s2:95, s3:92, s4:88, s5:82, qaPending:{s3:3, s4:7, s5:4}, revisions:{s3:1.2,s4:1.4,s5:1.3}},
+          {subject:'Geography', s0:92, s1:100, s2:86, s3:78, s4:66, s5:54, qaPending:{s3:6, s4:12, s5:9}, revisions:{s3:1.6,s4:1.9,s5:1.8}},
+          {subject:'Environment', s0:97, s1:100, s2:92, s3:89, s4:86, s5:80, qaPending:{s3:2, s4:4, s5:3}, revisions:{s3:1.1,s4:1.2,s5:1.2}},
+        ],
+
+        contributors:[
+          {handle:'@Anita',  tasks:26, ontime:'92%', acceptance:'95%', revisions:0.7, quality:'high', subjects:['Geography']},
+          {handle:'@Ravi',   tasks:33, ontime:'85%', acceptance:'89%', revisions:1.2, quality:'med',  subjects:['Polity']},
+          {handle:'@Asha',   tasks:19, ontime:'88%', acceptance:'93%', revisions:1.0, quality:'high', subjects:['Environment']},
+          {handle:'@Vikram', tasks:14, ontime:'80%', acceptance:'82%', revisions:1.6, quality:'low',  subjects:['Polity','Geography']},
+          {handle:'@Neha',   tasks:12, ontime:'90%', acceptance:'91%', revisions:0.9, quality:'high', subjects:['Polity']},
+        ],
+
+        // Tasks from SME needing contributor allocation
+        needsContributor:[
+          {id:101, title:'MCQ Batch #13 — Parliament', subject:'Polity', stage:'s4', due:'2025-10-24', contributor:'', direction:'Keep options parallel.'},
+          {id:102, title:'Concept Notes — Federalism (rev)', subject:'Polity', stage:'s3', due:'2025-10-23', contributor:'', direction:''},
+          {id:103, title:'PYQ Variants — Forest Acts II', subject:'Environment', stage:'s5', due:'2025-10-25', contributor:'', direction:'Increase difficulty.'},
+        ],
+
+        // Contributor working
+        inprogress:[
+          {id:201, title:'Concept Notes — Monsoon (final)', subject:'Geography', stage:'s3', contributor:'@Anita', due:'2025-10-22', direction:'Add applied examples'},
+          {id:202, title:'MCQ Batch #12 — Parliament', subject:'Polity', stage:'s4', contributor:'@Ravi', due:'2025-10-22', direction:'Parity + remove giveaways'},
+        ],
+
+        // Submitted by contributor, awaiting QA
+        submissions:[
+          {id:301, title:'MCQ Batch #11 — Parliament', subject:'Polity', stage:'s4', contributor:'@Neha', revLoops:1, can_publish:true},
+          {id:302, title:'Concept Notes — Drainage (rev)', subject:'Geography', stage:'s3', contributor:'@Anita', revLoops:2, can_publish:false},
+          {id:303, title:'PYQ Variants — Environment Acts', subject:'Environment', stage:'s5', contributor:'@Asha', revLoops:1, can_publish:false},
+        ],
+
+        // Sent upward to SME
+        sentToSME:[
+          {id:401, title:'Notes — Constitutional Bodies (OK)', subject:'Polity', stage:'s3', can_publish:true, sent_on:'20 Oct, 18:30'},
+          {id:402, title:'PYQ Mapping — FR/FD set', subject:'Polity', stage:'s2', can_publish:false, sent_on:'19 Oct, 16:10'},
+        ],
+
+        // Activity log (not rendered as a separate panel to keep it compact; extend if needed)
+        activityLog:[],
+
+        // QA self metrics
+        myMetrics:[
+          {label:'Batches Reviewed (30d)', value:'44'},
+          {label:'Avg Turnaround', value:'2.0d'},
+          {label:'Acceptance Rate', value:'91%'},
+          {label:'Returns to Contributor', value:'12%'},
+        ],
+
+        // Modal state
+        returnModal:{open:false, task:null, note:''},
+
+        /* Computed */
+        kpis(){
+          const r=this.subjectData.find(x=>x.subject===this.selectedSubject);
+          const card=(label,val,tot,color='bg-primary-600')=>{
+            const pct=Math.min(100, Math.round((val/tot)*100||0));
+            return {label,value:val,total:tot,pct,color};
+          };
+          return [
+            card('PYQs Tagged', r.pyqDone, r.pyqTotal),
+            card('Concept Notes Reviewed', r.noteDone, r.noteTotal),
+            card('MCQs Approved', r.mcqDone, r.mcqTotal),
+            card('PYQ Variants', r.varDone, r.varTotal),
+            card('QA Queue (est.)',  this.qaQueueSize(),  60),
+            card('On-time (QA)', 91, 100),
+          ];
+        },
+
+        qaPipeline(){
+          const labels={s3:'Stage 3 · Notes', s4:'Stage 4 · MCQs', s5:'Stage 5 · PYQ Variants'};
+          const colorFor=(p)=> p>=90?'bg-green-500':p>=75?'bg-primary-600':p>=60?'bg-amber-500':'bg-rose-500';
+          const row=this.pipelineData.find(r=>r.subject===this.selectedSubject);
+          const keys=['s3','s4','s5'];
+          return keys.map((k,i)=>({
+            id:'qa_'+k,
+            stageLabel:labels[k],
+            progress:row[k],
+            color:colorFor(row[k]),
+            qaPending: (row.qaPending && row.qaPending[k.replace('s','s')]) || 0,
+            revisions: (row.revisions && row.revisions[k]) ? row.revisions[k].toFixed(1) : '—',
+            updated:['18 Oct','19 Oct','20 Oct'][i%3]
+          }));
+        },
+
+        contributorsBySubject(){
+          return this.contributors.filter(c=>c.subjects.includes(this.selectedSubject));
+        },
+
+        contributorPerf(){
+          return this.contributors
+            .filter(c=>c.subjects.includes(this.selectedSubject))
+            .map(c=>({...c}));
+        },
+
+        needsContributorFiltered(){ return this.needsContributor.filter(t=>t.subject===this.selectedSubject); },
+        inprogressFiltered(){ return this.inprogress.filter(t=>t.subject===this.selectedSubject); },
+        submissionsFiltered(){ return this.submissions.filter(t=>t.subject===this.selectedSubject); },
+        sentToSMEFiltered(){ return this.sentToSME.filter(t=>t.subject===this.selectedSubject); },
+
+        get needsContributorCount(){ return this.needsContributorFiltered().length; },
+        get inprogressCount(){ return this.inprogressFiltered().length; },
+        get submissionsCount(){ return this.submissionsFiltered().length; },
+        get sentToSMECount(){ return this.sentToSMEFiltered().length; },
+
+        qaQueueSize(){
+          return this.needsContributorFiltered().length + this.inprogressFiltered().length + this.submissionsFiltered().length;
+        },
+
+        /* Actions */
+        assignContributor(t){
+          if(!t.contributor){ alert('Pick a contributor.'); return; }
+          // Move to in-progress
+          const idx=this.needsContributor.findIndex(x=>x.id===t.id);
+          if(idx>-1) this.needsContributor.splice(idx,1);
+          this.inprogress.unshift({
+            id:t.id, title:t.title, subject:t.subject, stage:t.stage,
+            contributor:t.contributor, due:t.due, direction:t.direction
+          });
+          alert('Assigned to contributor ✅ (mock)');
+        },
+
+        markSubmitted(t){
+          // Move from inprogress → submissions
+          const idx=this.inprogress.findIndex(x=>x.id===t.id);
+          if(idx>-1) this.inprogress.splice(idx,1);
+          this.submissions.unshift({
+            id:t.id, title:t.title, subject:t.subject, stage:t.stage,
+            contributor:t.contributor, revLoops:1, can_publish:false
+          });
+          alert('Marked as submitted (mock) ✅');
+        },
+
+        remindContributor(t){
+          alert(`Reminder sent to ${t.contributor} ✅ (mock)`);
+        },
+
+        approveAndSendToSME(t){
+          // remove from submissions
+          const idx=this.submissions.findIndex(x=>x.id===t.id);
+          if(idx>-1) this.submissions.splice(idx,1);
+          // push to sentToSME
+          this.sentToSME.unshift({
+            id:t.id, title:t.title, subject:t.subject, stage:t.stage,
+            can_publish: !!t.can_publish, sent_on: new Date().toLocaleString('en-IN')
+          });
+          alert('Approved & sent to SME ✅ (mock)');
+        },
+
+        openReturnModal(t){ this.returnModal={open:true, task:t, note:''}; },
+        closeReturnModal(){ this.returnModal={open:false, task:null, note:''}; },
+        confirmSendBack(){
+          if(!this.returnModal.note.trim()){
+            alert('Please add a brief note for the contributor.');
+            return;
+          }
+          const t=this.returnModal.task;
+          // remove from submissions
+          const idx=this.submissions.findIndex(x=>x.id===t.id);
+          if(idx>-1) this.submissions.splice(idx,1);
+          // back to in-progress (same contributor)
+          this.inprogress.unshift({
+            id:t.id, title:t.title, subject:t.subject, stage:t.stage,
+            contributor:t.contributor, due:'—', direction:'Return: '+this.returnModal.note
+          });
+          this.closeReturnModal();
+          alert('Requested changes from contributor ✅ (mock)');
+        },
+
+        /* Labels */
+        stageLabel(v){ const m={all:'All Stages', s0:'Stage 0: Sources', s1:'Stage 1: Syllabus', s2:'Stage 2: PYQ Mapping', s3:'Stage 3: Notes', s4:'Stage 4: MCQs', s5:'Stage 5: PYQ Variants'}; return m[v]||v; },
+        stageShort(v){ const m={s0:'S0', s1:'S1', s2:'S2', s3:'S3', s4:'S4', s5:'S5'}; return m[v]||v; },
+      }
+    }
+  </script>
+</body>
+</html>

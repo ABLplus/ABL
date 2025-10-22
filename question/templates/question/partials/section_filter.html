@@ -1,16 +1,16 @@
 <select name="section"
-        class="form-select"
+        class="w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
         hx-get="{% url 'question:ajax_topics' %}"
         hx-target="#topic-container"
         hx-trigger="change"
         hx-include="this">
-  <option value="">-- All Sections --</option>
+  <option value="">— Section —</option>
   {% for sec in sections %}
     <option value="{{ sec.id }}" {% if filter_section == sec.id|stringformat:"s" %}selected{% endif %}>
       {{ sec.name }}
     </option>
   {% endfor %}
-  <option value= "none" {% if filter_section == 'none' %}selected{% endif %}>
+  <option value="none" {% if filter_section == 'none' %}selected{% endif %}>
     No Section Assigned
   </option>
 </select>

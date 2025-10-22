@@ -11,5 +11,6 @@ urlpatterns = [
     path("tests/filter-form/",views.test_filter_form,name="test_filter_form",),
     path("tests/history-page/", views.test_history_page, name="test_history_page"),
     path("tests/<int:test_id>/delete/", views.delete_test, name="delete_test"),
+    path("user-pmi-recalc/", views.user_pmi_recalc, name="user_pmi_recalc"),
 ]
    

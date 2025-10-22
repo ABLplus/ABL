@@ -1,11 +1,14 @@
 {% load markdown_extras %}
-<select name="topic"
-        id="topic-{{ q.id }}"
-        class="form-select form-select-sm"
-        hx-get="{% url 'question:ajax_question_subtopics' q.id %}"
-        hx-trigger="change"
-        hx-target="#subtopic-{{ q.id }}"
-        hx-include="this">
+
+<select
+  name="topic"
+  id="topic-{{ q.id }}"
+  class="w-full min-w-[12rem] rounded-md border border-gray-300 dark:border-gray-700
+         bg-white dark:bg-gray-800 px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-primary-500"
+  hx-get="{% url 'question:ajax_question_subtopics' q.id %}"
+  hx-trigger="change"
+  hx-target="#subtopic-{{ q.id }}"
+  hx-include="this">
   <option value="">-- Topic --</option>
   {% if topics %}
     {% for top in topics %}

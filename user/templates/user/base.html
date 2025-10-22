@@ -88,7 +88,9 @@
           class="fixed inset-x-0 top-0 z-50 bg-white/90 dark:bg-gray-800/90 backdrop-blur shadow">
     <div class="max-w-7xl mx-auto flex items-center justify-between px-4 sm:px-6 py-3">
       <!-- Brand -->
-      <a href="{% url 'home' %}" class="text-2xl font-extrabold text-primary-600 dark:text-primary-400">ABL+</a>
+ <a href="{% url 'home' %}" class="text-2xl font-extrabold text-primary-600 dark:text-primary-400">
+  ABL+<span class="text-base font-normal italic text-gray-700 dark:text-gray-300">{{ exam }}</span>
+</a>
 
       <!-- Desktop nav links -->
       <nav class="hidden md:flex space-x-8">
@@ -152,7 +154,8 @@
 
   <!-- ========= MAIN ========= -->
  <main class="pt-12">                <!-- roughly 4rem = 64px -->
-   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-0">
+   <div class="{% block container_width %}max-w-7xl{% endblock %} mx-auto px-2 sm:px-4 lg:px-6 xl:px-8 py-0">
+
       {% block content %}{% endblock %}
     </div>
 </main>

@@ -1,81 +1,93 @@
 {% extends 'user/base.html' %}
 {% load static %}
-{% block content %}
-<h4 class="mb-4">Question Status Overview</h4>
+{% block title %}Question Status Overview{% endblock %}
 
-{% for subj in subjects %}
-  <div class="card mb-4 shadow-sm">
-    {# Light grey header instead of dark blue #}
-    <div class="card-header bg-light text-dark">
-      <div class="d-flex justify-content-between align-items-center">
-        <span class="fs-5 fw-bold">{{ subj.name }}</span>
-        <span class="fs-6">
+{% block content %}
+<section class="py-6">
+  <h1 class="text-2xl font-bold mb-6 text-primary-600 dark:text-primary-400">
+    Question Status Overview
+  </h1>
+
+  {% for subj in subjects %}
+    <div class="mb-6 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <!-- Subject Header -->
+      <div class="flex items-center justify-between px-5 py-3 bg-gray-100 dark:bg-gray-700/50">
+        <h2 class="text-lg font-semibold">{{ subj.name }}</h2>
+        <div class="text-sm space-x-3">
           <a href="{% url 'ques_edit' %}?subject_id={{ subj.id }}"
-             class="text-secondary text-decoration-none me-2">
-            {{ subj.total_unchecked }} Unchecked
-          </a> |
-          <a href="{% url 'ques_edit' %}?subject_id={{ subj.id }}&for_review=true"
-             class="text-warning text-decoration-none mx-2">
-            {{ subj.total_review }} Review
-          </a> |
-          <a href="{% url 'ques_edit' %}?subject_id={{ subj.id }}&for_review=false"
-             class="text-success text-decoration-none ms-2">
-            {{ subj.total_checked }} Checked
+             class="text-gray-600 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">
+            {{ subj.total_unchecked }} <span class="font-medium">Unchecked</span>
           </a>
-        </span>
+          <span class="text-gray-400">|</span>
+          <a href="{% url 'ques_edit' %}?subject_id={{ subj.id }}&for_review=true"
+             class="text-yellow-600 dark:text-yellow-400 hover:underline">
+            {{ subj.total_review }} <span class="font-medium">Review</span>
+          </a>
+          <span class="text-gray-400">|</span>
+          <a href="{% url 'ques_edit' %}?subject_id={{ subj.id }}&for_review=false"
+             class="text-green-600 dark:text-green-400 hover:underline">
+            {{ subj.total_checked }} <span class="font-medium">Checked</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Subject Body -->
+      <div class="p-5 space-y-4">
+        {% for sect in subj.sections %}
+          <div class="border border-gray-200 dark:border-gray-700 rounded-xl p-4">
+            <div class="flex justify-between items-center mb-3">
+              <h3 class="text-base font-semibold">{{ sect.name }}</h3>
+              <div class="text-sm space-x-3">
+                <a href="{% url 'ques_edit' %}?subject_id={{ subj.id }}&section_id={{ sect.id }}"
+                   class="text-gray-600 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">
+                  {{ sect.total_unchecked }} U
+                </a>
+                <span class="text-gray-400">|</span>
+                <a href="{% url 'ques_edit' %}?subject_id={{ subj.id }}&section_id={{ sect.id }}&for_review=true"
+                   class="text-yellow-600 dark:text-yellow-400 hover:underline">
+                  {{ sect.total_review }} R
+                </a>
+                <span class="text-gray-400">|</span>
+                <a href="{% url 'ques_edit' %}?subject_id={{ subj.id }}&section_id={{ sect.id }}&for_review=false"
+                   class="text-green-600 dark:text-green-400 hover:underline">
+                  {{ sect.total_checked }} C
+                </a>
+              </div>
+            </div>
+
+            {% if sect.topics %}
+              <ul class="divide-y divide-gray-200 dark:divide-gray-700">
+                {% for t in sect.topics %}
+                  <li class="py-2 flex justify-between items-center text-sm">
+                    <span>{{ t.name }}</span>
+                    <div class="space-x-3">
+                      <a href="{% url 'ques_edit' %}?subject_id={{ subj.id }}&section_id={{ sect.id }}&topic_id={{ t.id }}"
+                         class="text-gray-600 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">
+                        {{ t.unchecked }} U
+                      </a>
+                      <span class="text-gray-400">|</span>
+                      <a href="{% url 'ques_edit' %}?subject_id={{ subj.id }}&section_id={{ sect.id }}&topic_id={{ t.id }}&for_review=true"
+                         class="text-yellow-600 dark:text-yellow-400 hover:underline">
+                        {{ t.review }} R
+                      </a>
+                      <span class="text-gray-400">|</span>
+                      <a href="{% url 'ques_edit' %}?subject_id={{ subj.id }}&section_id={{ sect.id }}&topic_id={{ t.id }}&for_review=false"
+                         class="text-green-600 dark:text-green-400 hover:underline">
+                        {{ t.checked }} C
+                      </a>
+                    </div>
+                  </li>
+                {% endfor %}
+              </ul>
+            {% endif %}
+          </div>
+        {% endfor %}
       </div>
     </div>
-    <div class="card-body">
-
-      {% for sect in subj.sections %}
-        <div class="mb-3 p-3 border rounded">
-          <div class="d-flex justify-content-between align-items-center mb-2">
-            <span class="h6 fw-semibold mb-0">{{ sect.name }}</span>
-            <span>
-              <a href="{% url 'ques_edit' %}?subject_id={{ subj.id }}&section_id={{ sect.id }}"
-                 class="text-secondary text-decoration-none me-2">
-                {{ sect.total_unchecked }} Unchecked
-              </a> |
-              <a href="{% url 'ques_edit' %}?subject_id={{ subj.id }}&section_id={{ sect.id }}&for_review=true"
-                 class="text-warning text-decoration-none mx-2">
-                {{ sect.total_review }} Review
-              </a> |
-              <a href="{% url 'ques_edit' %}?subject_id={{ subj.id }}&section_id={{ sect.id }}&for_review=false"
-                 class="text-success text-decoration-none ms-2">
-                {{ sect.total_checked }} Checked
-              </a>
-            </span>
-          </div>
-
-          {% if sect.topics %}
-            <ul class="list-unstyled ps-3 mb-0">
-              {% for t in sect.topics %}
-                <li class="mb-1">
-                  <span>{{ t.name }}</span>
-                  <span class="ms-2">
-                    <a href="{% url 'ques_edit' %}?subject_id={{ subj.id }}&section_id={{ sect.id }}&topic_id={{ t.id }}"
-                       class="text-secondary text-decoration-none me-1">
-                      {{ t.unchecked }} U
-                    </a> |
-                    <a href="{% url 'ques_edit' %}?subject_id={{ subj.id }}&section_id={{ sect.id }}&topic_id={{ t.id }}&for_review=true"
-                       class="text-warning text-decoration-none mx-1">
-                      {{ t.review }} R
-                    </a> |
-                    <a href="{% url 'ques_edit' %}?subject_id={{ subj.id }}&section_id={{ sect.id }}&topic_id={{ t.id }}&for_review=false"
-                       class="text-success text-decoration-none ms-1">
-                      {{ t.checked }} C
-                    </a>
-                  </span>
-                </li>
-              {% endfor %}
-            </ul>
-          {% endif %}
-
-        </div>
-      {% endfor %}
-
+  {% empty %}
+    <div class="text-center py-12 text-gray-500 dark:text-gray-400">
+      No subjects found.
     </div>
-  </div>
-{% endfor %}
-
+  {% endfor %}
+</section>
 {% endblock %}

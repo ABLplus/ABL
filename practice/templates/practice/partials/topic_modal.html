@@ -1,6 +1,6 @@
 <!-- practice/partials/topic_modal.html -->
-<div class="fixed inset-0 z-50" role="dialog" aria-modal="true">
-  <!-- Backdrop (click to close via HTMX) -->
+<div class="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal="true">
+  <!-- Backdrop -->
   <div
     class="absolute inset-0 bg-black/50"
     hx-get="{% url 'practice:modal_empty' %}"
@@ -10,14 +10,14 @@
   ></div>
 
   <!-- Panel -->
-  <div class="relative mx-auto mt-24 w-full max-w-lg rounded-2xl bg-white dark:bg-gray-800 p-6 shadow-xl">
+  <div
+    class="relative z-10 flex max-h-[90vh] w-full max-w-5xl flex-col rounded-2xl bg-white dark:bg-gray-800 shadow-xl"
+  >
     <!-- Header -->
-    <div class="flex items-center justify-between">
+    <div class="flex items-center justify-between px-6 pt-5 pb-3 border-b border-gray-200 dark:border-gray-700">
       <h3 class="text-xl font-semibold text-gray-900 dark:text-gray-100">
         {{ topic.name }}
       </h3>
-
-      <!-- Close button (also HTMX-clears modal) -->
       <button
         class="rounded-full p-2 hover:bg-gray-100 dark:hover:bg-gray-700"
         hx-get="{% url 'practice:modal_empty' %}"
@@ -33,33 +33,128 @@
       </button>
     </div>
 
-    <!-- Body -->
-    <div class="mt-3 space-y-2">
-      
-
+    <!-- Scrollable Body -->
+    <div class="flex-1 overflow-y-auto px-6 py-4 space-y-4">
       {% if num_questions %}
-        <p class="text-sm text-gray-600 dark:text-gray-400">Total Questions: {{ num_questions }}</p>
+        <p class="text-sm text-gray-600 dark:text-gray-400">
+          Total Questions in Bank: {{ num_questions }}
+        </p>
       {% endif %}
 
-      <p class="text-sm text-gray-600 dark:text-gray-400">
-        {% if topic_summary.total_attempts %}
-        No. of Questions attempts(include repeats): {{topic_summary.total_attempts}}
-        {% else %}
-        No attempts yet. Click Start Practice to begin.
-        {% endif %}
+      {% if session_rows %}
+        <div class="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+          <table class="min-w-full text-sm">
+            <thead class="bg-gray-50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300">
+              <tr>
+                <th class="px-3 py-2 text-left font-medium">Round</th>
+                <th class="px-3 py-2 text-left font-medium">Date</th>
+                <th class="px-3 py-2 text-right font-medium">Total Qs</th>
+                <th class="px-3 py-2 text-right font-medium">Right</th>
+                <th class="px-3 py-2 text-right font-medium">Wrong</th>
+                <th class="px-3 py-2 text-right font-medium">Sureshot: n% — x/y (z%)</th>
+                <th class="px-3 py-2 text-right font-medium">Applied: n% — x/y (z%)</th>
+                <th class="px-3 py-2 text-right font-medium">Guesswork: n% — x/y (z%)</th>
+                <th class="px-3 py-2 text-right font-medium">Overall % Wrong</th>
+                <th class="px-3 py-2 text-right font-medium">Details</th>
+              </tr>
+            </thead>
 
-      </p>
+            <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+              {% for s in session_rows %}
+                <tr class="text-gray-900 dark:text-gray-100">
+                  <td class="px-3 py-2">Round {{ s.round_num }}</td>
+                  <td class="px-3 py-2">
+                    {% if s.end_time %}
+                      {{ s.end_time|date:"M j, Y, g:i a" }}
+                    {% else %}
+                      {{ s.start_time|date:"M j, Y, g:i a" }}
+                    {% endif %}
+                  </td>
+                  <td class="px-3 py-2 text-right">{{ s.total_qs }}</td>
+                  <td class="px-3 py-2 text-right">{{ s.right }}</td>
+                  <td class="px-3 py-2 text-right {% if s.wrong > 0 %}text-rose-600 dark:text-rose-400{% endif %}">
+                    {{ s.wrong }}
+                  </td>
+
+                  <!-- Sureshot -->
+                  <td class="px-3 py-2 text-right">
+                    {{ s.ss_attempt_pct|floatformat:1 }}% — 
+                    {{ s.ss_wrong }}/{{ s.ss_attempts }} ({{ s.ss_wrong_pct|floatformat:1 }}%)
+                  </td>
+                  <!-- Applied -->
+                  <td class="px-3 py-2 text-right">
+                    {{ s.applied_attempt_pct|floatformat:1 }}% — 
+                    {{ s.applied_wrong }}/{{ s.applied_attempts }} ({{ s.applied_wrong_pct|floatformat:1 }}%)
+                  </td>
+                  <!-- Guesswork -->
+                  <td class="px-3 py-2 text-right">
+                    {{ s.guess_attempt_pct|floatformat:1 }}% — 
+                    {{ s.guess_wrong }}/{{ s.guess_attempts }} ({{ s.guess_wrong_pct|floatformat:1 }}%)
+                  </td>
+
+                  <td class="px-3 py-2 text-right font-medium">
+                    {{ s.overall_wrong_pct|floatformat:1 }}%
+                  </td>
+                  <td class="px-3 py-2 text-right">
+                    <a
+                      href="{% url 'practice:practice_summary' s.id %}"
+                      class="inline-flex items-center rounded-lg border border-gray-300 dark:border-gray-600 px-2.5 py-1 text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
+                    >View</a>
+                  </td>
+                </tr>
+              {% endfor %}
+
+              {% if overall %}
+              <!-- Overall summary -->
+              <tr class="border-t-2 border-gray-300 dark:border-gray-600 bg-gradient-to-r from-gray-100 to-gray-50 dark:from-gray-700 dark:to-gray-800 font-semibold">
+                <td class="px-3 py-3">Overall</td>
+                <td class="px-3 py-3">
+                  {{ overall.first_date|date:"M j, Y" }} — {{ overall.last_date|date:"M j, Y" }}
+                </td>
+                <td class="px-3 py-3 text-right">{{ overall.total_qs }}</td>
+                <td class="px-3 py-3 text-right">{{ overall.right }}</td>
+                <td class="px-3 py-3 text-right {% if overall.wrong > 0 %}text-rose-600 dark:text-rose-400{% endif %}">
+                  {{ overall.wrong }}
+                </td>
+
+                <td class="px-3 py-3 text-right">
+                  {{ overall.ss_attempt_pct|floatformat:1 }}% —
+                  {{ overall.ss_wrong }}/{{ overall.ss_attempts }} ({{ overall.ss_wrong_pct|floatformat:1 }}%)
+                </td>
+                <td class="px-3 py-3 text-right">
+                  {{ overall.applied_attempt_pct|floatformat:1 }}% —
+                  {{ overall.applied_wrong }}/{{ overall.applied_attempts }} ({{ overall.applied_wrong_pct|floatformat:1 }}%)
+                </td>
+                <td class="px-3 py-3 text-right">
+                  {{ overall.guess_attempt_pct|floatformat:1 }}% —
+                  {{ overall.guess_wrong }}/{{ overall.guess_attempts }} ({{ overall.guess_wrong_pct|floatformat:1 }}%)
+                </td>
+
+                <td class="px-3 py-3 text-right font-bold">
+                  {{ overall.overall_wrong_pct|floatformat:1 }}%
+                </td>
+                <td class="px-3 py-3 text-right text-gray-400 dark:text-gray-500">—</td>
+              </tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="text-sm text-gray-600 dark:text-gray-400">
+          No sessions yet for this topic in Practice. Click <span class="font-medium">Start Practice</span> to begin.
+        </p>
+      {% endif %}
     </div>
 
     <!-- Footer -->
-    <div class="mt-6 flex justify-end gap-3">
+    <div class="px-6 py-4 flex justify-end gap-3 border-t border-gray-200 dark:border-gray-700">
       <button
         type="button"
         class="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
         hx-get="{% url 'practice:modal_empty' %}"
         hx-target="#modal-root"
         hx-swap="innerHTML"
-      >Cancel</button>
+      >Close</button>
 
       <a
         href="{{ practice_url }}"

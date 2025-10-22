@@ -24,7 +24,94 @@ from django.db.models import (
 from django.utils import timezone
 from syllabus.models import Subject
 from django.db.models.functions import Coalesce
+from .models import TopicStatus
 
+
+from practice.models import PracticeSession
+from analysis.models import TopicStatus
+from syllabus.models import Topic  # adjust if your import path differs
+
+# import your existing PMI function
+from practice.views import _compute_and_update_topic_pmi
+from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+
+
+@staff_member_required
+def user_pmi_recalc(request):
+    """
+    Staff-only utility:
+    - Render a dropdown of users (only those with completed PracticeSessions).
+    - On submit, recompute PMI for last-N sessions for each topic attempted by that user.
+    - Redirect back with a success message and show the updated TopicStatus rows
+      with Subject and Section.
+    """
+    # limit to users who actually have completed sessions
+    user_choices = (
+        User.objects
+        .filter(practicesession__status="completed")
+        .distinct()
+        .order_by("username")
+    )
+
+    selected_user = None
+    topic_status_list = []
+
+    if request.method == "POST":
+        user_id = request.POST.get("user_id")
+        try:
+            selected_user = User.objects.get(pk=user_id)
+        except (User.DoesNotExist, ValueError, TypeError):
+            messages.error(request, "Invalid user selected.")
+            return redirect(reverse("analysis:user_pmi_recalc"))
+
+        # All topics this user has attempted (completed sessions only)
+        topic_ids = (
+            PracticeSession.objects
+            .filter(user=selected_user, status="completed")
+            .values_list("topic_id", flat=True)
+            .distinct()
+        )
+
+        # Recompute PMI for each topic
+        topics = Topic.objects.filter(id__in=topic_ids).select_related(
+            "section", "section__subject"
+        )
+        for t in topics:
+            _compute_and_update_topic_pmi(selected_user, t)
+
+        messages.success(
+            request,
+            f"PMI recomputed for {topics.count()} topics for user “{selected_user}”."
+        )
+
+        # Fetch updated TopicStatus with subject/section for display
+        topic_status_list = (
+            TopicStatus.objects
+            .filter(user=selected_user, topic_id__in=topic_ids)
+            .select_related("topic", "section", "subject")  # TopicStatus already stores these
+            .order_by("subject__name", "section__name", "topic__name")
+        )
+
+        # render the same page with results (no extra redirect needed)
+        return render(
+            request,
+            "analysis/compute_user_pmi.html",
+            {
+                "user_choices": user_choices,
+                "selected_user": selected_user,
+                "topic_status_list": topic_status_list,
+            },
+        )
+
+    # GET — initial render or after redirect without selection
+    return render(
+        request,
+        "analysis/compute_user_pmi.html",
+        {"user_choices": user_choices, "selected_user": selected_user}
+    )
 
 
 
@@ -105,29 +192,56 @@ def _get_mode(request):
     return request.session.get("dash_mode", request.user.profile.mode)
 
 
+import random
+from django.db.models import Sum
+
+# PMI category colors
+CATEGORY_TEXT_CLASS = {
+    "strong":     "text-green-700 dark:text-green-300",
+    "transition": "text-yellow-600 dark:text-yellow-300",
+    "weak":       "text-red-700 dark:text-red-300",
+}
+
+# Tier-based styles (uniform casing + same base size)
+TIER_TEXT_CLASS = {
+    "most":    "text-base font-extrabold tracking-wide",  # removed uppercase
+    "general": "text-base font-semibold",
+    "rare":    "text-base italic",
+    "never":   "text-base opacity-80",
+}
+
+# Tier symbols and labels
+TIER_SYMBOL = {
+    "most":    "★",  # Most Asked
+    "general": "■",  # Generally Asked
+    "rare":    "▲",  # Rarely Asked
+    "never":   "●",  # Never Asked
+}
+
+TIER_LABEL = {
+    "most":    "Most Asked",
+    "general": "Generally Asked",
+    "rare":    "Rarely Asked",
+    "never":   "Never Asked",
+}
+
 def _insights_context(request):
     """
-    Returns a dict you can ** unpack into your dashboard context.
-    Adds:
-      • best_topics    : Top 5 with wrong_rate < 25%
-      • mid_topics     : 5 random with 25% ≤ wrong_rate ≤ 50%
-      • worst_topics   : Top 5 with wrong_rate > 50%
-      • coverage_pct, practiced_topics, total_topics
-      • total_attempts, correct_attempts, wrong_attempts
+    PMI-based Insights with uniform casing, balanced font size, and tier-specific emphasis.
     """
-    # ── topics universe & user summaries ───────────────────────────
+    user = request.user
     total_topics = Topic.objects.count()
+
+    # Coverage info
     tas = (
         TopicAttemptSummary.objects
-        .filter(user=request.user, mode="practice")
+        .filter(user=user, mode="practice")
         .select_related("topic")
     )
     practiced_topics = tas.count()
-
-    # ── coverage % ─────────────────────────────────────────────────
     coverage_pct = round(practiced_topics / total_topics * 100) if total_topics else 0
 
-    # ── aggregate attempt outcomes ──────────────────────────────────
+    # Aggregate attempts
     agg = tas.aggregate(
         total_attempts=Sum("total_attempts"),
         correct_attempts=Sum("correct_attempts"),
@@ -137,44 +251,70 @@ def _insights_context(request):
     correct_attempts = agg["correct_attempts"] or 0
     wrong_attempts   = agg["wrong_attempts"]   or 0
 
-    # ── classify best / mid / worst ────────────────────────────────
-    best, mid, worst = [], [], []
-    for row in tas:
-        wr = row.wrong_rate      # already a % (0–100) or 0 if no attempts
-        if wr is None or row.total_attempts == 0:
-            continue
-        if wr < 25:
-            best.append((wr, row))
-        elif 25 <= wr <= 50:
-            mid.append((wr, row))
-        else:  # wr > 50
-            worst.append((wr, row))
+    # PMI-based topic grouping
+    statuses = (
+        TopicStatus.objects
+        .filter(user=user)
+        .select_related("topic")
+        .exclude(pmi__isnull=True)
+    )
 
-    # pick & sort
-    best  = sorted(best,  key=lambda x: x[0])[:5]
-    worst = sorted(worst, key=lambda x: x[0], reverse=True)[:5]
+    strong, transition, weak = [], [], []
+    for ts in statuses:
+        pmi = float(ts.pmi)
+        tier_key = (ts.topic.tier or "general").lower()
 
-    if len(mid) > 5:
-        mid = random.sample(mid, 5)
-
-    # helper to dict
-    def to_dict(tup):
-        return {
-            "id":   tup[1].topic.id,
-            "name": tup[1].topic.name,
-            "pct":  round(tup[0], 1),
+        item = {
+            "id":   ts.topic.id,
+            "name": ts.topic.name,
+            "pmi":  round(pmi, 1),
+            "tier": tier_key,
+            "tier_label": TIER_LABEL.get(tier_key, "Generally Asked"),
+            "tier_symbol": TIER_SYMBOL.get(tier_key, "■"),
+            "tier_text_class": TIER_TEXT_CLASS.get(tier_key, "text-base font-semibold"),
         }
 
+        # classify by PMI
+        if pmi >= 80:
+            item["category_text_class"] = CATEGORY_TEXT_CLASS["strong"]
+            strong.append(item)
+        elif pmi <= 40:
+            item["category_text_class"] = CATEGORY_TEXT_CLASS["weak"]
+            weak.append(item)
+        else:
+            item["category_text_class"] = CATEGORY_TEXT_CLASS["transition"]
+            transition.append(item)
+
+    # sort & limit
+    strong = sorted(strong, key=lambda x: x["pmi"], reverse=True)[:5]
+    weak   = sorted(weak,   key=lambda x: x["pmi"])[:5]
+    if len(transition) > 5:
+        transition = random.sample(transition, 5)
+
+    # counts for headers and mastery
+    strong_n     = TopicStatus.objects.filter(user=user, pmi__gte=80).count()
+    transition_n = TopicStatus.objects.filter(user=user, pmi__gt=40, pmi__lt=80).count()
+    weak_n       = TopicStatus.objects.filter(user=user, pmi__lte=40).count()
+    mastery_pct  = round((strong_n / total_topics) * 100) if total_topics else 0
+
     return {
-        "coverage_pct":     coverage_pct,
-        "practiced_topics": practiced_topics,
-        "total_topics":     total_topics,
-        "total_attempts":   total_attempts,
-        "correct_attempts": correct_attempts,
-        "wrong_attempts":   wrong_attempts,
-        "best_topics":      [to_dict(x) for x in best],
-        "mid_topics":       [to_dict(x) for x in mid],
-        "worst_topics":     [to_dict(x) for x in worst],
+        "coverage_pct":       coverage_pct,
+        "practiced_topics":   practiced_topics,
+        "total_topics":       total_topics,
+        "total_attempts":     total_attempts,
+        "correct_attempts":   correct_attempts,
+        "wrong_attempts":     wrong_attempts,
+
+        "strong_topics":      strong,
+        "transition_topics":  transition,
+        "weak_topics":        weak,
+
+        "strong_n":           strong_n,
+        "transition_n":       transition_n,
+        "weak_n":             weak_n,
+
+        "mastery_pct":        mastery_pct,
+        "strong_count":       strong_n,
     }
 
 
@@ -313,6 +453,7 @@ def dashboard(request):
 
     profile   = request.user.profile
     exam_date = profile.exam_date
+    
     days_left = (exam_date - timezone.now().date()).days if exam_date else "--"
 
 
@@ -321,6 +462,7 @@ def dashboard(request):
         "profile":     profile,
         "current_mode":  mode,
         "days_left":     days_left,
+        
 
     }
 

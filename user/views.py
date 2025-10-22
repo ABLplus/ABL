@@ -6,16 +6,41 @@ from .forms import *
 from tests.models import Test
 from django.db.models import Max
 from django.contrib import messages
+from user.utils import set_exam_session
 
 def landing(request):
    
     return render(request, 'user/landing.html')
 
 
+@login_required
 def onboard(request):
-    
-   
-    return render(request, 'user/onboard.html')
+    profile, _ = Profile.objects.get_or_create(user=request.user)
+
+    if request.method == "POST":
+        exam_id = request.POST.get("exam")
+        exam_date = request.POST.get("exam_date")
+        exam_year = request.POST.get("exam_year")
+
+        if exam_id:
+            profile.exam = get_object_or_404(Exam, id=exam_id)
+
+        if exam_date:
+            profile.exam_date = exam_date
+            profile.exam_year = profile.exam_date.year  # keep consistent
+
+        elif exam_year:
+            profile.exam_year = exam_year
+
+        profile.save()
+
+        # ✅ Sync session
+        set_exam_session(request, profile)
+
+        return redirect("dashboard")
+
+    exams = Exam.objects.all().order_by("name")
+    return render(request, "user/onboard.html", {"exams": exams, "profile": profile})
 
 
 def home(request):
@@ -46,10 +71,19 @@ def login(request):
         if form.is_valid():
             user = form.get_user()
             auth_login(request, user)
-            return redirect('home')
+
+            try:
+                profile = Profile.objects.select_related("exam").get(user=user)
+                set_exam_session(request, profile)
+            except Profile.DoesNotExist:
+                request.session["exam"] = ""
+
+            return redirect("home")
+
     else:
         form = AuthenticationForm()
-    return render(request, 'user/login.html', {'form': form})
+
+    return render(request, "user/login.html", {"form": form})
 
 def logout(request):
     if request.method == 'POST':
@@ -132,12 +166,19 @@ def profile(request):
         form = ProfileForm(request.POST, instance=profile)
         if form.is_valid():
             profile = form.save(commit=False)
-            # if they supplied only a date, derive year
+
+            # Derive year if missing
             if profile.exam_date and not profile.exam_year:
                 profile.exam_year = profile.exam_date.year
+
             profile.save()
+
+            # ✅ Sync session value
+            set_exam_session(request, profile)
+
             messages.success(request, "Profile updated successfully.")
-            return redirect("profile")
+            return redirect("home")  # Redirect to home after save
+
     else:
         form = ProfileForm(instance=profile)
 

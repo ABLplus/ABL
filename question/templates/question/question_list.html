@@ -1,254 +1,305 @@
+{% extends "user/base.html" %}
 {% load range_tags %}
 {% load markdown_extras %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Question Review</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <!-- Bootstrap 5 -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-  <!-- HTMX -->
-  <script src="https://unpkg.com/htmx.org@1.9.2"></script>
-  <style>
-  body {
-    margin: 0;
-    padding: 1rem;
-    background-color: #f8f9fa;
-    color: #212529;
-  }
 
-  @media (prefers-color-scheme: dark) {
-    body {
-      background-color: #121212;
-      color: #e0e0e0;
-    }
-    .table th, .table td {
-      border-color: #444;
-      background-color: #1e1e1e;
-      color: #e0e0e0;
-    }
-    .table-light.dark-mode-header th {
-      background-color: #2c2c2c !important;
-      color: #fff !important;
-    }
-  }
+{% block title %}Question Review{% endblock %}
+{% block container_width %}max-w-none w-full{% endblock %}
 
-  .table-responsive {
-    overflow-x: auto;
-    margin-bottom: 1.5rem;
-  }
+{% block extra_head %}
+<link rel="stylesheet" href="https://uicdn.toast.com/editor/latest/toastui-editor-dark.min.css">
+<style>
+  /* Tight prose spacing for Markdown/view mode */
+  .markdown.prose-tight :where(p, ul, ol):not(:where([class~="not-prose"] *)) + :where(p, ul, ol):not(:where([class~="not-prose"] *)) { margin-top: .25rem !important; }
+  .markdown.prose-tight :where(p, ul, ol):not(:where([class~="not-prose"] *)) { margin-bottom: .25rem !important; }
+  .syllabus-stack select { font-size: .75rem; line-height: 1rem; }
+  .syllabus-stack .mb-2 { margin-bottom: .35rem; }
 
-  .table {
+  /* —— Cell-safe editor constraints —— */
+  td .cell-editor-wrap { min-width: 0; max-width: 100%; overflow: hidden; }
+
+  /* Editor fills cell width. It grows to show all current content up to a cap;
+     after the cap, it scrolls vertically inside the cell. */
+  td .cell-editor-clip {
     width: 100%;
-    table-layout: fixed;
-    border-collapse: separate;
-    border-spacing: 0;
+    max-width: 100%;
+    max-height: 70vh;        /* adjust cap (e.g., 60vh/80vh) */
+    overflow-y: auto;        /* internal vertical scroll when long */
+    overflow-x: hidden;
   }
 
-  .table th, .table td {
-    border: 1px solid #dee2e6;
-    padding: 0.5rem;
-    vertical-align: top;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-    white-space: normal;
-    background-color: #fff;
+  /* Force Toast UI to respect cell width */
+  td .cell-editor-clip .toastui-editor-defaultUI {
+    width: 100% !important;
+    max-width: 100% !important;
   }
 
-  /* Markdown styling */
-  .markdown {}
+  /* Toolbar should wrap to avoid widening column */
+  td .toastui-editor-defaultUI-toolbar { flex-wrap: wrap; gap: 2px; }
 
-  .markdown h1 {
-    font-size: 1.5rem;
-    margin-top: 1rem;
-    margin-bottom: 0.5rem;
+  /* Wrap everything in view/edit modes */
+  td .toastui-editor-contents,
+  td .markdown.prose-tight { word-break: break-word; overflow-wrap: anywhere; }
+  td .toastui-editor-contents table { width: 100% !important; table-layout: fixed; }
+  td .toastui-editor-contents pre { white-space: pre-wrap; word-break: break-word; }
+  td .toastui-editor-contents img { max-width: 100%; height: auto; }
+
+  .break-words { word-break: break-word; overflow-wrap: anywhere; }
+</style>
+<style>
+  /* …keep your existing styles… */
+
+  /* Make Toast UI’s inner panes expand with content; no inner scrollbars */
+  td .toastui-editor-ww-container,
+  td .toastui-editor-md-container {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
   }
 
-  .markdown h2 {
-    font-size: 1.3rem;
-    margin-top: 0.9rem;
-    margin-bottom: 0.45rem;
+  /* WYSIWYG content should not clamp/scroll; let the editor's outer height handle it */
+  td .toastui-editor-ww-container .toastui-editor-contents {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
   }
 
-  .markdown h3 {
-    font-size: 1.15rem;
-    margin-top: 0.8rem;
-    margin-bottom: 0.4rem;
+  /* CodeMirror scroller in Markdown mode should not be capped internally */
+  td .toastui-editor-md-container .cm-scroller {
+    max-height: none !important;
+    overflow: visible !important;
   }
 
-  .markdown p {
-    margin-bottom: 0.75rem;
-    line-height: 1.4;
-  }
 
-  /* Constrain rich‐text columns */
-  .question-cell {
-    max-width: 300px;
-  }
-
-  .explanation-cell {
-    max-width: 300px;
-  }
-
-  /* Slightly tighter filter form */
-  .filter-form .form-select {
-    font-size: 0.9rem;
-  }
 </style>
 
-</head>
-<body>
-  <div id="htmx-csrf" style="display:none">
-  {% csrf_token %}
+
+
+{% endblock %}
+
+{% block content %}
+<div class="py-4">
+  <div class="flex items-center justify-between">
+    <h1 class="text-xl font-semibold text-primary-600 dark:text-primary-400">Question Review</h1>
+    <p class="text-sm text-gray-500 dark:text-gray-400">
+      No. of Questions:
+      <span class="font-medium text-gray-700 dark:text-gray-200">{{ total_count }}</span>
+    </p>
+  </div>
+
+  {# Top filters #}
+  <form method="get" class="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 xl:grid-cols-8 gap-3">
+    <div class="xl:col-span-1">
+      <select name="exam" class="w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+        <option value="">— Exam —</option>
+        {% for e in exams %}
+          <option value="{{ e }}" {% if exam == e %}selected{% endif %}>{{ e }}</option>
+        {% endfor %}
+        <option value="none" {% if exam == 'none' %}selected{% endif %}>No Exam</option>
+      </select>
+    </div>
+
+    <div class="xl:col-span-1">
+      <select name="year" class="w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+        <option value="">— Year —</option>
+        {% for y in years %}
+          <option value="{{ y }}" {% if year == y|stringformat:"s" %}selected{% endif %}>{{ y }}</option>
+        {% endfor %}
+        <option value="none" {% if year == 'none' %}selected{% endif %}>No Year</option>
+      </select>
+    </div>
+
+    <div class="xl:col-span-1">
+      <select name="subject"
+              class="w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              hx-get="{% url 'question:ajax_sections' %}"
+              hx-target="#section-container"
+              hx-trigger="change">
+        <option value="">— Subject —</option>
+        {% for subj in subjects %}
+          <option value="{{ subj.id }}" {% if filter_subject == subj.id|stringformat:"s" %}selected{% endif %}>{{ subj.name }}</option>
+        {% endfor %}
+        <option value="none" {% if filter_subject == 'none' %}selected{% endif %}>No Subject</option>
+      </select>
+    </div>
+
+    <div id="section-container" class="xl:col-span-1">
+      {% include "question/partials/section_filter.html" %}
+    </div>
+    <div id="topic-container" class="xl:col-span-1">
+      {% include "question/partials/topic_filter.html" %}
+    </div>
+    <div id="subtopic-container" class="xl:col-span-1">
+      {% include "question/partials/subtopic_filter.html" %}
+    </div>
+
+    <div class="xl:col-span-1">
+      <select name="olt" class="w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+        <option value="">— OLT —</option>
+        {% for o in olts %}
+          <option value="{{ o.code }}" {% if filter_olt == o.code %}selected{% endif %}>{{ o.code }}</option>
+        {% endfor %}
+        <option value="none" {% if filter_olt == 'none' %}selected{% endif %}>No OLT</option>
+      </select>
+    </div>
+
+    <div class="xl:col-span-1">
+      <select name="status" class="w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+        <option value="">— Status —</option>
+        <option value="pending" {% if filter_status == 'pending' %}selected{% endif %}>Pending</option>
+        <option value="review"  {% if filter_status == 'review'  %}selected{% endif %}>Under Review</option>
+        <option value="checked" {% if filter_status == 'checked' %}selected{% endif %}>Checked</option>
+      </select>
+    </div>
+
+    <div class="sm:col-span-2 xl:col-span-1 flex items-center gap-2">
+      <button type="submit" class="inline-flex items-center justify-center rounded-md bg-green-600 hover:bg-green-700 text-white text-sm px-4 py-2">Apply</button>
+      <a href="{% url 'question:question_list' %}" class="inline-flex items-center justify-center rounded-md border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 text-sm px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-800">Clear</a>
+    </div>
+  </form>
+
+  <div class="mt-6 relative">
+    <div class="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
+      <table class="min-w-full table-fixed text-sm">
+        <colgroup>
+          <col style="width: 60px;">
+          <col style="width: 120px;">
+          <col style="width: 33%;">
+          <col style="width: 5.5rem;">
+          <col style="width: 13rem;">
+          <col style="width: 48%;">
+          <col style="width: 9rem;">
+        </colgroup>
+
+        <thead class="bg-gray-100 dark:bg-gray-800/70 text-gray-700 dark:text-gray-200">
+          <tr>
+            <th class="px-3 py-2 text-left font-semibold border-b border-gray-200 dark:border-gray-800">Sr./ID</th>
+            <th class="px-3 py-2 text-left font-semibold border-b border-gray-200 dark:border-gray-800">Exam-Year</th>
+            <th class="px-3 py-2 text-left font-semibold border-b border-gray-200 dark:border-gray-800">Q &amp; Options</th>
+            <th class="px-3 py-2 text-left font-semibold border-b border-gray-200 dark:border-gray-800">OLT</th>
+            <th class="px-3 py-2 text-left font-semibold border-b border-gray-200 dark:border-gray-800">Syllabus</th>
+            <th class="px-3 py-2 text-left font-semibold border-b border-gray-200 dark:border-gray-800">Explanation</th>
+            <th class="px-3 py-2 text-left font-semibold border-b border-gray-200 dark:border-gray-800">Actions</th>
+          </tr>
+        </thead>
+
+        <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+          {% for q in questions %}
+            {% include "question/partials/question_row.html" %}
+          {% empty %}
+            <tr>
+              <td colspan="7" class="px-3 py-6 text-center text-gray-500 dark:text-gray-400">No questions found.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="pointer-events-none absolute top-0 right-0 h-full w-6 bg-gradient-to-l from-gray-100/80 dark:from-gray-900/80 to-transparent"></div>
+  </div>
 </div>
-<script>
-  document.body.addEventListener('htmx:configRequest', (evt) => {
-    const token = document.querySelector('#htmx-csrf input[name="csrfmiddlewaretoken"]').value;
-    evt.detail.headers['X-CSRFToken'] = token;
-  });
-</script>
-<div class="container-fluid px-0">
- <h3 >No. of Questions: {{ total_count }}</h2>
+{% endblock %}
 
-<!-- Filter Form -->
-
-<form
-  method="get"
-  class="row g-2 mb-3 px-3 filter-form">
+{% block extra_js %}
+  <!-- Toast UI Editor (include once) -->
+  <link rel="stylesheet" href="https://uicdn.toast.com/editor/latest/toastui-editor.min.css" />
+  <script src="https://uicdn.toast.com/editor/latest/toastui-editor-all.min.js"></script>
   
-  <!-- Exam -->
-  <div class="col-md-2">
-    <select name="exam" class="form-select">
-      <option value="">-- Exam --</option>
-      {% for e in exams %}
-        <option value="{{ e }}" {% if exam == e %}selected{% endif %}>{{ e }}</option>
-      {% endfor %}
-      <option value="none" {% if exam == 'none' %}selected{% endif %}>No Exam</option>
-    </select>
-  </div>
 
-  <!-- Year -->
-  <div class="col-md-2">
-    <select name="year" class="form-select">
-      <option value="">-- Year --</option>
-      {% for y in years %}
-        <option value="{{ y }}" {% if year == y|stringformat:"s" %}selected{% endif %}>{{ y }}</option>
-      {% endfor %}
-      <option value="none" {% if year == 'none' %}selected{% endif %}>No Year</option>
-    </select>
-  </div>
+  <script>
+    window.__rowEditors = window.__rowEditors || {};
 
-  <!-- Subject -->
-  <div class="col-md-2">
-    <select
-      name="subject"
-      class="form-select"
-      hx-get="{% url 'question:ajax_sections' %}"
-      hx-target="#section-container"
-      hx-trigger="change">
-      <option value="">-- Subject --</option>
-      {% for subj in subjects %}
-        <option value="{{ subj.id }}" {% if filter_subject == subj.id|stringformat:"s" %}selected{% endif %}>
-          {{ subj.name }}
-        </option>
-      {% endfor %}
-      <option value="none" {% if filter_subject == 'none' %}selected{% endif %}>No Subject</option>
-    </select>
-  </div>
+    function mountTuiEditorFor(el) {
+      const textareaId = el.getAttribute('data-textarea-id');
+      const rowId = el.getAttribute('data-row-id');
+      const format = (el.getAttribute('data-format') || 'html').toLowerCase(); // 'html' | 'markdown'
+      const ta = document.getElementById(textareaId);
+      if (!ta) return;
 
-  <!-- Section -->
-  <div id="section-container" class="col-md-2">
-    {% include "question/partials/section_filter.html" %}
-  </div>
+      const key = rowId + '::' + textareaId;
+      if (window.__rowEditors[key]) return;
 
-  <!-- Topic -->
-  <div id="topic-container" class="col-md-2">
-    {% include "question/partials/topic_filter.html" %}
-  </div>
+      const initial = ta.value || '';
 
-  <!-- Subtopic -->
-  <div id="subtopic-container" class="col-md-2">
-    {% include "question/partials/subtopic_filter.html" %}
-  </div>
+      // Seed height; we immediately resize to fit content
+      const editor = new toastui.Editor({
+        el,
+        height: '200px',
+        initialEditType: 'wysiwyg',
+        previewStyle: 'vertical',
+        usageStatistics: false,
+        toolbarItems: [
+          ['heading', 'bold', 'italic', 'strike'],
+          ['hr', 'quote'],
+          ['ul', 'ol', 'task'],
+          ['table', 'link'],
+          ['code', 'codeblock'],
+        ],
+        initialValue: ''
+      });
 
-  <!-- OLT -->
-  <div class="col-md-2">
-    <select name="olt" class="form-select">
-      <option value="">-- OLT --</option>
-      {% for o in olts %}
-        <option value="{{ o.code }}" {% if filter_olt == o.code %}selected{% endif %}>{{ o.code }}</option>
-      {% endfor %}
-      <option value="none" {% if filter_olt == 'none' %}selected{% endif %}>No OLT</option>
-    </select>
-  </div>
+      if (format === 'markdown') editor.setMarkdown(initial);
+      else editor.setHTML(initial);
 
-  <!-- Status -->
-  <div class="col-md-2">
-    <select name="status" class="form-select">
-      <option value="">-- Status --</option>
-      <option value="pending" {% if filter_status == 'pending' %}selected{% endif %}>Pending</option>
-      <option value="review"  {% if filter_status == 'review'  %}selected{% endif %}>Under Review</option>
-      <option value="checked" {% if filter_status == 'checked' %}selected{% endif %}>Checked</option>
-    </select>
-  </div>
+      // Auto height: show all content (no inner scroll) until the clip cap; then cell scrolls.
+      const clip = el.closest('.cell-editor-clip');
+      const MAX_H = clip ? parseInt(getComputedStyle(clip).maxHeight) || Math.round(window.innerHeight * 0.7) : Math.round(window.innerHeight * 0.7);
+      const MIN_H = 140;
 
-  <!-- Apply / Clear -->
-  <div class="col-auto align-self-end">
-    <button type="submit" class="btn btn-success btn-sm">Apply</button>
-    <a href="{% url 'question:question_list' %}" class="btn btn-secondary btn-sm ms-2">Clear</a>
-  </div>
-</form>
+      function fitHeight() {
+        const ui   = el.querySelector('.toastui-editor-defaultUI');
+        const main = ui?.querySelector('.toastui-editor-main');
+        if (!ui || !main) return;
 
-<!-- 
-  Add New
-  <div class="px-3 mb-3">
-    <a href="{% url 'question:add_question' %}" class="btn btn-primary">Add New Question</a>
-  </div> -->
+        const toolbar = ui.querySelector('.toastui-editor-defaultUI-toolbar');
+        const tabs    = ui.querySelector('.te-tab');
 
-  <!-- Questions Table -->
-  <div class="table-responsive px-3">
-    <table class="table table-hover">
-      <colgroup>
-        <col style="width:4%">
-        <col style="width:4%">
-        <col style="width:22%" class="question-cell">
-        <col style="width:6%">
-        <col style="width:7%">
-        <col style="width:7%">
-        <col style="width:7%">
-        <col style="width:7%" class="explanation-cell">
-        <col style="width:22%">
-        <col style="width:5%">
-      </colgroup>
-      <thead class="table-light dark-mode-header">
-        <tr>
-          <th>Sr./ID</th>
-          <th>Exam-Year</th>
-          <th>Q &amp; Options</th>
-          <th>OLT</th>
-          <th>Subject</th>
-          <th>Section</th>
-          <th>Topic</th>
-          <th>Subtopic</th>
-          <th>Explanation</th>          
-          <th>Actions</th>
-        </tr>
-      </thead>
-     <tbody>
-  {% for q in questions %}
-    {% include "question/partials/question_row.html" %}
-  {% empty %}
-    <tr>
-      <td colspan="10" class="text-center text-muted">No questions found.</td>
-    </tr>
-  {% endfor %}
-</tbody>
-    </table>
-  </div>
-</div>
+        // Reset for accurate measure
+        editor.setHeight(MIN_H + 'px');
 
-<!-- Bootstrap JS Bundle -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+        const tbH   = toolbar ? toolbar.offsetHeight : 0;
+        const tabsH = tabs ? tabs.offsetHeight : 0;
+        const mainH = main.scrollHeight;
+        const chromePad = 24;
+
+        const needed = Math.max(MIN_H, Math.min(tbH + tabsH + mainH + chromePad, MAX_H));
+        editor.setHeight(needed + 'px');
+      }
+
+      const rerun = () => requestAnimationFrame(fitHeight);
+      setTimeout(fitHeight, 0);
+      editor.on('change', rerun);
+      editor.on('focus', rerun);
+      editor.on('blur', rerun);
+      editor.addHook && editor.addHook('changeMode', rerun);
+
+      // Also watch DOM inside content (paste, images, tables)
+      const contents = el.querySelector('.toastui-editor-contents');
+      if (contents && 'MutationObserver' in window) {
+        const mo = new MutationObserver(() => rerun());
+        mo.observe(contents, { childList: true, subtree: true, characterData: true });
+      }
+
+      // Sync hidden textarea with storage format
+      const sync = () => {
+        ta.value = (format === 'markdown') ? editor.getMarkdown() : editor.getHTML();
+      };
+      editor.on('change', sync);
+      editor.on('blur', sync);
+
+      window.__rowEditors[key] = editor;
+    }
+
+    // Initialize editors inside a row (called when toggling Rich Edit)
+    window.__initRowEditors = function(rowEl) {
+      rowEl.querySelectorAll('[data-tui-editor]').forEach(mountTuiEditorFor);
+    };
+
+    // Re-init after HTMX swaps if row remains in edit mode
+    document.addEventListener('htmx:afterSwap', (e) => {
+      const rows = e.detail.target ? e.detail.target.querySelectorAll('tr[id^="question-"]') : [];
+      rows.forEach((row) => {
+        const editOpen = row.__x ? row.__x.$data.editOpen : false;
+        if (editOpen) window.__initRowEditors(row);
+      });
+    });
+  </script>
+{% endblock %}

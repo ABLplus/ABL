@@ -1,207 +1,308 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>Topic Summary – {{ target_user.username }}</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-6">
+{% extends "user/base.html" %}
+{% load static %}
 
-  <!-- Header + User Switcher (unchanged) -->
-  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-    <h1 class="text-2xl sm:text-3xl font-bold">
-      Topic Summary
-      <span class="text-base sm:text-lg font-normal text-gray-500">
-        ({{ target_user.username }})
-      </span>
-    </h1>
+{% block title %}Topic Summary – {{ target_user.username }}{% endblock %}
 
-    <div class="flex items-center gap-3">
-      {% if request.user.is_staff %}
-        <form method="get" class="flex items-center gap-2">
-          {% if current_mode %}<input type="hidden" name="mode" value="{{ current_mode }}">{% endif %}
-          {% if q %}<input type="hidden" name="q" value="{{ q }}">{% endif %}
-          {% if active_sort %}<input type="hidden" name="sort" value="{{ active_sort }}">{% endif %}
-          {% if active_dir %}<input type="hidden" name="dir" value="{{ active_dir }}">{% endif %}
-          <label for="user" class="text-sm font-medium">View as:</label>
-          <select name="user" id="user"
-                  class="border rounded px-2 py-1 bg-white dark:bg-gray-700"
-                  onchange="this.form.submit()">
-            {% for u in all_users %}
-              <option value="{{ u.id }}" {% if u.id == target_user.id %}selected{% endif %}>
-                {{ u.username }}
-              </option>
-            {% endfor %}
-          </select>
-        </form>
-      {% endif %}
+{% block content %}
+<style>
+  /* Break out of base.html's max-width/container to use the full viewport width */
+  .full-bleed {
+    width: 100vw;
+    position: relative;
+    left: 50%;
+    right: 50%;
+    margin-left: -50vw;
+    margin-right: -50vw;
+  }
+</style>
 
-      <a href="{% url 'dashboard' %}?mode=practice"
-         hx-boost="false"
-         class="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded whitespace-nowrap">
-        ← Back to Dashboard
-      </a>
-    </div>
-  </div>
+<div class="full-bleed">
 
-  <!-- Filters (unchanged except they still preserve sorting) -->
-  <form method="get" class="mb-3">
-    {% if request.user.is_staff %}
-      <input type="hidden" name="user" value="{{ target_user.id }}">
-    {% endif %}
+  <!-- Top bar (edge to edge) -->
+  <div class="w-full p-4 sm:p-6">
 
-    <div class="flex flex-col sm:flex-row gap-2 sm:items-end">
-      <div>
-        <label for="mode" class="block text-sm font-medium mb-1">Mode</label>
-        <select name="mode" id="mode"
-                class="border rounded px-2 py-2 bg-white dark:bg-gray-700 min-w-[12rem]">
-          <option value="">All</option>
-          {% for value,label in mode_choices %}
-            <option value="{{ value }}" {% if value == current_mode %}selected{% endif %}>
-              {{ label }}
-            </option>
-          {% endfor %}
-        </select>
-      </div>
+    <!-- Header + User Switcher -->
+    <div class="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+      <h1 class="text-2xl sm:text-3xl font-bold">
+        Topic Summary
+        <span class="text-base sm:text-lg font-normal text-gray-500">
+          ({{ target_user.username }})
+        </span>
+      </h1>
 
-      <div class="flex-1">
-        <label for="q" class="block text-sm font-medium mb-1">Topic</label>
-        <input type="text" id="q" name="q" value="{{ q }}"
-               placeholder="Search topic name…"
-               class="w-full border rounded px-3 py-2 bg-white dark:bg-gray-700" />
-      </div>
+      <div class="flex items-center gap-3">
+        {% if request.user.is_staff %}
+          <form method="get" class="flex items-center gap-2">
+            {% if current_mode %}<input type="hidden" name="mode" value="{{ current_mode }}">{% endif %}
+            {% if q %}<input type="hidden" name="q" value="{{ q }}">{% endif %}
+            {% if active_sort %}<input type="hidden" name="sort" value="{{ active_sort }}">{% endif %}
+            {% if active_dir %}<input type="hidden" name="dir" value="{{ active_dir }}">{% endif %}
+            {% if current_subject_id %}<input type="hidden" name="subject" value="{{ current_subject_id }}">{% endif %}
+            <label for="user" class="text-sm font-medium">View as:</label>
+            <select name="user" id="user"
+                    class="border rounded px-2 py-1 bg-white dark:bg-gray-700"
+                    onchange="this.form.submit()">
+              {% for u in all_users %}
+                <option value="{{ u.id }}" {% if u.id == target_user.id %}selected{% endif %}>
+                  {{ u.username }}
+                </option>
+              {% endfor %}
+            </select>
+          </form>
+        {% endif %}
 
-      <input type="hidden" name="sort" value="{{ active_sort }}">
-      <input type="hidden" name="dir" value="{{ active_dir }}">
-
-      <div class="flex gap-2">
-        <button type="submit"
-                class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded">
-          Apply
-        </button>
-        + <a href="{% url 'practice:topic_summary' %}{% if request.user.is_staff %}?user={{ target_user.id }}{% endif %}"
-           class="px-4 py-2 bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded">
-          Reset
+        <a href="{% url 'dashboard' %}?mode=practice"
+           hx-boost="false"
+           class="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded whitespace-nowrap">
+          ← Back to Dashboard
         </a>
       </div>
     </div>
-  </form>
 
-  {% if summaries %}
-    <div class="overflow-x-auto rounded-lg shadow border dark:border-gray-700">
-      <table class="min-w-full divide-y divide-gray-300 dark:divide-gray-700 text-sm">
-        <thead class="bg-gray-200 dark:bg-gray-800">
-          <tr class="text-left">
-            {% with qs=base_qs %}
-              <th class="px-3 py-2">
-                <a class="underline" href="?{% if qs %}{{ qs }}&{% endif %}sort=topic&dir={% if active_sort == 'topic' and active_dir == 'asc' %}desc{% else %}asc{% endif %}">
-                  Topic
-                </a>
-              </th>
-              <th class="px-3 py-2">
-                <a class="underline" href="?{% if qs %}{{ qs }}&{% endif %}sort=mode&dir={% if active_sort == 'mode' and active_dir == 'asc' %}desc{% else %}asc{% endif %}">
-                  Mode
-                </a>
-              </th>
-              <th class="px-3 py-2 text-center">
-                <a class="underline" href="?{% if qs %}{{ qs }}&{% endif %}sort=total&dir={% if active_sort == 'total' and active_dir == 'asc' %}desc{% else %}asc{% endif %}">
-                  Total
-                </a>
-              </th>
-              <th class="px-3 py-2 text-center">
-                <a class="underline" href="?{% if qs %}{{ qs }}&{% endif %}sort=correct&dir={% if active_sort == 'correct' and active_dir == 'asc' %}desc{% else %}asc{% endif %}">
-                  Correct
-                </a>
-              </th>
-              <th class="px-3 py-2 text-center">
-                <a class="underline" href="?{% if qs %}{{ qs }}&{% endif %}sort=wrong&dir={% if active_sort == 'wrong' and active_dir == 'asc' %}desc{% else %}asc{% endif %}">
-                  Wrong
-                </a>
-              </th>
+    <!-- Filters -->
+    <form method="get" class="mb-3 w-full">
+      {% if request.user.is_staff %}
+        <input type="hidden" name="user" value="{{ target_user.id }}">
+      {% endif %}
 
-              {# Replaced Accuracy with WRONG RATE % #}
-              <th class="px-3 py-2 text-center">
-                <a class="underline" href="?{% if qs %}{{ qs }}&{% endif %}sort=wrong_rate&dir={% if active_sort == 'wrong_rate' and active_dir == 'asc' %}desc{% else %}asc{% endif %}">
-                  Wrong Rate %
-                </a>
-              </th>
+      <div class="w-full grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
+        <div>
+          <label for="mode" class="block text-sm font-medium mb-1">Mode</label>
+          <select name="mode" id="mode"
+                  class="w-full border rounded px-2 py-2 bg-white dark:bg-gray-700">
+            <option value="">All</option>
+            {% for value,label in mode_choices %}
+              <option value="{{ value }}" {% if value == current_mode %}selected{% endif %}>
+                {{ label }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
 
-              <th class="px-3 py-2 text-center">
-                <a class="underline" href="?{% if qs %}{{ qs }}&{% endif %}sort=net&dir={% if active_sort == 'net' and active_dir == 'asc' %}desc{% else %}asc{% endif %}">
-                  Net Marks
-                </a>
-              </th>
+        <div>
+          <label for="subject" class="block text-sm font-medium mb-1">Subject</label>
+          <select name="subject" id="subject"
+                  class="w-full border rounded px-2 py-2 bg-white dark:bg-gray-700">
+            <option value="">All Subjects</option>
+            {% for s in subject_choices %}
+              <option value="{{ s.id }}" {% if s.id|stringformat:"s" == current_subject_id %}selected{% endif %}>
+                {{ s.name }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
 
-              <!-- Attempt-type breakdowns -->
-              <th class="px-3 py-2 text-center">
-                <a class="underline" href="?{% if qs %}{{ qs }}&{% endif %}sort=ss&dir={% if active_sort == 'ss' and active_dir == 'asc' %}desc{% else %}asc{% endif %}">
-                  Sureshot
-                </a>
-              </th>
-              <th class="px-3 py-2 text-center">
-                <a class="underline" href="?{% if qs %}{{ qs }}&{% endif %}sort=ap&dir={% if active_sort == 'ap' and active_dir == 'asc' %}desc{% else %}asc{% endif %}">
-                  Applied
-                </a>
-              </th>
-              <th class="px-3 py-2 text-center">
-                <a class="underline" href="?{% if qs %}{{ qs }}&{% endif %}sort=gw&dir={% if active_sort == 'gw' and active_dir == 'asc' %}desc{% else %}asc{% endif %}">
-                  Guesswork
-                </a>
-              </th>
-            
+        <div class="sm:col-span-2">
+          <label for="q" class="block text-sm font-medium mb-1">Topic</label>
+          <input type="text" id="q" name="q" value="{{ q }}"
+                 placeholder="Search topic name…"
+                 class="w-full border rounded px-3 py-2 bg-white dark:bg-gray-700" />
+        </div>
 
-              <!-- Wrong attempt breakdowns -->
-              <th class="px-3 py-2 text-center text-red-600">
-                <a class="underline" href="?{% if qs %}{{ qs }}&{% endif %}sort=ssw&dir={% if active_sort == 'ssw' and active_dir == 'asc' %}desc{% else %}asc{% endif %}">
-                  Sureshot Wrong
-                </a>
-              </th>
-              <th class="px-3 py-2 text-center text-red-600">
-                <a class="underline" href="?{% if qs %}{{ qs }}&{% endif %}sort=apw&dir={% if active_sort == 'apw' and active_dir == 'asc' %}desc{% else %}asc{% endif %}">
-                  Applied Wrong
-                </a>
-              </th>
-              <th class="px-3 py-2 text-center text-red-600">
-                <a class="underline" href="?{% if qs %}{{ qs }}&{% endif %}sort=gww&dir={% if active_sort == 'gww' and active_dir == 'asc' %}desc{% else %}asc{% endif %}">
-                  Guess Wrong
-                </a>
-              </th>
-              
-            {% endwith %}
-          </tr>
-        </thead>
+        <input type="hidden" name="sort" value="{{ active_sort }}">
+        <input type="hidden" name="dir" value="{{ active_dir }}">
 
-        <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-          {% for ts in summaries %}
-            <tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
-              <td class="px-3 py-2 whitespace-nowrap">{{ ts.topic.name }}</td>
-              <td class="px-3 py-2">{{ ts.get_mode_display }}</td>
+        <div class="sm:col-span-4 flex gap-2">
+          <button type="submit"
+                  class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded">
+            Apply
+          </button>
+          <a href="{% url 'practice:topic_summary' %}{% if request.user.is_staff %}?user={{ target_user.id }}{% endif %}"
+             class="px-4 py-2 bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded">
+            Reset
+          </a>
+        </div>
+      </div>
+    </form>
 
-              <td class="px-3 py-2 text-center tabular-nums">{{ ts.total_attempts }}</td>
-              <td class="px-3 py-2 text-center tabular-nums">{{ ts.correct_attempts }}</td>
-              <td class="px-3 py-2 text-center tabular-nums">{{ ts.wrong_attempts }}</td>
+    {% if summaries %}
+      <!-- Full-bleed, horizontal scroll when needed -->
+      <div class="w-full overflow-x-auto rounded-lg shadow border dark:border-gray-700">
+        <table class="min-w-[1400px] w-full whitespace-nowrap divide-y divide-gray-300 dark:divide-gray-700 text-sm">
+          <thead class="bg-gray-200 dark:bg-gray-800">
+            <tr class="text-left">
+              {% with qs=base_qs %}
+                <!-- Subject & Section columns removed; tooltip on Topic -->
+                <th class="px-3 py-2">
+                  <a class="underline"
+                     href="?{% if qs %}{{ qs }}&{% endif %}sort=topic&dir={% if active_sort == 'topic' and active_dir == 'asc' %}desc{% else %}asc{% endif %}">
+                    Topic
+                  </a>
+                </th>
+                <th class="px-3 py-2">
+                  <a class="underline"
+                     href="?{% if qs %}{{ qs }}&{% endif %}sort=mode&dir={% if active_sort == 'mode' and active_dir == 'asc' %}desc{% else %}asc{% endif %}">
+                    Mode
+                  </a>
+                </th>
 
-              {# Display model's property; sorting uses annotation #}
-              <td class="px-3 py-2 text-center tabular-nums">{{ ts.wrong_rate|floatformat:2 }}</td>
+                <!-- Core counts -->
+                <th class="px-3 py-2 text-right">
+                  <a class="underline"
+                     href="?{% if qs %}{{ qs }}&{% endif %}sort=total&dir={% if active_sort == 'total' and active_dir == 'asc' %}desc{% else %}asc{% endif %}">
+                    Total
+                  </a>
+                </th>
+                <th class="px-3 py-2 text-right">
+                  <a class="underline"
+                     href="?{% if qs %}{{ qs }}&{% endif %}sort=correct&dir={% if active_sort == 'correct' and active_dir == 'asc' %}desc{% else %}asc{% endif %}">
+                    Correct
+                  </a>
+                </th>
+                <th class="px-3 py-2 text-right">
+                  <a class="underline"
+                     href="?{% if qs %}{{ qs }}&{% endif %}sort=wrong&dir={% if active_sort == 'wrong' and active_dir == 'asc' %}desc{% else %}asc{% endif %}">
+                    Wrong
+                  </a>
+                </th>
+                <th class="px-3 py-2 text-right">
+                  <a class="underline"
+                     href="?{% if qs %}{{ qs }}&{% endif %}sort=wrong_rate&dir={% if active_sort == 'wrong_rate' and active_dir == 'asc' %}desc{% else %}asc{% endif %}">
+                    Wrong %
+                  </a>
+                </th>
+                <th class="px-3 py-2 text-right">
+                  <a class="underline"
+                     href="?{% if qs %}{{ qs }}&{% endif %}sort=net&dir={% if active_sort == 'net' and active_dir == 'asc' %}desc{% else %}asc{% endif %}">
+                    Net
+                  </a>
+                </th>
 
-              <td class="px-3 py-2 text-center tabular-nums">{{ ts.net_marks|floatformat:2 }}</td>
+                <!-- Attempt-type -->
+                <th class="px-3 py-2 text-right">
+                  <a class="underline"
+                     href="?{% if qs %}{{ qs }}&{% endif %}sort=ss&dir={% if active_sort == 'ss' and active_dir == 'asc' %}desc{% else %}asc{% endif %}">
+                    SS
+                  </a>
+                </th>
+                <th class="px-3 py-2 text-right">
+                  <a class="underline"
+                     href="?{% if qs %}{{ qs }}&{% endif %}sort=ap&dir={% if active_sort == 'ap' and active_dir == 'asc' %}desc{% else %}asc{% endif %}">
+                    AP
+                  </a>
+                </th>
+                <th class="px-3 py-2 text-right">
+                  <a class="underline"
+                     href="?{% if qs %}{{ qs }}&{% endif %}sort=gw&dir={% if active_sort == 'gw' and active_dir == 'asc' %}desc{% else %}asc{% endif %}">
+                    GW
+                  </a>
+                </th>
+                <th class="px-3 py-2 text-right text-red-600">
+                  <a class="underline"
+                     href="?{% if qs %}{{ qs }}&{% endif %}sort=ssw&dir={% if active_sort == 'ssw' and active_dir == 'asc' %}desc{% else %}asc{% endif %}">
+                    SS Wrong
+                  </a>
+                </th>
+                <th class="px-3 py-2 text-right text-red-600">
+                  <a class="underline"
+                     href="?{% if qs %}{{ qs }}&{% endif %}sort=apw&dir={% if active_sort == 'apw' and active_dir == 'asc' %}desc{% else %}asc{% endif %}">
+                    AP Wrong
+                  </a>
+                </th>
+                <th class="px-3 py-2 text-right text-red-600">
+                  <a class="underline"
+                     href="?{% if qs %}{{ qs }}&{% endif %}sort=gww&dir={% if active_sort == 'gww' and active_dir == 'asc' %}desc{% else %}asc{% endif %}">
+                    GW Wrong
+                  </a>
+                </th>
 
-              <td class="px-3 py-2 text-center tabular-nums">{{ ts.sureshot_attempts }}</td>
-              <td class="px-3 py-2 text-center tabular-nums">{{ ts.applied_attempts }}</td>
-              <td class="px-3 py-2 text-center tabular-nums">{{ ts.guesswork_attempts }}</td>
-              
-              <td class="px-3 py-2 text-center tabular-nums text-red-600">{{ ts.sureshot_wrong }}</td>
-              <td class="px-3 py-2 text-center tabular-nums text-red-600">{{ ts.applied_wrong }}</td>
-              <td class="px-3 py-2 text-center tabular-nums text-red-600">{{ ts.guesswork_wrong }}</td>
-             
+                <!-- 6 metrics + PMI -->
+                <th class="px-3 py-2 text-right">
+                  <a class="underline"
+                     href="?{% if qs %}{{ qs }}&{% endif %}sort=cki&dir={% if active_sort == 'cki' and active_dir == 'asc' %}desc{% else %}asc{% endif %}">
+                    CKI %
+                  </a>
+                </th>
+                <th class="px-3 py-2 text-right">
+                  <a class="underline"
+                     href="?{% if qs %}{{ qs }}&{% endif %}sort=pki&dir={% if active_sort == 'pki' and active_dir == 'asc' %}desc{% else %}asc{% endif %}">
+                    PKI %
+                  </a>
+                </th>
+                <th class="px-3 py-2 text-right">
+                  <a class="underline"
+                     href="?{% if qs %}{{ qs }}&{% endif %}sort=cg&dir={% if active_sort == 'cg' and active_dir == 'asc' %}desc{% else %}asc{% endif %}">
+                    CG %
+                  </a>
+                </th>
+                <th class="px-3 py-2 text-right">
+                  <a class="underline"
+                     href="?{% if qs %}{{ qs }}&{% endif %}sort=fcr&dir={% if active_sort == 'fcr' and active_dir == 'asc' %}desc{% else %}asc{% endif %}">
+                    FCR %
+                  </a>
+                </th>
+                <th class="px-3 py-2 text-right">
+                  <a class="underline"
+                     href="?{% if qs %}{{ qs }}&{% endif %}sort=af&dir={% if active_sort == 'af' and active_dir == 'asc' %}desc{% else %}asc{% endif %}">
+                    AF %
+                  </a>
+                </th>
+                <th class="px-3 py-2 text-right">
+                  <a class="underline"
+                     href="?{% if qs %}{{ qs }}&{% endif %}sort=gw_wrong_pct&dir={% if active_sort == 'gw_wrong_pct' and active_dir == 'asc' %}desc{% else %}asc{% endif %}">
+                    GW% Wrong
+                  </a>
+                </th>
+                <th class="px-3 py-2 text-right">
+                  <a class="underline"
+                     href="?{% if qs %}{{ qs }}&{% endif %}sort=pmi&dir={% if active_sort == 'pmi' and active_dir == 'asc' %}desc{% else %}asc{% endif %}">
+                    PMI
+                  </a>
+                </th>
+                <th class="px-3 py-2 text-right">
+                  <a class="underline"
+                     href="?{% if qs %}{{ qs }}&{% endif %}sort=rounds&dir={% if active_sort == 'rounds' and active_dir == 'asc' %}desc{% else %}asc{% endif %}">
+                    Rounds
+                  </a>
+                </th>
+              {% endwith %}
             </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  {% else %}
-    <p class="text-red-600 mt-4">No TopicAttemptSummary data found for this user.</p>
-  {% endif %}
+          </thead>
 
-</body>
-</html>
+          <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+            {% for ts in summaries %}
+              <tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
+                <!-- Subject & Section in tooltip -->
+                <td class="px-3 py-2 whitespace-nowrap"
+                    title="{{ ts.topic.section.subject.name }} › {{ ts.topic.section.name }}">
+                  {{ ts.topic.name }}
+                </td>
+                <td class="px-3 py-2">{{ ts.get_mode_display }}</td>
+
+                <td class="px-3 py-2 text-right tabular-nums">{{ ts.total_attempts }}</td>
+                <td class="px-3 py-2 text-right tabular-nums">{{ ts.correct_attempts }}</td>
+                <td class="px-3 py-2 text-right tabular-nums">{{ ts.wrong_attempts }}</td>
+                <td class="px-3 py-2 text-right tabular-nums">{{ ts.wrong_rate_value|floatformat:2 }}%</td>
+                <td class="px-3 py-2 text-right tabular-nums">{{ ts.net_marks|floatformat:2 }}</td>
+
+                <td class="px-3 py-2 text-right tabular-nums">{{ ts.sureshot_attempts }}</td>
+                <td class="px-3 py-2 text-right tabular-nums">{{ ts.applied_attempts }}</td>
+                <td class="px-3 py-2 text-right tabular-nums">{{ ts.guesswork_attempts }}</td>
+                <td class="px-3 py-2 text-right tabular-nums text-red-600">{{ ts.sureshot_wrong }}</td>
+                <td class="px-3 py-2 text-right tabular-nums text-red-600">{{ ts.applied_wrong }}</td>
+                <td class="px-3 py-2 text-right tabular-nums text-red-600">{{ ts.guesswork_wrong }}</td>
+
+                <!-- 6 metrics + PMI -->
+                <td class="px-3 py-2 text-right tabular-nums">{{ ts.cki_value|floatformat:2 }}%</td>
+                <td class="px-3 py-2 text-right tabular-nums">{{ ts.pki_value|floatformat:2 }}%</td>
+                <td class="px-3 py-2 text-right tabular-nums">{{ ts.cg_value|floatformat:2 }}%</td>
+                <td class="px-3 py-2 text-right tabular-nums">{{ ts.fcr_value|floatformat:2 }}%</td>
+                <td class="px-3 py-2 text-right tabular-nums">{{ ts.af_value|floatformat:2 }}%</td>
+                <td class="px-3 py-2 text-right tabular-nums">{{ ts.gw_wrong_pct_value|floatformat:2 }}%</td>
+                <td class="px-3 py-2 text-right tabular-nums">
+                  {% if ts.pmi_value is not None %}{{ ts.pmi_value|floatformat:2 }}%{% else %}—{% endif %}
+                </td>
+                <td class="px-3 py-2 text-right tabular-nums">
+                  {% if ts.rounds_value %}{{ ts.rounds_value }}{% else %}—{% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="text-red-600 mt-4">No TopicAttemptSummary data found for this user.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

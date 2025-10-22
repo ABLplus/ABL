@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from .views_admin import topic_weight_view, tier_questions_view
 
 urlpatterns = [
 
@@ -15,6 +16,8 @@ urlpatterns = [
     
     path('ques_summary/', views.ques_summary_view, name='ques_summary'),
 
+    path("get_syllabus_chain/", views.get_syllabus_chain, name="get_syllabus_chain"),
+
 
 
 
@@ -25,6 +28,10 @@ urlpatterns = [
     path('ques/<int:pk>/generate_explanation/', views.generate_explanation, name='generate_explanation'),
 
     path('section-tree/', views.section_topic_subtopic_view, name='section_tree'),
+
+        # Admin view for topic weights
+    path("topic-weights/", topic_weight_view, name="topic_weights"),
+    path("tier-browser/", tier_questions_view, name="tier_browser"),
 
    
 ]

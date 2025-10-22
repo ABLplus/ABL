@@ -87,6 +87,7 @@ def ques_summary_view(request):
     subjects.sort(key=lambda x: x['name'])
 
     return render(request, 'syllabus/ques_summary.html', { 'subjects': subjects })
+
 @staff_member_required
 def section_topic_subtopic_view(request):
     selected_subject_id = request.GET.get('subject')
@@ -144,6 +145,8 @@ def section_topic_subtopic_view(request):
         'subjects': subjects,
         'selected_subject_id': int(selected_subject_id) if selected_subject_id else None
     })
+
+
 @staff_member_required
 def generate_explanation(request, pk):
     ques = get_object_or_404(Ques, id=pk)
@@ -539,3 +542,61 @@ def get_subtopic_dropdown(request):
         'subtopics'  : subtopics,
         'selected_id': selected,
     })
+
+
+
+def get_syllabus_chain(request):
+    level = request.GET.get("level")  # 'subject' | 'section' | 'topic' | None
+    q_id = request.GET.get("question_id")
+
+    # current ids from request (string or None)
+    subject_id  = request.GET.get("subject_id") or None
+    section_id  = request.GET.get("section_id") or None
+    topic_id    = request.GET.get("topic_id") or None
+    subtopic_id = request.GET.get("subtopic_id") or None
+
+    # optional: seed from the question on first load
+    q = None
+    if q_id:
+        try:
+            q = Question.objects.only(
+                "subject_id", "section_id", "topic_id", "subtopic_id"
+            ).get(pk=q_id)
+        except Question.DoesNotExist:
+            q = None
+
+    def s(v):  # normalize to string (for template comparisons)
+        return str(v) if v not in (None, "", "None") else ""
+
+    no_ids_supplied = not any([subject_id, section_id, topic_id, subtopic_id])
+    if no_ids_supplied and q:
+        subject_id  = s(q.subject_id)
+        section_id  = s(q.section_id)
+        topic_id    = s(q.topic_id)
+        subtopic_id = s(q.subtopic_id)
+
+    # reset downstream when a parent changes
+    if level == "subject":
+        section_id = topic_id = subtopic_id = None
+    elif level == "section":
+        topic_id = subtopic_id = None
+    elif level == "topic":
+        subtopic_id = None
+
+    subjects  = Subject.objects.all().order_by("name")
+    sections  = Section.objects.filter(subject_id=subject_id) if subject_id else Section.objects.none()
+    topics    = Topic.objects.filter(section_id=section_id)   if section_id else Topic.objects.none()
+    subtopics = SubTopic.objects.filter(topic_id=topic_id)    if topic_id   else SubTopic.objects.none()
+
+    ctx = {
+        "subjects": subjects,
+        "sections": sections,
+        "topics": topics,
+        "subtopics": subtopics,
+        "subject_id":  s(subject_id),
+        "section_id":  s(section_id),
+        "topic_id":    s(topic_id),
+        "subtopic_id": s(subtopic_id),
+        "question_id": s(q_id),
+    }
+    return render(request, "syllabus/partials/syllabus_chain.html", ctx)

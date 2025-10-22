@@ -1,0 +1,81 @@
+{% extends "user/base.html" %}
+{% load static %}
+
+{% block title %}Recalculate PMI – Staff{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-4xl px-4 py-6">
+  <h1 class="text-xl font-semibold mb-4">Recalculate PMI for a User</h1>
+
+  {# Messages #}
+  {% if messages %}
+    <div class="space-y-2 mb-4">
+      {% for message in messages %}
+        <div class="p-3 rounded border
+                    {% if message.tags == 'success' %}border-green-300 bg-green-50 text-green-800{% endif %}
+                    {% if message.tags == 'error' %}border-red-300 bg-red-50 text-red-800{% endif %}">
+          {{ message }}
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <form method="post" class="flex items-end gap-3 mb-6">
+    {% csrf_token %}
+    <div class="flex-1">
+      <label for="user_id" class="block text-sm mb-1">Select User</label>
+      <select id="user_id" name="user_id" class="w-full border rounded p-2">
+        {% for u in user_choices %}
+          <option value="{{ u.id }}" {% if selected_user and selected_user.id == u.id %}selected{% endif %}>
+            {{ u.get_full_name|default:u.username }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="px-4 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700">
+      Recalculate PMI
+    </button>
+  </form>
+
+  {% if selected_user %}
+    <h2 class="text-lg font-medium mb-2">
+      Updated Topic PMIs for: <span class="font-semibold">{{ selected_user.get_full_name|default:selected_user.username }}</span>
+    </h2>
+
+    {% if topic_status_list %}
+      <div class="overflow-x-auto border rounded">
+        <table class="min-w-full text-sm">
+          <thead class="bg-gray-100">
+            <tr>
+              <th class="px-3 py-2 text-left">Subject</th>
+              <th class="px-3 py-2 text-left">Section</th>
+              <th class="px-3 py-2 text-left">Topic</th>
+              <th class="px-3 py-2 text-right">PMI</th>
+              <th class="px-3 py-2 text-right">Window</th>
+              <th class="px-3 py-2 text-right">Updated</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for ts in topic_status_list %}
+              <tr class="border-t">
+                <td class="px-3 py-2">{{ ts.subject.name }}</td>
+                <td class="px-3 py-2">{{ ts.section.name }}</td>
+                <td class="px-3 py-2">{{ ts.topic.name }}</td>
+                <td class="px-3 py-2 text-right">{{ ts.pmi|floatformat:2 }}%</td>
+                <td class="px-3 py-2 text-right">
+                  {% if ts.rounds %}{{ ts.rounds }}{% else %}—{% endif %}
+                </td>
+                <td class="px-3 py-2 text-right">
+                  {% if ts.updated_at %}{{ ts.updated_at|date:"d M Y H:i" }}{% else %}—{% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="text-gray-600">No TopicStatus rows found for this user.</p>
+    {% endif %}
+  {% endif %}
+</div>
+{% endblock %}

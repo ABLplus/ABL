@@ -15,3 +15,40 @@ class Errortype(models.Model):
 
     def __str__(self):
         return self.name
+
+
+# analysis/models.py
+from django.conf import settings
+from django.db import models
+
+class TopicStatus(models.Model):
+    # ---- Identity / joins ----
+    user    = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="topic_statuses")
+    exam    = models.ForeignKey("syllabus.Exam",    on_delete=models.CASCADE, related_name="topic_statuses")
+    subject = models.ForeignKey("syllabus.Subject", on_delete=models.CASCADE, related_name="topic_statuses")
+    section = models.ForeignKey("syllabus.Section", on_delete=models.CASCADE, related_name="topic_statuses",
+                                null=True, blank=True)
+    topic   = models.ForeignKey("syllabus.Topic",   on_delete=models.CASCADE, related_name="topic_statuses")
+
+    rounds=models.PositiveIntegerField(default=0)  # Number of practice sessions involving this topic
+    # ---- Indices (nullable) ----
+    pmi = models.FloatField(null=True, blank=True, db_index=True)  # Practice Mastery Index
+    tmi = models.FloatField(null=True, blank=True, db_index=True)  # Test Mastery Index
+    cmi = models.FloatField(null=True, blank=True, db_index=True)  # Comprehensive Mastery Index
+
+    # ---- Timestamps ----
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = [("user", "topic")]
+        indexes = [
+            models.Index(fields=["user", "exam", "subject"]),
+            models.Index(fields=["user", "subject", "section"]),
+            models.Index(fields=["user", "pmi"]),
+            models.Index(fields=["topic"]),
+        ]
+        ordering = ["-updated_at"]
+
+    def __str__(self):
+        return f"TopicStatus(u={self.user_id}, t={self.topic_id}, pmi={self.pmi or 0:.1f})"

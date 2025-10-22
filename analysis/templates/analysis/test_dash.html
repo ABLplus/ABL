@@ -42,93 +42,89 @@
 
 <div class="max-w-7xl mx-auto p-6 space-y-8">
 
-   <!-- Switch Mode Button -->
-  <div class="flex justify-end mt-0 mb-0">
-    <a href="{% url 'dashboard' %}?mode=practice" class="px-2 py-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-md hover:bg-gray-300 transition">
-    Switch to Practice Mode
-    </a>
-  </div>
+<!-- Part 1: Overall Metrics (Compact) -->
+<section id="overall-metrics" class="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow">
+  <h2 class="sr-only">Overall Metrics</h2>
 
-  <!-- Part 1: Overall Metrics (Compact) -->
-  <section id="overall-metrics" class="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow">
-    <h2 class="sr-only">Overall Metrics</h2>
-    <div class="flex flex-wrap justify-between items-center gap-4">
-      <!-- Exam Days Left -->
-      <div class="flex items-center space-x-2">
-        <span class="p-2 bg-indigo-100 dark:bg-indigo-700 rounded-full">
-          <svg class="w-5 h-5 text-indigo-600 dark:text-indigo-200" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a8 8 0 100 16 8 8 0 000-16z"/></svg>
-        </span>
-        <div>
-          <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Exam Days Left</p>
-          <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ days_left }}</p>
-        </div>
-      </div>
-      <!-- Active Days -->
-      <div class="flex items-center space-x-2">
-        <span class="p-2 bg-blue-100 dark:bg-blue-700 rounded-full">
-          <svg class="w-5 h-5 text-blue-600 dark:text-blue-200" fill="currentColor" viewBox="0 0 20 20"><path d="M3 5h14v2H3zM3 9h14v2H3zM3 13h14v2H3z"/></svg>
-        </span>
-        <div>
-          <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Active Days</p>
-          <p class="text-lg font-semibold text-gray-900 dark:text-white">{{profile.days_active}}</p>
-        </div>
-      </div>
-      <!-- Streak -->
-      <div class="flex items-center space-x-2">
-        <span class="p-2 bg-purple-100 dark:bg-purple-700 rounded-full">
-          <svg class="w-5 h-5 text-purple-600 dark:text-purple-200" fill="currentColor" viewBox="0 0 20 20"><path d="M5 5h10v10H5z"/></svg>
-        </span>
-        <div>
-          <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{profile.streak_questions_target}} Question Streak</p>
-          <p class="text-lg font-semibold text-gray-900 dark:text-white"> {{profile.streak_days}} days</p>
-        </div>
-      </div>
- <!-- Total Attempts -->
-  <div class="flex items-center space-x-2">
-    <span class="p-2 bg-gray-100 dark:bg-gray-700 rounded-full">
-      <svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="currentColor" viewBox="0 0 20 20">
-        <path d="M4 3h12v2H4zM4 8h12v2H4zM4 13h12v2H4z"/>
-      </svg>
-    </span>
-    <div>
-      <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Total Attempts</p>
-      <p class="text-lg font-semibold text-gray-900 dark:text-white">
-        {{ test_insights.question_stats.attempted|default:"0" }}
-      </p>
-    </div>
-  </div>
+  <div class="flex flex-wrap justify-between items-center gap-4">
 
-  <!-- Correct -->
-  <div class="flex items-center space-x-2">
-    <span class="p-2 bg-green-100 dark:bg-green-700 rounded-full">
-      <svg class="w-5 h-5 text-green-600 dark:text-green-200" fill="currentColor" viewBox="0 0 20 20">
-        <path d="M5 10l4 4L19 3"/>
-      </svg>
-    </span>
-    <div>
-      <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Correct</p>
-      <p class="text-lg font-semibold text-green-500">
-        {{ test_insights.question_stats.correct|default:"0" }}
-      </p>
+    <!-- Exam Days Left -->
+    <div class="flex items-center space-x-2">
+      <span class="text-4xl">📅</span>
+      <div>
+        <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Exam Days Left</p>
+        <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ days_left }}</p>
+      </div>
     </div>
-  </div>
 
-  <!-- Incorrect -->
-  <div class="flex items-center space-x-2">
-    <span class="p-2 bg-red-100 dark:bg-red-700 rounded-full">
-      <svg class="w-5 h-5 text-red-600 dark:text-red-200" fill="currentColor" viewBox="0 0 20 20">
-        <path d="M6 6l8 8M6 14L14 6"/>
-      </svg>
-    </span>
-    <div>
-      <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Incorrect</p>
-      <p class="text-lg font-semibold text-red-500">
-        {{ test_insights.question_stats.wrong|default:"0" }}
-      </p>
+    <!-- Correct -->
+    <div class="flex items-center space-x-2">
+      <span class="text-4xl">✅</span>
+      <div>
+        <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Correct</p>
+        <p class="text-lg font-semibold text-green-500">
+          {{ test_insights.question_stats.correct|default:"0" }}
+        </p>
+      </div>
     </div>
+
+    <!-- Incorrect -->
+    <div class="flex items-center space-x-2">
+      <span class="text-4xl">❌</span>
+      <div>
+        <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Incorrect</p>
+        <p class="text-lg font-semibold text-red-500">
+          {{ test_insights.question_stats.wrong|default:"0" }}
+        </p>
+      </div>
+    </div>
+
+    <!-- Total Attempts -->
+    <div class="flex items-center space-x-2">
+      <span class="text-4xl">🧮</span>
+      <div>
+        <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Total Attempts</p>
+        <p class="text-lg font-semibold text-gray-900 dark:text-white">
+          {{ test_insights.question_stats.attempted|default:"0" }}
+        </p>
+      </div>
+    </div>
+
+    <!-- Active Days -->
+    <div class="flex items-center space-x-2">
+      <span class="text-4xl">🌞</span>
+      <div>
+        <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Active Days</p>
+        <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ profile.days_active }}</p>
+      </div>
+    </div>
+
+    <!-- Streak -->
+    <div class="flex items-center space-x-2">
+      <span class="text-4xl text-red-500">🔥</span>
+      <div>
+        <p class="text-xs font-medium text-gray-500 dark:text-gray-400">
+          {{ profile.streak_questions_target }} Question Streak
+        </p>
+        <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ profile.streak_days }} days</p>
+      </div>
+    </div>
+
+    <!-- Switch Mode Button (as last item) -->
+    <div class="flex items-center space-x-2">
+      
+      <div class="flex flex-col">
+        <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-0.5">Switch to</p>
+        <a href="{% url 'dashboard' %}?mode=practice"
+           class="inline-block text-sm font-semibold px-2 py-0.5 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition">
+          Practice Mode
+        </a>
+      </div>
+    </div>
+
   </div>
-    </div>
-  </section>
+</section>
+
 
 <!-- Part 2: Performance Insights -->
 <section id="insights" class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow">

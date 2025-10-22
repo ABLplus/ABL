@@ -8,6 +8,192 @@ from django.http import HttpResponse
 from django.views.decorators.http import require_POST
 from django.core.paginator import Paginator
 from django.db.models import Count, Q
+from collections import defaultdict
+from django.utils.http import urlencode
+
+
+STATUSES = ("pending", "review", "checked")
+
+def _blank_counts():
+    return {s: 0 for s in STATUSES} | {"total": 0}
+
+@staff_member_required
+def questions_check_status_tree(request):
+    """
+    Hierarchical dashboard:
+      Subject -> Section -> Topic
+    Counts by check_status at each level, with filters (exam, year, source, subject).
+    """
+    qs = Question.objects.select_related("subject", "section", "topic")
+
+    # ---- Filters ----
+    exam    = request.GET.get("exam") or None
+    year    = request.GET.get("year") or None
+    source  = request.GET.get("source") or None
+    subject = request.GET.get("subject") or None
+    section = request.GET.get("section") or None  # optional carry-through (not used to filter)
+
+    if exam:
+        qs = qs.filter(exam_name=exam)
+    if year:
+        qs = qs.filter(year=year)
+    if source:
+        qs = qs.filter(source_type=source)
+    if subject:
+        qs = qs.filter(subject_id=subject)
+
+    # ---- Grouped rows ----
+    subj_rows = qs.values("subject_id", "subject__name", "check_status").annotate(cnt=Count("id"))
+    sect_rows = qs.values("subject_id", "subject__name",
+                          "section_id", "section__name",
+                          "check_status").annotate(cnt=Count("id"))
+    topic_rows = qs.values("subject_id", "subject__name",
+                           "section_id", "section__name",
+                           "topic_id", "topic__name",
+                           "check_status").annotate(cnt=Count("id"))
+
+    # ---- Build tree ----
+    tree = defaultdict(lambda: {
+        "name": None,
+        "counts": _blank_counts(),
+        "sections": defaultdict(lambda: {
+            "name": None,
+            "counts": _blank_counts(),
+            "topics": defaultdict(lambda: {
+                "name": None,
+                "counts": _blank_counts()
+            })
+        })
+    })
+
+    # Subject counts
+    for r in subj_rows:
+        sid = r["subject_id"]
+        sname = r["subject__name"] or "(Unassigned)"
+        status = r["check_status"] or "pending"
+        cnt = r["cnt"] or 0
+        node = tree[sid]
+        node["name"] = sname
+        node["counts"][status] += cnt
+        node["counts"]["total"] += cnt
+
+    # Section counts
+    for r in sect_rows:
+        sid = r["subject_id"]; secid = r["section_id"]
+        sname = r["subject__name"] or "(Unassigned)"
+        secname = r["section__name"] or "(Unassigned)"
+        status = r["check_status"] or "pending"
+        cnt = r["cnt"] or 0
+
+        snode = tree[sid]
+        snode["name"] = snode["name"] or sname
+        secnode = snode["sections"][secid]
+        secnode["name"] = secname
+        secnode["counts"][status] += cnt
+        secnode["counts"]["total"] += cnt
+
+    # Topic counts
+    for r in topic_rows:
+        sid = r["subject_id"]; secid = r["section_id"]; tid = r["topic_id"]
+        sname = r["subject__name"] or "(Unassigned)"
+        secname = r["section__name"] or "(Unassigned)"
+        tname = r["topic__name"] or "(Unassigned)"
+        status = r["check_status"] or "pending"
+        cnt = r["cnt"] or 0
+
+        snode = tree[sid]
+        snode["name"] = snode["name"] or sname
+        secnode = snode["sections"][secid]
+        secnode["name"] = secnode["name"] or secname
+        tnode = secnode["topics"][tid]
+        tnode["name"] = tname
+        tnode["counts"][status] += cnt
+        tnode["counts"]["total"] += cnt
+
+    # ---- Sort & convert to lists; compute % and topic flags ----
+    def sort_key_name(x):  # x is (id, node)
+        _id, node = x
+        nm = node["name"] or ""
+        return (nm == "(Unassigned)", nm.lower())
+
+    subjects_out = []
+    for sid, snode in sorted(tree.items(), key=sort_key_name):
+        # Subject % checked
+        s_total   = snode["counts"]["total"] or 0
+        s_checked = snode["counts"]["checked"] or 0
+        s_pct     = int(round((s_checked * 100.0) / s_total)) if s_total > 0 else 0
+        s_done    = (s_total > 0 and s_checked == s_total)
+
+        sections_out = []
+        for secid, secnode in sorted(snode["sections"].items(), key=sort_key_name):
+            sec_total   = secnode["counts"]["total"] or 0
+            sec_checked = secnode["counts"]["checked"] or 0
+            sec_pct     = int(round((sec_checked * 100.0) / sec_total)) if sec_total > 0 else 0
+            sec_done    = (sec_total > 0 and sec_checked == sec_total)
+
+            topics_out = []
+            for tid, tnode in sorted(secnode["topics"].items(), key=sort_key_name):
+                t_total   = tnode["counts"]["total"] or 0
+                t_checked = tnode["counts"]["checked"] or 0
+                t_pct     = int(round((t_checked * 100.0) / t_total)) if t_total > 0 else 0
+                t_done    = (t_total > 0 and t_checked == t_total)
+
+                topics_out.append({
+                    "id": tid,
+                    **tnode,
+                    "pct_checked": t_pct,     # optional for future UI
+                    "is_complete": t_done,    # for green topic name
+                })
+
+            sections_out.append({
+                "id": secid,
+                **secnode,
+                "topics": topics_out,
+                "pct_checked": sec_pct,      # for progress bar
+                "is_complete": sec_done,
+            })
+
+        subjects_out.append({
+            "id": sid,
+            **snode,
+            "sections": sections_out,
+            "pct_checked": s_pct,           # for progress bar
+            "is_complete": s_done,
+        })
+
+    # ---- Filter choices ----
+    exams = (Question.objects.exclude(exam_name__isnull=True)
+             .values_list("exam_name", flat=True).distinct().order_by("exam_name"))
+    years = (Question.objects.exclude(year__isnull=True)
+             .values_list("year", flat=True).distinct().order_by("year"))
+    sources = ["PYQ", "AI"]
+    all_subjects = Subject.objects.order_by("name")
+
+    # ---- Carry base (excludes topic/status so topic pills can set them) ----
+    carry_base = urlencode({
+        k: v for k, v in {
+            "exam": exam,
+            "year": year,
+            "source": source,
+            "subject": subject,
+            "section": section,  # include if you want to persist section selection
+        }.items() if v
+    })
+
+    return render(
+        request,
+        "question/Questions-Check-status.html",
+        {
+            "subjects": subjects_out,
+            "filters": {"exam": exam, "year": year, "source": source, "subject": subject},
+            "exams": exams,
+            "years": years,
+            "sources": sources,
+            "all_subjects": all_subjects,
+            "STATUSES": STATUSES,
+            "carry_base": carry_base,  # use this in topic pill links
+        },
+    )
 
 @staff_member_required
 def question_summary(request):
@@ -185,6 +371,8 @@ def question_list(request):
     )
 
     total_count = qs.count()
+    for q in qs:
+        print(f"{q.id}-{q.question_html}")
    
 
     context = {
@@ -240,23 +428,79 @@ def ajax_question_subtopics(request, pk):
 
 
 @require_POST
+@staff_member_required
 def check_save(request, pk):
+    """
+    Saves inline edits and marks question as 'checked'.
+    Your front-end currently removes the row (empty response),
+    which we keep intact.
+    """
     q = get_object_or_404(Question, pk=pk)
+
+    # Syllabus + OLT
     q.subject_id  = request.POST.get('subject')  or q.subject_id
     q.section_id  = request.POST.get('section')  or q.section_id
     q.topic_id    = request.POST.get('topic')    or q.topic_id
     q.subtopic_id = request.POST.get('subtopic') or q.subtopic_id
-    q.olt_id = request.POST.get('olt') or q.olt_id
+    q.olt_id      = request.POST.get('olt')      or q.olt_id
+
+    # Question statement (HTML via Toast UI)
+    q_html = request.POST.get('question_html')
+    if q_html is not None:
+        q.question_html = q_html
+
+    # Options (plain strings)
+    for f in ['option_a', 'option_b', 'option_c', 'option_d']:
+        val = request.POST.get(f)
+        if val is not None:
+            setattr(q, f, val)
+
+    # Correct option
+    co = request.POST.get('correct_option')
+    if co in ['a', 'b', 'c', 'd']:
+        q.correct_option = co
+
+    # Explanation (Markdown) if present
+    exp_md = request.POST.get('explanation_generated')
+    if exp_md is not None:
+        q.explanation_generated = exp_md
+
+    # Mark as checked (will enforce your validation in model.save)
     q.check_status = 'checked'
     q.save()
-    return HttpResponse("")  # empty body; HTMX will delete the row
+
+    # Keep the existing behavior: remove row on client (empty swap)
+    return HttpResponse("")
+
 
 @require_POST
+@staff_member_required
 def mark_review(request, pk):
     q = get_object_or_404(Question, pk=pk)
     q.check_status = 'review'
     q.save()
-    return HttpResponse("") 
+    return HttpResponse("")
+
+
+@require_POST
+@staff_member_required
+def reset_status(request, pk):
+    """
+    Sets status back to pending and re-renders the row so it stays visible.
+    """
+    q = get_object_or_404(Question, pk=pk)
+    q.check_status = 'pending'
+    q.save()
+
+    return render(
+        request,
+        "question/partials/question_row.html",
+        {
+            "q": q,
+            "subjects": Subject.objects.order_by("name"),
+            "olts": OLT.objects.order_by("code"),
+        },
+    )
 
 @staff_member_required
 def ajax_sections(request):

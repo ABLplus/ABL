@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en"
+      x-data="dashboard()"
+      :class="{ 'dark': dark }"
+      class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ABL+ CMS — Content Head Dashboard (Aggregated Pipeline)</title>
+
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Tailwind config -->
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            primary: {50:'#eef2ff',100:'#e0e7ff',200:'#c7d2fe',300:'#a5b4fc',400:'#818cf8',500:'#6366f1',600:'#4f46e5',700:'#4338ca',800:'#3730a3',900:'#312e81'}
+          },
+          boxShadow: { soft: '0 8px 30px rgba(31,41,55,0.08)' }
+        }
+      }
+    }
+  </script>
+
+  <!-- Apply stored theme immediately -->
+  <script>
+    (function(){
+      if (localStorage.getItem('theme') === 'dark') {
+        document.documentElement.classList.add('dark');
+      }
+    })();
+  </script>
+
+  <!-- Alpine -->
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+  <style>[x-cloak]{display:none!important}</style>
+</head>
+<body class="font-sans antialiased bg-gray-50 text-gray-800 dark:bg-gray-900 dark:text-gray-100">
+
+  <!-- Top Nav -->
+  <header class="sticky top-0 z-40 bg-white/90 dark:bg-gray-900/90 backdrop-blur border-b border-gray-200 dark:border-gray-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="h-9 w-9 rounded-xl bg-primary-600 flex items-center justify-center text-white font-bold shadow-soft">A</div>
+        <div>
+          <div class="text-lg font-extrabold tracking-tight">ABL+ CMS</div>
+          <div class="text-xs text-gray-500 dark:text-gray-400">Content Head • UPSC Prelims 2026</div>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <!-- Subject filter -->
+        <select x-model="selectedSubject"
+                class="text-sm px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+          <template x-for="s in subjects" :key="s">
+            <option :value="s" x-text="s"></option>
+          </template>
+        </select>
+
+        <!-- Stage filter -->
+        <select x-model="selectedStage"
+                class="text-sm px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+          <template x-for="st in stages" :key="st.value">
+            <option :value="st.value" x-text="st.label"></option>
+          </template>
+        </select>
+
+        <!-- Dark mode -->
+        <button @click="toggleTheme()"
+                class="ml-1 inline-flex items-center gap-2 text-sm px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path x-show="!dark" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 3v2m0 14v2m9-9h-2M5 12H3m14.95 6.95-1.414-1.414M7.464 7.464 6.05 6.05m12.9 0-1.414 1.414M7.464 16.536 6.05 17.95"/>
+            <path x-show="dark" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+          <span x-show="!dark">Light</span>
+          <span x-show="dark">Dark</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+    <!-- LEFT -->
+    <section class="lg:col-span-9 space-y-6">
+
+      <!-- KPI Cards -->
+      <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+        <template x-for="card in kpis()" :key="card.label">
+          <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 p-4 shadow-soft">
+            <div class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1" x-text="card.label"></div>
+            <div class="text-2xl font-bold">
+              <span x-text="card.value"></span>
+              <span class="text-sm font-medium text-gray-500" x-text="'/'+card.total"></span>
+            </div>
+            <div class="mt-3 h-2 w-full rounded-full bg-gray-100 dark:bg-gray-700">
+              <div class="h-2 rounded-full"
+                   :class="card.color"
+                   :style="`width:${card.pct}%`"></div>
+            </div>
+          </div>
+        </template>
+      </div>
+
+      <!-- Pipeline Monitor (AGGREGATED BY STAGE) -->
+      <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 p-5 shadow-soft">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-semibold">Pipeline Monitor (Stages 0–5, Aggregated)</h2>
+          <div class="text-xs text-gray-500 dark:text-gray-400">
+            <span>Subject: </span><span class="font-medium" x-text="selectedSubject"></span>
+            <span class="mx-1">•</span>
+            <span>Stage: </span><span class="font-medium" x-text="stageLabel(selectedStage)"></span>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="text-xs uppercase text-gray-500 dark:text-gray-400">
+              <tr class="text-left">
+                <th class="py-2 pr-4">Stage</th>
+                <th class="py-2 pr-4 w-64">Progress (Avg)</th>
+                <th class="py-2 pr-4">SME Pending (Σ)</th>
+                <th class="py-2 pr-4">AI Error (Avg)</th>
+                <th class="py-2 pr-4">Owner</th>
+                <th class="py-2">Updated</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+              <template x-for="row in aggregatedPipeline()" :key="row.id">
+                <tr>
+                  <td class="py-3 pr-4 font-medium" x-text="row.stageLabel"></td>
+                  <td class="py-3 pr-4">
+                    <div class="h-2 rounded-full bg-gray-100 dark:bg-gray-700">
+                      <div class="h-2 rounded-full"
+                           :class="row.color"
+                           :style="`width:${row.progress}%`"></div>
+                    </div>
+                  </td>
+                  <td class="py-3 pr-4" x-text="row.smePending"></td>
+                  <td class="py-3 pr-4" x-text="row.aiError"></td>
+                  <td class="py-3 pr-4" x-text="row.owner"></td>
+                  <td class="py-3" x-text="row.updated"></td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Subject Breakdown -->
+      <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 p-5 shadow-soft">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-semibold">Subject Breakdown</h2>
+          <div class="text-xs text-gray-500 dark:text-gray-400">Filter: <span class="font-medium" x-text="selectedSubject"></span></div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="text-xs uppercase text-gray-500 dark:text-gray-400">
+              <tr class="text-left">
+                <th class="py-2 pr-4">Subject</th>
+                <th class="py-2 pr-4">PYQs Tagged</th>
+                <th class="py-2 pr-4">Concept Notes</th>
+                <th class="py-2 pr-4">MCQs Approved</th>
+                <th class="py-2 pr-4">Variants</th>
+                <th class="py-2">Status</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+              <template x-for="s in subjectRows()" :key="s.subject">
+                <tr>
+                  <td class="py-3 pr-4 font-medium" x-text="s.subject"></td>
+                  <td class="py-3 pr-4" x-text="`${s.pyqDone} / ${s.pyqTotal}`"></td>
+                  <td class="py-3 pr-4" x-text="`${s.noteDone} / ${s.noteTotal}`"></td>
+                  <td class="py-3 pr-4" x-text="`${s.mcqDone} / ${s.mcqTotal}`"></td>
+                  <td class="py-3 pr-4" x-text="`${s.varDone} / ${s.varTotal}`"></td>
+                  <td class="py-3">
+                    <span class="px-2 py-1 text-xs rounded-full"
+                          :class="s.statusBadge.bg"
+                          x-text="s.statusBadge.text"></span>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Task Board (brief) -->
+      <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 p-5 shadow-soft">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-semibold">Team Task Board (Overview)</h2>
+          <div class="text-xs text-gray-500 dark:text-gray-400">Grouped by Status</div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="text-sm font-semibold">To Review</h3>
+              <span class="text-xs px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700">14</span>
+            </div>
+            <ul class="space-y-3">
+              <li class="p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50">
+                <div class="text-sm font-medium">Concept Notes — Geography/Climate</div>
+                <div class="text-xs text-gray-500 dark:text-gray-400">SME: @Anita • Due: 22 Oct</div>
+              </li>
+              <li class="p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50">
+                <div class="text-sm font-medium">PYQ Mapping — Economy/Budget</div>
+                <div class="text-xs text-gray-500 dark:text-gray-400">AI pass → SME verify</div>
+              </li>
+            </ul>
+          </div>
+          <div class="rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="text-sm font-semibold">Under Review</h3>
+              <span class="text-xs px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700">9</span>
+            </div>
+            <ul class="space-y-3">
+              <li class="p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50">
+                <div class="text-sm font-medium">PYQ Variants — History/Medieval</div>
+                <div class="text-xs text-gray-500 dark:text-gray-400">SME: @Shreya</div>
+              </li>
+              <li class="p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50">
+                <div class="text-sm font-medium">Source Embedding — Env/Reports</div>
+                <div class="text-xs text-gray-500 dark:text-gray-400">Vector health check</div>
+              </li>
+            </ul>
+          </div>
+          <div class="rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="text-sm font-semibold">Approved</h3>
+              <span class="text-xs px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700">6</span>
+            </div>
+            <ul class="space-y-3">
+              <li class="p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50">
+                <div class="text-sm font-medium">Syllabus v1.0 — Finalized</div>
+                <div class="text-xs text-gray-500 dark:text-gray-400">Locked & versioned</div>
+              </li>
+              <li class="p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50">
+                <div class="text-sm font-medium">Polity MCQs Batch #12</div>
+                <div class="text-xs text-gray-500 dark:text-gray-400">780 items</div>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- RIGHT -->
+    <aside class="lg:col-span-3 space-y-6">
+
+      <!-- AI & SME Metrics -->
+      <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 p-5 shadow-soft">
+        <h2 class="text-lg font-semibold mb-4">AI & SME Metrics</h2>
+        <ul class="space-y-3 text-sm">
+          <li class="flex items-center justify-between">
+            <span class="text-gray-600 dark:text-gray-300">Avg SME Approval</span>
+            <span class="font-semibold" x-text="metricsForSubject().approval"></span>
+          </li>
+          <li class="flex items-center justify-between">
+            <span class="text-gray-600 dark:text-gray-300">AI Draft Accuracy</span>
+            <span class="font-semibold" x-text="metricsForSubject().aiAccuracy"></span>
+          </li>
+          <li class="flex items-center justify-between">
+            <span class="text-gray-600 dark:text-gray-300">Avg Review Time/Note</span>
+            <span class="font-semibold" x-text="metricsForSubject().reviewTime"></span>
+          </li>
+          <li class="flex items-center justify-between">
+            <span class="text-gray-600 dark:text-gray-300">AI Correction Applied</span>
+            <span class="font-semibold" x-text="metricsForSubject().aiCorrection"></span>
+          </li>
+        </ul>
+        <div class="mt-4 text-xs text-gray-500 dark:text-gray-400">Subject-aware metrics change with the dropdown.</div>
+      </div>
+
+      <!-- Alerts -->
+      <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 p-5 shadow-soft">
+        <h2 class="text-lg font-semibold mb-3">Alerts</h2>
+        <template x-if="alertsForSubject().length === 0">
+          <div class="text-sm text-gray-500 dark:text-gray-400">No alerts.</div>
+        </template>
+        <ul class="space-y-3 text-sm" x-show="alertsForSubject().length">
+          <template x-for="a in alertsForSubject()" :key="a.msg">
+            <li class="p-3 rounded-lg border"
+                :class="a.class">
+              <span x-text="a.msg"></span>
+            </li>
+          </template>
+        </ul>
+      </div>
+
+      <!-- Recent Activity -->
+      <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 p-5 shadow-soft">
+        <h2 class="text-lg font-semibold mb-3">Recent Activity</h2>
+        <ol class="space-y-3 text-sm">
+          <template x-for="r in recentActivity()" :key="r.time">
+            <li class="flex items-start gap-3">
+              <span class="mt-1 h-2 w-2 rounded-full" :class="r.dot"></span>
+              <div>
+                <span class="font-medium" x-text="r.user"></span>
+                <span x-text="r.action"></span>
+                <span class="text-xs text-gray-500 dark:text-gray-400" x-text="r.time"></span>
+              </div>
+            </li>
+          </template>
+        </ol>
+      </div>
+
+    </aside>
+  </main>
+
+  <footer class="py-6 text-center text-xs text-gray-500 dark:text-gray-400">
+    © 2025 ABL+ — Shared CMS • Content Head View (Aggregated Pipeline)
+  </footer>
+
+  <!-- Alpine state & logic -->
+  <script>
+    function dashboard(){
+      return {
+        dark: localStorage.getItem('theme') === 'dark',
+        toggleTheme(){ this.dark = !this.dark; localStorage.setItem('theme', this.dark ? 'dark' : 'light'); },
+
+        subjects: ['All Subjects','Polity','Geography','History','Economy','Environment','Science & Tech','IR'],
+        stages: [
+          {value:'all', label:'All Stages'},
+          {value:'s0', label:'Stage 0: Sources'},
+          {value:'s1', label:'Stage 1: Syllabus'},
+          {value:'s2', label:'Stage 2: PYQ Mapping'},
+          {value:'s3', label:'Stage 3: Notes'},
+          {value:'s4', label:'Stage 4: MCQs'},
+          {value:'s5', label:'Stage 5: PYQ Variants'},
+        ],
+        selectedSubject: 'All Subjects',
+        selectedStage: 'all',
+
+        // --- MOCK DATA ---
+
+        subjectData: [
+          {subject:'Polity', pyqDone:1180, pyqTotal:1200, noteDone:220, noteTotal:240, mcqDone:690, mcqTotal:780, varDone:360, varTotal:420, status:'on'},
+          {subject:'Geography', pyqDone:800, pyqTotal:950, noteDone:180, noteTotal:220, mcqDone:520, mcqTotal:700, varDone:290, varTotal:360, status:'warn'},
+          {subject:'History', pyqDone:1020, pyqTotal:1100, noteDone:210, noteTotal:240, mcqDone:610, mcqTotal:700, varDone:300, varTotal:350, status:'on'},
+          {subject:'Economy', pyqDone:760, pyqTotal:840, noteDone:200, noteTotal:240, mcqDone:520, mcqTotal:680, varDone:260, varTotal:320, status:'risk'},
+          {subject:'Environment', pyqDone:390, pyqTotal:400, noteDone:130, noteTotal:150, mcqDone:330, mcqTotal:380, varDone:210, varTotal:240, status:'on'},
+          {subject:'Science & Tech', pyqDone:310, pyqTotal:380, noteDone:110, noteTotal:150, mcqDone:190, mcqTotal:260, varDone:120, varTotal:180, status:'warn'},
+          {subject:'IR', pyqDone:275, pyqTotal:320, noteDone:95, noteTotal:120, mcqDone:160, mcqTotal:220, varDone:90, varTotal:130, status:'on'}
+        ],
+
+        // Stage progress per subject
+        pipelineData: [
+          {subject:'Polity',    s0:98, s1:100, s2:95, s3:92, s4:88, s5:82, pending:{s0:1,s1:0,s2:3,s3:4,s4:20,s5:28}, error:{s0:'2%',s2:'5%',s3:'7%',s4:'9%',s5:'11%'}},
+          {subject:'Geography', s0:92, s1:100, s2:86, s3:78, s4:66, s5:54, pending:{s0:2,s1:0,s2:8,s3:16,s4:40,s5:55}, error:{s0:'4%',s2:'10%',s3:'12%',s4:'18%',s5:'22%'}},
+          {subject:'History',   s0:96, s1:100, s2:93, s3:88, s4:82, s5:74, pending:{s0:1,s1:0,s2:5,s3:7,s4:15,s5:21}, error:{s0:'3%',s2:'6%',s3:'8%',s4:'10%',s5:'12%'}},
+          {subject:'Economy',   s0:90, s1:100, s2:84, s3:76, s4:62, s5:50, pending:{s0:3,s1:0,s2:10,s3:18,s4:48,s5:62}, error:{s0:'5%',s2:'11%',s3:'13%',s4:'19%',s5:'24%'}},
+          {subject:'Environment',s0:97,s1:100, s2:92, s3:89, s4:86, s5:80, pending:{s0:1,s1:0,s2:2,s3:4,s4:8,s5:12}, error:{s0:'2%',s2:'5%',s3:'6%',s4:'7%',s5:'9%'}},
+          {subject:'Science & Tech',s0:91,s1:100,s2:85,s3:74,s4:68,s5:58,pending:{s0:2,s1:0,s2:9,s3:17,s4:32,s5:44}, error:{s0:'4%',s2:'9%',s3:'12%',s4:'16%',s5:'20%'}},
+          {subject:'IR',        s0:93, s1:100, s2:88, s3:83, s4:76, s5:69, pending:{s0:1,s1:0,s2:3,s3:6,s4:14,s5:18}, error:{s0:'3%',s2:'6%',s3:'9%',s4:'11%',s5:'13%'}}
+        ],
+
+        // Metrics per subject (Right panel)
+        metrics: {
+          global:   {approval:'86% (+3%)', aiAccuracy:'82% (+5%)', reviewTime:'2.1 hrs (-0.3h)', aiCorrection:'89% (+6%)'},
+          Polity:   {approval:'91% (+2%)', aiAccuracy:'88% (+3%)', reviewTime:'1.8 hrs (-0.1h)', aiCorrection:'92% (+4%)'},
+          Geography:{approval:'83% (+1%)', aiAccuracy:'79% (+4%)', reviewTime:'2.3 hrs (-0.2h)', aiCorrection:'86% (+5%)'},
+          History:  {approval:'90% (+2%)', aiAccuracy:'85% (+3%)', reviewTime:'2.0 hrs (-0.2h)', aiCorrection:'90% (+5%)'},
+          Economy:  {approval:'80% (+0%)', aiAccuracy:'76% (+2%)', reviewTime:'2.5 hrs (-0.1h)', aiCorrection:'84% (+3%)'},
+          'Environment':{approval:'92% (+3%)', aiAccuracy:'87% (+4%)', reviewTime:'1.9 hrs (-0.3h)', aiCorrection:'91% (+6%)'},
+          'Science & Tech':{approval:'84% (+1%)', aiAccuracy:'80% (+3%)', reviewTime:'2.4 hrs (-0.2h)', aiCorrection:'87% (+4%)'},
+          IR:       {approval:'88% (+2%)', aiAccuracy:'83% (+3%)', reviewTime:'2.1 hrs (-0.2h)', aiCorrection:'89% (+5%)'}
+        },
+
+        // Alerts per subject
+        alertMap: {
+          global: [
+            {msg:'Economy pipeline delay risk (Stage 4). Add contributors or rescope batch.', class:'bg-rose-50 text-rose-800 dark:bg-rose-900/30 dark:text-rose-200 border border-rose-200/60 dark:border-rose-800'},
+            {msg:'New source uploaded: “PIB Compendium 2024” — embedding pending.', class:'bg-blue-50 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200 border border-blue-200/60 dark:border-blue-800'}
+          ],
+          Polity: [
+            {msg:'Parliament MCQ batch flagged for distractor overlap. Review 12 items.', class:'bg-amber-50 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200 border border-amber-200/60 dark:border-amber-800'}
+          ],
+          Geography: [
+            {msg:'PYQ mapping confidence dropped to 0.85. Schedule SME audit.', class:'bg-amber-50 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200 border border-amber-200/60 dark:border-amber-800'}
+          ],
+          History: [],
+          Economy: [
+            {msg:'Delay risk in Stage 4 (MCQs). Assign 2 more contributors.', class:'bg-rose-50 text-rose-800 dark:bg-rose-900/30 dark:text-rose-200 border border-rose-200/60 dark:border-rose-800'}
+          ],
+          'Environment': [],
+          'Science & Tech': [
+            {msg:'New “Space Missions 2024” source added. Embed vectors.', class:'bg-blue-50 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200 border border-blue-200/60 dark:border-blue-800'}
+          ],
+          IR: []
+        },
+
+        // --- HELPERS ---
+
+        stageLabel(v){ return (this.stages.find(s=>s.value===v) || this.stages[0]).label },
+
+        // KPI cards depend on selectedSubject
+        kpis(){
+          const agg = (rows, keys)=> keys.map(k=>rows.reduce((a,r)=>a+r[k],0));
+          let rows = this.subjectData;
+          if(this.selectedSubject !== 'All Subjects'){
+            rows = rows.filter(r=>r.subject===this.selectedSubject);
+          }
+          const [pyqDone, pyqTotal] = agg(rows,['pyqDone','pyqTotal']);
+          const [noteDone, noteTotal] = agg(rows,['noteDone','noteTotal']);
+          const [mcqDone, mcqTotal] = agg(rows,['mcqDone','mcqTotal']);
+          const [varDone, varTotal] = agg(rows,['varDone','varTotal']);
+
+          const card = (label, val, tot, color='bg-primary-600')=>{
+            const pct = Math.min(100, Math.round((val/tot)*100 || 0));
+            return {label, value:val, total:tot, pct, color};
+          };
+
+          return [
+            card('PYQs Tagged', pyqDone, pyqTotal),
+            card('Concept Notes Reviewed', noteDone, noteTotal),
+            card('MCQs Approved', mcqDone, mcqTotal),
+            card('PYQ Variants Validated', varDone, varTotal),
+            card('Sources Embedded', Math.round(pyqDone*0.02)+100, Math.round(pyqTotal*0.02)+120),
+            card('KnowledgeNodes Finalized', Math.round(noteDone*3.6), Math.round(noteTotal*3.9)),
+          ];
+        },
+
+        // NEW: Aggregated pipeline rows (one row per stage)
+        aggregatedPipeline(){
+          const labels = {
+            s0:'Stage 0 · Sources',
+            s1:'Stage 1 · Syllabus',
+            s2:'Stage 2 · PYQ Mapping',
+            s3:'Stage 3 · Concept Notes',
+            s4:'Stage 4 · Original MCQs',
+            s5:'Stage 5 · PYQ Variants'
+          };
+          const owners = {s0:'AI+SME', s1:'SME', s2:'AI+SME', s3:'SME', s4:'SME', s5:'SME'};
+          const colorFor = (p)=> p>=90?'bg-green-500':p>=75?'bg-primary-600':p>=60?'bg-amber-500':'bg-rose-500';
+          const stageKeys = ['s0','s1','s2','s3','s4','s5'];
+
+          // scope: all subjects or a specific one
+          let rows = this.pipelineData;
+          if(this.selectedSubject !== 'All Subjects'){
+            rows = rows.filter(r=>r.subject===this.selectedSubject);
+          }
+
+          // optional: filter to a single stage
+          let keys = stageKeys;
+          if(this.selectedStage !== 'all') keys = [this.selectedStage];
+
+          const out = [];
+          keys.forEach((k, idx) => {
+            const n = rows.length || 1;
+
+            // average progress
+            const avgProg = Math.round(
+              rows.reduce((a,r)=>a + (r[k] ?? 0), 0) / n
+            );
+
+            // sum pending
+            const sumPending = rows.reduce((a,r)=> a + ((r.pending && r.pending[k])? r.pending[k] : 0), 0);
+
+            // average AI error (strings like '11%')
+            const errors = rows.map(r => (r.error && r.error[k]) ? parseFloat(r.error[k].replace('%','')) : null)
+                               .filter(v => v !== null);
+            const avgErr = errors.length ? (errors.reduce((a,v)=>a+v,0) / errors.length).toFixed(1)+'%' : '—';
+
+            out.push({
+              id: 'agg_'+k,
+              stageLabel: labels[k],
+              progress: avgProg,
+              color: colorFor(avgProg),
+              smePending: sumPending,
+              aiError: avgErr,
+              owner: owners[k],
+              updated: ['18 Oct','19 Oct','20 Oct','21 Oct'][idx%4]
+            });
+          });
+
+          return out;
+        },
+
+        // Subject rows table (respect selectedSubject)
+        subjectRows(){
+          const badge = (status)=>{
+            if(status==='on')   return {text:'On Track', bg:'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'};
+            if(status==='warn') return {text:'Needs Attention', bg:'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'};
+            return {text:'Delay Risk', bg:'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300'};
+          };
+          let rows = this.subjectData;
+          if(this.selectedSubject !== 'All Subjects'){
+            rows = rows.filter(r=>r.subject===this.selectedSubject);
+          }
+          return rows.map(r=>({...r, statusBadge: badge(r.status)}));
+        },
+
+        // Metrics panel (subject-aware)
+        metricsForSubject(){
+          if(this.selectedSubject==='All Subjects') return this.metrics.global;
+          return this.metrics[this.selectedSubject] || this.metrics.global;
+        },
+
+        // Alerts panel (subject-aware)
+        alertsForSubject(){
+          if(this.selectedSubject==='All Subjects') return this.alertMap.global;
+          return this.alertMap[this.selectedSubject] || [];
+        },
+
+        // Recent activity
+        recentActivity(){
+          const base = [
+            {dot:'bg-primary-600', user:'@Rahul (QA) ', action:'approved Polity MCQ Batch #12. ', time:'21 Oct, 16:20'},
+            {dot:'bg-green-500', user:'@Anita (SME) ', action:'finalized Geography/Climate notes. ', time:'21 Oct, 15:05'},
+            {dot:'bg-amber-500', user:'AI ', action:'re-embedded Env/Reports Pack. Vector health OK. ', time:'21 Oct, 14:40'},
+            {dot:'bg-primary-600', user:'@Shreya (SME) ', action:'approved History/Medieval PYQ variants. ', time:'21 Oct, 14:10'}
+          ];
+          if(this.selectedSubject==='All Subjects') return base;
+          const kw = this.selectedSubject.split(' ')[0];
+          return base.filter(r => r.action.toLowerCase().includes(kw.toLowerCase()) || r.user.toLowerCase().includes(kw.toLowerCase())) || base;
+        }
+      }
+    }
+  </script>
+</body>
+</html>

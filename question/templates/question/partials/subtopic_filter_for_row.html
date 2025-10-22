@@ -1,7 +1,10 @@
 {% load markdown_extras %}
-<select name="subtopic"
-        id="subtopic-{{ q.id }}"
-        class="form-select form-select-sm">
+
+<select
+  name="subtopic"
+  id="subtopic-{{ q.id }}"
+  class="w-full min-w-[12rem] rounded-md border border-gray-300 dark:border-gray-700
+         bg-white dark:bg-gray-800 px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-primary-500">
   <option value="">-- Subtopic --</option>
   {% if subtopics %}
     {% for st in subtopics %}

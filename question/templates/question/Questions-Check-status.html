@@ -1,0 +1,238 @@
+{% load static %}
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Questions · Hierarchical Check Status</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+
+  <style>
+    :root{ --fg:#111827; --muted:#6b7280; --line:#e5e7eb; --bg:#f8fafc; --card:#ffffff; }
+    body{font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Arial;margin:1rem;background:var(--bg);color:var(--fg)}
+    h1{font-size:1.35rem;font-weight:800;margin:.25rem 0 .5rem}
+    .muted{color:var(--muted)}
+    .toolbar{display:flex;gap:.5rem;flex-wrap:wrap;margin:0 0 1rem}
+    .toolbar select,.toolbar button,.toolbar a{padding:.45rem .6rem;border:1px solid var(--line);border-radius:.5rem;background:#fff;text-decoration:none;color:inherit}
+
+    .chip{display:inline-block;padding:.2rem .55rem;border-radius:9999px;font-size:.78rem;line-height:1}
+    .p{background:#fef3c7;color:#92400e}
+    .r{background:#e0e7ff;color:#3730a3}
+    .c{background:#dcfce7;color:#166534}
+    .chip a{color:inherit;text-decoration:none}
+    .tot{font-weight:700;font-variant-numeric:tabular-nums;background:#f3f4f6;border:1px solid var(--line);border-radius:.5rem;padding:.15rem .45rem;font-size:.82rem}
+    .perc{font-size:.8rem;color:var(--muted);margin-left:.35rem}
+
+    .row{border:1px solid var(--line);background:var(--card);border-radius:.85rem;padding:.65rem .8rem}
+    .name{font-weight:700;letter-spacing:.1px}
+    .lvl-subject .name{font-size:1.05rem}
+    .lvl-section .name{font-size:.98rem;font-weight:700}
+    .lvl-topic   .name{font-size:.94rem;font-weight:600}
+
+    details.subject{margin:1rem 0 1.15rem}
+    details.subject:not(:last-of-type){padding-bottom:.6rem;border-bottom:1px dashed var(--line)}
+
+    .stack{display:grid;gap:.6rem}
+    .lvl-subject .stack{grid-template-columns:1.2fr auto;align-items:center}
+    .lvl-subject .metrics{display:flex;gap:.4rem;justify-content:flex-end;align-items:center}
+
+    .lvl-section .stack{grid-template-columns:minmax(240px,1.1fr) 1fr;align-items:center}
+    .lvl-section .metrics{display:flex;gap:.4rem;justify-content:center;align-items:center}
+
+    .lvl-topic .stack{grid-template-columns:1fr;align-items:center}
+    .lvl-topic .metrics{display:flex;gap:.4rem;justify-content:flex-start;align-items:center}
+
+    .children{margin:.5rem 0 0 .9rem;border-left:2px solid var(--line);padding-left:.8rem}
+    .children .children{margin-left:.75rem}
+
+    summary{list-style:none;cursor:pointer}
+    summary::-webkit-details-marker{display:none}
+
+    .pill{font-size:.78rem;border:1px solid var(--line);border-radius:.5rem;padding:.1rem .4rem;background:#f3f4f6}
+    .nums{font-variant-numeric:tabular-nums}
+
+    .progress-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    min-width: 80px;
+  }
+  .progress-bar {
+    position: relative;
+    width: 100px;           /* you can adjust width */
+    height: 6px;
+    border-radius: 9999px;
+    background: #fecaca;    /* light red (remaining) */
+    overflow: hidden;
+  }
+  .progress-fill {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    background: #22c55e;    /* green (done) */
+    border-radius: 9999px;
+  }
+  .progress-text {
+    font-size: .8rem;
+    color: #6b7280;         /* muted grey */
+  }
+  
+  
+</style>
+</head>
+<body>
+
+  <h1>Questions · Hierarchical Check Status</h1>
+  <p class="muted">Subject → Section → Topic. Checked % at Subject/Section; Topic pills open the question list.</p>
+
+  <!-- Filters -->
+  <form method="get" class="toolbar">
+    <select name="exam">
+      <option value="">All Exams</option>
+      {% for e in exams %}
+        <option value="{{ e }}" {% if filters.exam == e %}selected{% endif %}>{{ e }}</option>
+      {% endfor %}
+    </select>
+
+    <select name="year">
+      <option value="">All Years</option>
+      {% for y in years %}
+        <option value="{{ y }}" {% if filters.year|stringformat:"s" == y|stringformat:"s" %}selected{% endif %}>{{ y }}</option>
+      {% endfor %}
+    </select>
+
+    <!-- ✅ Subject filter -->
+    <select name="subject">
+      <option value="">All Subjects</option>
+      {% for sb in all_subjects %}
+        <option value="{{ sb.id }}" {% if filters.subject|stringformat:"s" == sb.id|stringformat:"s" %}selected{% endif %}>{{ sb.name }}</option>
+      {% endfor %}
+    </select>
+
+    <select name="source">
+      <option value="">All Sources</option>
+      {% for s in sources %}
+        <option value="{{ s }}" {% if filters.source == s %}selected{% endif %}>{{ s }}</option>
+      {% endfor %}
+    </select>
+
+    <button type="submit">Apply</button>
+    {% if filters.exam or filters.year or filters.source or filters.subject %}
+      <a class="pill" href="{% url 'question:questions_check_status_tree' %}">Clear</a>
+    {% endif %}
+  </form>
+
+  <!-- SUBJECTS -->
+  {% for s in subjects %}
+    <details class="subject" open>
+      <summary class="row lvl-subject">
+        <div class="stack">
+          <div class="name">
+            {{ s.name }}
+            {% if s.counts.total %}
+             <span class="progress-wrap">
+  <span class="progress-bar">
+    <span class="progress-fill"
+          style="width: {{ s.pct_checked }}%;">
+    </span>
+  </span>
+  <span class="progress-text">
+    {{ s.counts.checked }}/{{ s.counts.total }}
+    ({{ s.pct_checked }}%)
+  </span>
+</span>
+            {% endif %}
+          </div>
+          <div class="metrics">
+            <span class="tot nums">Total: {{ s.counts.total }}</span>
+            <span class="chip p nums">Pending {{ s.counts.pending }}</span>
+            <span class="chip r nums">Review {{ s.counts.review }}</span>
+            <span class="chip c nums">Checked {{ s.counts.checked }}</span>
+          </div>
+        </div>
+      </summary>
+
+      <div class="children">
+        {% if s.sections %}
+          {% for sec in s.sections %}
+            <details>
+              <summary class="row lvl-section">
+                <div class="stack">
+                  <div class="name">
+                    {{ sec.name }}
+                    {% if sec.counts.total %}
+                      <span class="progress-wrap">
+  <span class="progress-bar">
+    <span class="progress-fill"
+          style="width: {{ sec.pct_checked }}%;">
+    </span>
+  </span>
+  <span class="progress-text">
+    {{ sec.counts.checked }}/{{ sec.counts.total }}
+    ({{ sec.pct_checked }}%)
+  </span>
+</span>
+                    {% endif %}
+                  </div>
+                  <div class="metrics">
+                    
+                    <span class="chip p nums"> {{ sec.counts.pending }}</span>
+                    <span class="chip r nums"> {{ sec.counts.review }}</span>
+                    <span class="chip c nums"> {{ sec.counts.checked }}</span>
+                  </div>
+                </div>
+              </summary>
+<div class="children">
+  {% if sec.topics %}
+    {% for t in sec.topics %}
+      <div class="row lvl-topic" style="padding:.4rem .6rem">
+        <!-- Inline layout: name + metrics -->
+        <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
+
+          <!-- ✅ Topic name -->
+          <span class="name"
+                {% if t.counts.checked == t.counts.total and t.counts.total > 0 %}
+                  style="color:#16a34a;font-weight:700"
+                {% endif %}>
+            {{ t.name }}
+          </span>
+
+          <!-- ✅ Metrics right beside the name -->
+          <div style="display:flex;align-items:center;gap:.3rem;">
+            <a class="chip p nums"
+               href="{% url 'question:question_list' %}?topic={{ t.id }}&status=pending{% if carry_base %}&{{ carry_base }}{% endif %}">
+              {{ t.counts.pending }}
+            </a>
+
+            <a class="chip r nums"
+               href="{% url 'question:question_list' %}?topic={{ t.id }}&status=review{% if carry_base %}&{{ carry_base }}{% endif %}">
+              {{ t.counts.review }}
+            </a>
+
+            <a class="chip c nums"
+               href="{% url 'question:question_list' %}?topic={{ t.id }}&status=checked{% if carry_base %}&{{ carry_base }}{% endif %}">
+              {{ t.counts.checked }}
+            </a>
+          </div>
+
+        </div>
+      </div>
+    {% endfor %}
+  {% else %}
+    <div class="muted" style="margin:.25rem 0 .4rem .1rem">No topics.</div>
+  {% endif %}
+</div>
+
+            </details>
+          {% endfor %}
+        {% else %}
+          <div class="muted" style="margin:.25rem 0 .4rem .1rem">No sections.</div>
+        {% endif %}
+      </div>
+    </details>
+  {% empty %}
+    <p class="muted">No data found for the selected filters.</p>
+  {% endfor %}
+
+</body>
+</html>

@@ -24,6 +24,59 @@
     </a>
   </div>
 
+    <!-- ── Session Stats (tabular) ── -->
+  <div class="mb-8 overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+    <table class="min-w-full text-sm">
+      <thead class="bg-gray-50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300">
+        <tr>
+          <th class="px-3 py-2 text-left font-medium">Session</th>
+          <th class="px-3 py-2 text-right font-medium">Total Qs</th>
+          <th class="px-3 py-2 text-right font-medium">Right</th>
+          <th class="px-3 py-2 text-right font-medium">Wrong</th>
+          <th class="px-3 py-2 text-right font-medium">Sureshot: n% — x/y (z%)</th>
+          <th class="px-3 py-2 text-right font-medium">Applied: n% — x/y (z%)</th>
+          <th class="px-3 py-2 text-right font-medium">Guesswork: n% — x/y (z%)</th>
+          <th class="px-3 py-2 text-right font-medium">Overall % Wrong</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+        <tr class="text-gray-900 dark:text-gray-100">
+          <td class="px-3 py-2">
+            {% if session.name %}{{ session.name }}{% else %}Session #{{ session.id }}{% endif %}
+          </td>
+          <td class="px-3 py-2 text-right">{{ session_stats.total_qs }}</td>
+          <td class="px-3 py-2 text-right">{{ session_stats.right }}</td>
+          <td class="px-3 py-2 text-right {% if session_stats.wrong > 0 %}text-rose-600 dark:text-rose-400{% endif %}">
+            {{ session_stats.wrong }}
+          </td>
+
+          <!-- Sureshot -->
+          <td class="px-3 py-2 text-right">
+            {{ session_stats.ss_attempt_pct|floatformat:1 }}% —
+            {{ session_stats.ss_wrong }}/{{ session_stats.ss_attempts }}
+            ({{ session_stats.ss_wrong_pct|floatformat:1 }}%)
+          </td>
+          <!-- Applied -->
+          <td class="px-3 py-2 text-right">
+            {{ session_stats.applied_attempt_pct|floatformat:1 }}% —
+            {{ session_stats.applied_wrong }}/{{ session_stats.applied_attempts }}
+            ({{ session_stats.applied_wrong_pct|floatformat:1 }}%)
+          </td>
+          <!-- Guesswork -->
+          <td class="px-3 py-2 text-right">
+            {{ session_stats.guess_attempt_pct|floatformat:1 }}% —
+            {{ session_stats.guess_wrong }}/{{ session_stats.guess_attempts }}
+            ({{ session_stats.guess_wrong_pct|floatformat:1 }}%)
+          </td>
+
+          <td class="px-3 py-2 text-right font-semibold">
+            {{ session_stats.overall_wrong_pct|floatformat:1 }}%
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
   <!-- ── Filter bar (like test) ── -->
   <form method="get" class="flex flex-wrap gap-4 items-end mb-10">
 
