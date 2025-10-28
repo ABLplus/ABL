@@ -6,7 +6,7 @@ app_name = "question"
 urlpatterns = [
     # Review / list view with filters
     path('questions/', views.question_list, name='question_list'),
-     path("question_summary/", views.question_summary, name="question_summary"),
+    path("question_summary/", views.question_summary, name="question_summary"),
 
     path("questions-status/", views.questions_check_status_tree, name="questions_check_status_tree"),
 

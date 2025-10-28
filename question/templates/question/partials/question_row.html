@@ -1,10 +1,5 @@
 {% load markdown_extras %}
 <tr id="question-{{ q.id }}" x-data="{ editOpen: false }">
-  <!-- Sr/ID -->
-  <td class="px-3 py-2 align-top">{{ forloop.counter }}</td>
-
-  <!-- Exam-Year -->
-  <td class="px-3 py-2 align-top">{{ q.exam_name }}-{{ q.year }} ID-{{ q.id }}</td>
 
   <!-- Q & Options -->
   <td class="px-3 py-2 align-top">
@@ -12,6 +7,11 @@
     {# ─── View mode (HTML) ─── #}
     <div x-show="!editOpen" class="prose dark:prose-invert prose-headings:text-lg prose-headings:font-semibold max-w-none">
       <!-- Question stem -->
+       
+      <span class="text-xs text-gray-400">
+  {{ forloop.counter }} — ({{ q.exam_name }}-{{ q.year }} ID-{{ q.id }})
+</span>
+      
       {{ q.question_html|safe }}
 
       <!-- Options (stacked vertically) -->
@@ -40,36 +40,32 @@
         data-format="html">
       </div>
 
-      <!-- Options editable (stacked vertically) -->
-      <div class="pt-2 border-t border-gray-200 dark:border-gray-700 space-y-3">
-        <div>
-          <label class="block text-xs font-medium text-gray-600 dark:text-gray-300">Option A</label>
-          <textarea name="option_a" rows="2"
-            class="mt-1 w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 py-1.5 text-xs"
-          >{{ q.option_a }}</textarea>
-        </div>
-
-        <div>
-          <label class="block text-xs font-medium text-gray-600 dark:text-gray-300">Option B</label>
-          <textarea name="option_b" rows="2"
-            class="mt-1 w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 py-1.5 text-xs"
-          >{{ q.option_b }}</textarea>
-        </div>
-
-        <div>
-          <label class="block text-xs font-medium text-gray-600 dark:text-gray-300">Option C</label>
-          <textarea name="option_c" rows="2"
-            class="mt-1 w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 py-1.5 text-xs"
-          >{{ q.option_c }}</textarea>
-        </div>
-
-        <div>
-          <label class="block text-xs font-medium text-gray-600 dark:text-gray-300">Option D</label>
-          <textarea name="option_d" rows="2"
-            class="mt-1 w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 py-1.5 text-xs"
-          >{{ q.option_d }}</textarea>
-        </div>
-      </div>
+    <div class="pt-2 border-t border-gray-200 dark:border-gray-700 space-y-4">
+  <div>
+    <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Option A</label>
+    <textarea name="option_a" rows="2"
+      class="w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 py-1.5 text-xs"
+    >{{ q.option_a }}</textarea>
+  </div>
+  <div>
+    <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Option B</label>
+    <textarea name="option_b" rows="2"
+      class="w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 py-1.5 text-xs"
+    >{{ q.option_b }}</textarea>
+  </div>
+  <div>
+    <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Option C</label>
+    <textarea name="option_c" rows="2"
+      class="w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 py-1.5 text-xs"
+    >{{ q.option_c }}</textarea>
+  </div>
+  <div>
+    <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Option D</label>
+    <textarea name="option_d" rows="2"
+      class="w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 py-1.5 text-xs"
+    >{{ q.option_d }}</textarea>
+  </div>
+</div>
 
       <!-- Correct option -->
       <div class="flex flex-wrap items-center gap-x-4 gap-y-2" data-co-wrap>
@@ -97,9 +93,14 @@
     </div>
   </td>
 
-  <!-- OLT -->
+
+
+  <!-- Syllabus -->
   <td class="px-3 py-2 align-top">
-    <div class="max-w-[5.5rem]">
+
+    <div class="syllabus-stack max-w-[13rem] w-full">
+
+      
       <select name="olt"
               class="w-full min-w-[5.5rem] rounded-md border border-gray-300 dark:border-gray-700
                      bg-white dark:bg-gray-800 px-3 py-1.5 text-xs font-medium tracking-tight
@@ -111,12 +112,10 @@
           </option>
         {% endfor %}
       </select>
-    </div>
-  </td>
 
-  <!-- Syllabus -->
-  <td class="px-3 py-2 align-top">
-    <div class="syllabus-stack max-w-[13rem] w-full">
+      <br><br>
+   
+    
       <!-- Subject -->
       <div class="mb-2">
         <label class="block text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">Subject</label>
