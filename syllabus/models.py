@@ -36,21 +36,28 @@ class Section(models.Model):
     
 
 class TopicTier(models.TextChoices):
-    MOST = "most", "Most Asked"
-    GENERAL = "general", "Generally Asked"
-    RARE = "rare", "Rarely Asked"
-    NEVER = "never", "Never Asked"
+    TIER1 = "tier1", "Tier 1"
+    TIER2 = "tier2", "Tier 2"
+    TIER3 = "tier3", "Tier 3"
+
 
 class Topic(models.Model):
-    section   = models.ForeignKey("syllabus.Section", on_delete=models.CASCADE, related_name="topics")
-    name      = models.CharField(max_length=100)
-    weightage = models.FloatField(default=0)  # weightage %
-    tier      = models.CharField(             # <-- renamed from asked_band
+    section = models.ForeignKey(
+        "syllabus.Section",
+        on_delete=models.CASCADE,
+        related_name="topics"
+    )
+    name = models.CharField(max_length=100)
+
+    weightage = models.FloatField(default=0)  # % within subject
+    tier = models.CharField(
         max_length=10,
         choices=TopicTier.choices,
-        default=TopicTier.NEVER,
+        default=TopicTier.TIER3,   # ✅ default to tier3
         db_index=True
     )
+
+    total_questions = models.PositiveIntegerField(default=0)
 
     class Meta:
         unique_together = ("section", "name")
@@ -135,3 +142,63 @@ class Ques(models.Model):
 
     def __str__(self):
         return f"Q{self.q_no} ({self.year} - {self.exam})"
+
+
+
+class TopicDemand(models.Model):
+    EXAM_NAME_MAX_LENGTH = 200
+
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name="topic_demands")
+    section = models.ForeignKey(Section, on_delete=models.CASCADE, related_name="topic_demands")
+    topic   = models.ForeignKey(Topic,   on_delete=models.CASCADE, related_name="topic_demands")
+
+    exam_name = models.CharField(max_length=EXAM_NAME_MAX_LENGTH, default="UPSC CSE (Prelims)")
+
+    # Full Markdown report from the LLM
+    demand_insights = models.TextField()
+
+    # Optional metadata
+    model_used   = models.CharField(max_length=100, blank=True, null=True)
+    pyq_count    = models.PositiveIntegerField(default=0)
+    year_span    = models.CharField(max_length=50, blank=True, null=True)
+
+    created_at   = models.DateTimeField(auto_now_add=True)
+    updated_at   = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("topic", "exam_name")  # one report per topic per exam
+
+    def __str__(self):
+        return f"{self.exam_name} | {self.topic.section.subject.name} > {self.topic.section.name} > {self.topic.name}"
+
+
+class SubTopicCandidate(models.Model):
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        APPROVED = "approved", "Approved"
+        REJECTED = "rejected", "Rejected"
+
+    topic = models.ForeignKey("Topic", on_delete=models.CASCADE, related_name="subtopic_candidates")
+    name = models.CharField(max_length=150)
+    description = models.TextField(blank=True, null=True)   # ✅ new
+    demand = models.TextField(blank=True, null=True)
+
+    sequence_number = models.PositiveIntegerField()
+
+    question_ids = models.JSONField(default=list)           # ✅ rename from questionIDs
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING, db_index=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = (("topic", "name"), ("topic", "sequence_number"))
+        ordering = ["topic", "sequence_number", "id"]
+
+    def __str__(self):
+        return f"{self.name} (Topic: {self.topic.name})"
+
+    @property
+    def question_count(self):
+        return len(self.question_ids or [])

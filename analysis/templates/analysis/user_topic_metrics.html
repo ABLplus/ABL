@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>User Topic Metrics</title>
+    <style>
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 15px;
+        }
+        th, td {
+            border: 1px solid #ccc;
+            padding: 6px 10px;
+        }
+        th {
+            background: #f4f4f4;
+        }
+        td.num {
+            text-align: right;
+        }
+        th a {
+            text-decoration: none;
+            color: black;
+        }
+        th a:hover {
+            text-decoration: underline;
+        }
+        form {
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+
+<h2>User Topic Metrics</h2>
+
+<form method="post">
+    {% csrf_token %}
+    <label><strong>Select User:</strong></label>
+    <select name="user_id" required>
+        <option value="">-- Select --</option>
+        {% for u in users %}
+            <option value="{{ u.id }}"
+                {% if selected_user and u.id == selected_user.id %}selected{% endif %}
+            >
+                {{ u.username }}
+            </option>
+        {% endfor %}
+    </select>
+    <button type="submit">View</button>
+</form>
+
+{% if selected_user %}
+    <h3>Results for {{ selected_user.username }}</h3>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Subject</th>
+                <th>Topic</th>
+                <th>
+                    <a href="?user_id={{ selected_user.id }}&sort={% if sort == 'practice_rounds' %}-practice_rounds{% else %}practice_rounds{% endif %}">
+                        Practice Rounds
+                    </a>
+                </th>
+                <th>
+                    <a href="?user_id={{ selected_user.id }}&sort={% if sort == 'pmi' %}-pmi{% else %}pmi{% endif %}">
+                        PMI {% if sort == '-pmi' %}↓{% elif sort == 'pmi' %}↑{% endif %}
+                    </a>
+                </th>
+                <th>
+                    <a href="?user_id={{ selected_user.id }}&sort={% if sort == 'pctwrong_practice' %}-pctwrong_practice{% else %}pctwrong_practice{% endif %}">
+                        Practice Wrong %
+                    </a>
+                </th>
+                <th>
+                    <a href="?user_id={{ selected_user.id }}&sort={% if sort == 'pctwrong_test' %}-pctwrong_test{% else %}pctwrong_test{% endif %}">
+                        Test Wrong %
+                    </a>
+                </th>
+                <th>
+                    
+                        Test Questions Attempted
+                   
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for ts in topic_statuses %}
+                <tr>
+                    <td>{{ ts.subject.name }}</td>
+                    <td>{{ ts.topic.name }}</td>
+                    <td class="num">{{ ts.practice_rounds }}</td>
+                    <td class="num">{{ ts.pmi|floatformat:2 }}</td>
+                    <td class="num">{{ ts.pctwrong_practice }}</td>
+                    <td class="num">
+                        {% if ts.pctwrong_test %}
+                            {{ ts.pctwrong_test }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                    <td>{{ ts.test_questions_attempted }}</td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="6">No matching topics found.</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endif %}
+
+</body>
+</html>

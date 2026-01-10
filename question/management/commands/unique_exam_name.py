@@ -1,7 +1,7 @@
 import os
 from django.core.management.base import BaseCommand
 from django.db.models import Count
-from syllabus.models import Ques
+from question.models import Question
 
 class Command(BaseCommand):
     help = 'Generates a report of unique exams and their question counts, including null/empty values.'
@@ -9,7 +9,7 @@ class Command(BaseCommand):
     def handle(self, *args, **kwargs):
         # Get exam counts (including None and '')
         exam_counts = (
-            Ques.objects.values('exam')
+            Question.objects.values('exam_name')
             .annotate(total=Count('id'))
             .order_by('-total')
         )
@@ -26,7 +26,7 @@ class Command(BaseCommand):
             file.write("Exam Report (Ques Count by Exam)\n")
             file.write("=" * 50 + "\n\n")
             for i, item in enumerate(exam_counts, start=1):
-                exam_name = item['exam']
+                exam_name = item['exam_name']
                 if exam_name is None:
                     label = "(NULL)"
                 elif exam_name.strip() == "":

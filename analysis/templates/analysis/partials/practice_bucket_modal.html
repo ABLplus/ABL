@@ -1,0 +1,142 @@
+{# templates/analysis/partials/practice_bucket_modal.html #}
+
+<div
+  class="fixed inset-0 z-50 flex items-center justify-center p-4"
+  x-data="{ open: true }"
+  x-show="open"
+  x-cloak
+  @keydown.escape.window="open = false"
+>
+  {# Backdrop #}
+  <div
+    class="absolute inset-0 bg-black/50 backdrop-blur-sm"
+    @click="open = false"
+  ></div>
+
+  {# Modal #}
+  <div
+    class="relative w-full max-w-3xl rounded-2xl bg-white dark:bg-gray-900 shadow-xl border
+           border-gray-200/60 dark:border-gray-700/60 overflow-hidden"
+  >
+    {# Header #}
+    <div class="flex items-start justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-800">
+      <div>
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
+          {% if bucket == "strong" %}Strong Topics{% elif bucket == "weak" %}Weak Topics{% else %}Transition Topics{% endif %}
+        </h3>
+        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+          Method: <span class="font-semibold">{{ method }}</span>
+          · Metric:
+          <span class="font-semibold">
+            {% if method == "MAS" %}PMI{% else %}% wrong{% endif %}
+          </span>
+          {% if rows %}
+            · <span class="font-semibold">{{ rows|length }}</span> topics
+          {% endif %}
+        </p>
+      </div>
+
+      <button
+        type="button"
+        class="inline-flex items-center justify-center w-9 h-9 rounded-lg
+               text-gray-500 hover:text-gray-900 hover:bg-gray-100
+               dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800
+               focus:outline-none focus:ring-2 focus:ring-primary-500"
+        @click="open = false"
+        aria-label="Close"
+      >
+        ✕
+      </button>
+    </div>
+
+    {# Body #}
+    <div class="px-5 py-4">
+      {% if rows %}
+        <div class="max-h-[70vh] overflow-y-auto pr-1">
+          <ul class="divide-y divide-gray-100 dark:divide-gray-800">
+            {% for t in rows %}
+              <li class="py-3 flex items-center gap-3">
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="{{ t.tier_text_class }}">{{ t.tier_symbol }}</span>
+                    <a
+                      href="#"
+                      class="truncate text-sm font-medium text-gray-900 dark:text-gray-100 hover:underline"
+                      hx-get="{% url 'practice:topic_modal' t.id %}"
+                      hx-target="#modal-root"
+                      hx-swap="innerHTML"
+                    >
+                      {{ t.name }}
+                    </a>
+                  </div>
+
+                  <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    {{ t.tier_label }}
+                    {% if t.metric != None %}
+                      <span class="ml-2">
+                        · {% if method == "MAS" %}PMI{% else %}% wrong{% endif %}:
+                        <span class="font-semibold text-gray-700 dark:text-gray-200">{{ t.metric }}</span>
+                      </span>
+                    {% endif %}
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-2">
+                  <a
+                    href="#"
+                    class="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-md
+                           bg-gray-100 text-gray-800 hover:bg-gray-200
+                           dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
+                    hx-get="{% url 'practice:topic_modal' t.id %}"
+                    hx-target="#modal-root"
+                    hx-swap="innerHTML"
+                  >
+                    Details
+                  </a>
+
+                  <a
+                    href="#"
+                    class="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-md
+                           bg-green-600 text-white hover:bg-green-700"
+                    hx-get="{% url 'practice:topic_modal' t.id %}"
+                    hx-target="#modal-root"
+                    hx-swap="innerHTML"
+                  >
+                    Practice
+                  </a>
+                </div>
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% else %}
+        <div class="py-10 text-center">
+          <p class="text-sm text-gray-500 dark:text-gray-400">
+            No topics found in this bucket yet.
+          </p>
+          <p class="text-xs text-gray-400 dark:text-gray-500 mt-2">
+            Practise more to surface stronger signals.
+          </p>
+        </div>
+      {% endif %}
+    </div>
+
+    {# Footer #}
+    <div class="px-5 py-4 border-t border-gray-200 dark:border-gray-800 flex items-center justify-between">
+      <div class="text-xs text-gray-500 dark:text-gray-400">
+        Tip: click a topic name to open its details.
+      </div>
+
+      <button
+        type="button"
+        class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg
+               bg-gray-100 text-gray-800 hover:bg-gray-200
+               dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700
+               focus:outline-none focus:ring-2 focus:ring-primary-500"
+        @click="open = false"
+      >
+        Close
+      </button>
+    </div>
+  </div>
+</div>

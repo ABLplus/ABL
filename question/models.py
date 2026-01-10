@@ -23,6 +23,19 @@ class Question(models.Model):
         ('review', 'Under Review'),
         ('checked', 'Checked'),
     ]
+    CATEGORY_CHOICES = [
+        ('Core', 'Core'),
+        ('Derivative', 'Derivative'),
+        ('Peripheral', 'Peripheral'),
+    ]
+
+    category= models.CharField(
+        max_length=20, 
+        choices=CATEGORY_CHOICES,
+        blank=True,
+        null=True,
+        db_index=True
+    )
 
     # ... your existing fields ...
     check_status = models.CharField(

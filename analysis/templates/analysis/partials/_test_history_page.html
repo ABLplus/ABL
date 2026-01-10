@@ -4,7 +4,9 @@
     <td class="px-4 py-2 text-center">
       {{ page_obj.start_index|add:forloop.counter0 }}
     </td>
-    <td class="px-4 py-2">{{ t.name }}</td>
+    <td class="px-4 py-2">
+    <a hx-boost="false" href="{% url 'test_result' t.id %}">{{ t.name }}</a>
+</td>
     <td class="px-4 py-2">{{ t.total_questions }}</td>
     <td class="px-4 py-2">{{ t.total_score }}</td>
     <td class="px-4 py-2">{{ t.correct_answers }}</td>

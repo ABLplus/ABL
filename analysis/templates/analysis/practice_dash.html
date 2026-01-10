@@ -1,131 +1,218 @@
-
 {% extends 'user/base.html' %}
 {% load static %}
 
 {% block content %}
   {# ───────── Flash Messages (fixed overlay, auto-dismiss) ───────── #}
-{% if messages %}
-  <div id="flash-zone"
-       class="fixed top-4 inset-x-0 flex justify-center z-50 pointer-events-none transition-opacity duration-500 ease-in-out opacity-100">
-    <div class="space-y-2 w-full max-w-md px-4">
-      {% for message in messages %}
-        <div class="
-          {% if message.tags == 'error' %}
-            bg-red-500 text-white
-          {% elif message.tags == 'warning' %}
-            bg-yellow-400 text-gray-900
-          {% elif message.tags == 'success' %}
-            bg-green-600 text-white
-          {% else %}
-            bg-blue-500 text-white
-          {% endif %}
-          px-4 py-2 rounded shadow"
-          role="alert">
-          {{ message }}
+  {% if messages %}
+    <div id="flash-zone"
+         class="fixed top-4 inset-x-0 flex justify-center z-50 pointer-events-none transition-opacity duration-500 ease-in-out opacity-100">
+      <div class="space-y-2 w-full max-w-md px-4">
+        {% for message in messages %}
+          <div class="
+            {% if message.tags == 'error' %}
+              bg-red-500 text-white
+            {% elif message.tags == 'warning' %}
+              bg-yellow-400 text-gray-900
+            {% elif message.tags == 'success' %}
+              bg-green-600 text-white
+            {% else %}
+              bg-blue-500 text-white
+            {% endif %}
+            px-4 py-2 rounded shadow"
+            role="alert">
+            {{ message }}
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <script>
+      // Fade out after 700ms, remove after transition completes
+      setTimeout(() => {
+        const flash = document.getElementById('flash-zone');
+        if (flash) {
+          flash.classList.add('opacity-0');
+          setTimeout(() => flash.remove(), 1000);  // matches CSS duration
+        }
+      }, 700);
+    </script>
+  {% endif %}
+
+  {# ───────── Whole dashboard in one Alpine scope so 1.5 can open Part 3 panel ───────── #}
+  <div x-data="{ openPanel: null }" class="max-w-7xl mx-auto p-6 space-y-8">
+
+    <!-- Part 1: Overall Metrics (Compact Layout) -->
+    <section id="overall-metrics" class="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow">
+      <h2 class="sr-only">Overall Metrics</h2>
+
+      <div class="flex flex-wrap justify-between items-center gap-4">
+
+        <!-- Exam Days Left -->
+        <div class="flex items-center space-x-2">
+          <span class="text-4xl">📅</span>
+          <div>
+            <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Exam Days Left</p>
+            <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ days_left }}</p>
+          </div>
         </div>
+
+        <!-- Correct -->
+        <div class="flex items-center space-x-2">
+          <span class="text-4xl">✅</span>
+          <div>
+            <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Correct</p>
+            <p class="text-lg font-semibold text-green-500">{{ correct_attempts }}</p>
+          </div>
+        </div>
+
+        <!-- Incorrect -->
+        <div class="flex items-center space-x-2">
+          <span class="text-4xl">❌</span>
+          <div>
+            <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Incorrect</p>
+            <p class="text-lg font-semibold text-red-500">{{ wrong_attempts }}</p>
+          </div>
+        </div>
+
+        <!-- Total Attempts -->
+        <div class="flex items-center space-x-2">
+          <span class="text-4xl">🧮</span>
+          <div>
+            <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Total Attempts</p>
+            <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ total_attempts }}</p>
+          </div>
+        </div>
+
+        <!-- Active Days -->
+        <div class="flex items-center space-x-2">
+          <span class="text-4xl">🌞</span>
+          <div>
+            <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Active Days</p>
+            <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ profile.days_active }}/ ({{ days_since_joined }})</p>
+          </div>
+        </div>
+
+        <!-- Streak -->
+        <div class="flex items-center space-x-2">
+          <span class="text-4xl text-red-500">🔥</span>
+          <div>
+            <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ profile.streak_questions_target }} Question Streak</p>
+            <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ profile.streak_days }} days</p>
+          </div>
+        </div>
+
+        <!-- Switch Mode Button (as last item) -->
+        <div class="flex items-center space-x-2">
+          <div class="flex flex-col">
+            <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-0.5">Switch to</p>
+            <a href="{% url 'dashboard' %}?mode=test"
+               class="inline-block text-sm font-semibold px-2 py-0.5 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition">
+              Test Mode
+            </a>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    {% if total_attempts < 50 %}
+    <!-- Part 1.5: Practice Mode Intro (Handholding) -->
+    <section id="practice-intro"
+             class="bg-gradient-to-br from-indigo-50 to-white dark:from-gray-800 dark:to-gray-900
+                    border border-indigo-100 dark:border-gray-700 mt-0 p-5 sm:p-6 rounded-2xl shadow-sm">
+      <div class="flex items-start gap-3">
+        <div class="text-3xl leading-none">👋</div>
+        <div class="flex-1">
+          <h3 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">
+            Welcome, {{ request.user.first_name|default:request.user.username }}!
+          </h3>
+
+          <p class="mt-2 text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+            <span class="font-medium text-indigo-600 dark:text-indigo-400">Practice Mode</span> is your safe zone to explore concepts,
+            make mistakes, and learn fast. Attempt questions honestly, then review the
+            <span class="font-medium">correct answer & explanation</span>. Your goal is to move topics to the
+            <span class="font-semibold text-green-600 dark:text-green-400">Green Zone (“I know”)</span>  from the <span class="font-semibold text-red-600 dark:text-red-400"> Red Zone (“I don’t know”)</span> via <span class="font-semibold text-orange-600 dark:text-orange-400"> Orange Zone (“I may know”)</span> or directly. When a subject is mostly green,
+            you’ll be ready for <span class="font-medium">Test Mode</span>.
+          </p>
+
+          <div class="mt-3 grid gap-2 sm:grid-cols-3">
+            <div class="rounded-xl bg-white/70 dark:bg-gray-800/60 border border-indigo-100 dark:border-gray-700 p-3">
+              <p class="text-sm font-medium text-gray-900 dark:text-white">Coverage</p>
+              <p class="text-xs text-gray-600 dark:text-gray-300">Track how many topics you’ve touched.</p>
+            </div>
+            <div class="rounded-xl bg-white/70 dark:bg-gray-800/60 border border-indigo-100 dark:border-gray-700 p-3">
+              <p class="text-sm font-medium text-gray-900 dark:text-white">Strong · Transition · Weak</p>
+              <p class="text-xs text-gray-600 dark:text-gray-300">Focus where it matters next.</p>
+            </div>
+            <div class="rounded-xl bg-white/70 dark:bg-gray-800/60 border border-indigo-100 dark:border-gray-700 p-3">
+              <p class="text-sm font-medium text-gray-900 dark:text-white">Sessions & History</p>
+              <p class="text-xs text-gray-600 dark:text-gray-300">Resume or review past practice.</p>
+            </div>
+          </div>
+
+          <!-- Lightweight CTA: open & scroll to the Direct-Topic picker (Part 3) -->
+          <div class="mt-4">
+            <a href="#practice-start"
+               class="inline-block text-sm font-semibold px-3 py-1.5 rounded-md
+                      bg-indigo-600 text-white hover:bg-indigo-700 transition
+                      dark:bg-indigo-500 dark:hover:bg-indigo-600"
+               @click.prevent="
+                 openPanel = 'direct';
+                 $nextTick(() => {
+                   const el = document.getElementById('practice-start');
+                   if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                 });
+               ">
+              Start: pick a Topic ↓
+            </a>
+          </div>
+
+          <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+            Tip: Begin with weak or unattempted topics and steadily turn them green.
+          </p>
+        </div>
+      </div>
+    </section>
+    {% endif %}
+<!-- Part 2: Insights -->
+<section id="insights" class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow">
+
+  <!-- Header row: Title + subject pills -->
+  <div class="flex flex-col gap-3 mb-4">
+    <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Insights</h2>
+
+    <!-- Subject pills (2-line wrap) -->
+    <div class="flex flex-wrap gap-2 max-h-[5.25rem] overflow-hidden">
+      {# "All" pill - optional, keep if you plan filtering #}
+      <a href="#"
+         class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium
+                border border-gray-200 dark:border-gray-700
+                bg-gray-50 dark:bg-gray-900
+                text-gray-700 dark:text-gray-200
+                hover:bg-gray-100 dark:hover:bg-gray-800">
+        All Subjects
+      </a>
+
+      {% for s in subjects %}
+        <a href="#"
+           class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium
+                  border border-gray-200 dark:border-gray-700
+                  bg-white dark:bg-gray-900
+                  text-gray-700 dark:text-gray-200
+                  hover:bg-gray-50 dark:hover:bg-gray-800">
+          {{ s.name }}
+        </a>
       {% endfor %}
     </div>
+
+    {# If you want a "Show all subjects" toggle later, add it here (Alpine) #}
   </div>
 
-  <script>
-    // Fade out after 700ms, remove after transition completes
-    setTimeout(() => {
-      const flash = document.getElementById('flash-zone');
-      if (flash) {
-        flash.classList.add('opacity-0');
-        setTimeout(() => flash.remove(), 1000);  // matches CSS duration
-      }
-    }, 700);
-  </script>
-{% endif %}
-
-
-<div class="max-w-7xl mx-auto p-6 space-y-8">
-
-
- <!-- Part 1: Overall Metrics (Compact Layout) -->
-<section id="overall-metrics" class="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow">
-  <h2 class="sr-only">Overall Metrics</h2>
-
-  <div class="flex flex-wrap justify-between items-center gap-4">
-
-    <!-- Exam Days Left -->
-    <div class="flex items-center space-x-2">
-      <span class="text-4xl">📅</span>
-      <div>
-        <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Exam Days Left</p>
-        <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ days_left }}</p>
-      </div>
-    </div>
-
-    <!-- Correct -->
-    <div class="flex items-center space-x-2">
-      <span class="text-4xl">✅</span>
-      <div>
-        <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Correct</p>
-        <p class="text-lg font-semibold text-green-500">{{ correct_attempts }}</p>
-      </div>
-    </div>
-
-    <!-- Incorrect -->
-    <div class="flex items-center space-x-2">
-      <span class="text-4xl">❌</span>
-      <div>
-        <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Incorrect</p>
-        <p class="text-lg font-semibold text-red-500">{{ wrong_attempts }}</p>
-      </div>
-    </div>
-
-    <!-- Total Attempts -->
-    <div class="flex items-center space-x-2">
-      <span class="text-4xl">🧮</span>
-      <div>
-        <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Total Attempts</p>
-        <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ total_attempts }}</p>
-      </div>
-    </div>
-
-    <!-- Active Days -->
-    <div class="flex items-center space-x-2">
-      <span class="text-4xl">🌞</span>
-      <div>
-        <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Active Days</p>
-        <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ profile.days_active }}</p>
-      </div>
-    </div>
-
-    <!-- Streak -->
-    <div class="flex items-center space-x-2">
-      <span class="text-4xl text-red-500">🔥</span>
-      <div>
-        <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ profile.streak_questions_target }} Question Streak</p>
-        <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ profile.streak_days }} days</p>
-      </div>
-    </div>
-
- <!-- Switch Mode Button (as last item) -->
-<div class="flex items-center space-x-2">
- 
-  <div class="flex flex-col">
-    <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-0.5">Switch to</p>
-    <a href="{% url 'dashboard' %}?mode=test"
-       class="inline-block text-sm font-semibold px-2 py-0.5 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition">
-      Test Mode
-    </a>
-  </div>
-</div>
-
-  </div>
-</section>
-
-
- <!-- Part 2: Insights -->
-<section id="insights" class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow">
-  <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Insights</h2>
-
+  {# 4 columns: Coverage · Strong · Transition · Weak #}
   <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-    {# ───────── Coverage & Mastery ───────── #}
-    <div class="space-y-3">
+
+    {# ───────── Coverage ───────── #}
+    <div class="space-y-2">
       <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">Coverage</h3>
       <p class="text-2xl font-bold text-gray-900 dark:text-white">
         {{ coverage_pct }}% Topics Covered
@@ -134,264 +221,285 @@
         </span>
       </p>
 
-      <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">Mastery</h3>
-      <p class="text-2xl font-bold text-gray-900 dark:text-white">
-        {{ mastery_pct }}% Topics Mastered (PMI ≥ 80)
-        <span class="text-sm font-medium text-gray-500 dark:text-gray-400">
-          ({{ strong_count }}/{{ total_topics }})
-        </span>
+      {# Optional: show which method is active #}
+      <p class="text-xs text-gray-500 dark:text-gray-400">
+        Method: <span class="font-semibold">{{ topicstatus_method }}</span>
       </p>
     </div>
 
-    {# ───────── Strong (PMI ≥ 80) ───────── #}
+    {# ───────── Strong Topics ───────── #}
     <div>
-      <h3 class="text-sm font-medium text-green-500 dark:text-green-400 mb-2">
-        Strong Topics ({{ strong_n }})
-      </h3>
+      <div class="flex items-center justify-between mb-2">
+        <h3 class="text-sm font-medium text-green-500 dark:text-green-400">
+          Strong Topics ({{ strong_n }})
+        </h3>
+
+        <button
+          type="button"
+          class="text-xs text-primary-600 dark:text-primary-400 hover:underline"
+          hx-get="{% url 'practice_bucket_modal' %}?bucket=strong"
+          hx-target="#modal-root"
+          hx-swap="innerHTML">
+          Show more
+        </button>
+      </div>
+
       {% if strong_topics %}
-        <ul class="list-disc pl-5 space-y-1">
+        <ul class="list-disc pl-5 space-y-1 text-green-700 dark:text-green-300">
           {% for t in strong_topics %}
-            <li class="flex items-center">
-              <span class="mr-2 {{ t.category_text_class }}" aria-hidden="true">{{ t.tier_symbol }}</span>
-              <a
-                href="#"
-                class="no-underline hover:opacity-80 focus:outline-none flex-1 {{ t.category_text_class }} {{ t.tier_text_class }}"
-                hx-get="{% url 'practice:topic_modal' t.id %}"
-                hx-target="#modal-root"
-                hx-swap="innerHTML"
-                title="{{ t.tier_label }}"
-              >
-                {{ t.name }}
-              </a>
-              <span class="text-xs text-gray-500 ml-2">{{ t.pmi }} PMI</span>
+            <li>
+              {{ t.name }}
+              {% if t.metric != None %}
+                <span class="text-xs text-green-500">
+                  ({% if topicstatus_method == "MAS" %}{{ t.metric }} PMI{% else %}{{ t.metric }}% wrong{% endif %})
+                </span>
+              {% endif %}
             </li>
           {% endfor %}
         </ul>
       {% else %}
         <p class="text-gray-500 dark:text-gray-400 text-sm">
-          No strong topics yet. Keep practising to lift PMI.
+          No strong topics indicated yet. Keep practising to unlock insights.
         </p>
       {% endif %}
     </div>
 
-    {# ───────── Transition (40 < PMI < 80) ───────── #}
+    {# ───────── Transition Topics ───────── #}
     <div>
-      <h3 class="text-sm font-medium text-yellow-500 dark:text-yellow-400 mb-2">
-        In-Transition Topics ({{ transition_n }})
-      </h3>
+      <div class="flex items-center justify-between mb-2">
+        <h3 class="text-sm font-medium text-yellow-500 dark:text-yellow-400">
+          Transition Topics ({{ transition_n }})
+        </h3>
+
+        <button
+          type="button"
+          class="text-xs text-primary-600 dark:text-primary-400 hover:underline"
+          hx-get="{% url 'practice_bucket_modal' %}?bucket=transition"
+          hx-target="#modal-root"
+          hx-swap="innerHTML">
+          Show more
+        </button>
+      </div>
+
       {% if transition_topics %}
-        <ul class="list-disc pl-5 space-y-1">
+        <ul class="list-disc pl-5 space-y-1 text-orange-700 dark:text-orange-300">
           {% for t in transition_topics %}
             <li class="flex items-center">
-              <span class="mr-2 {{ t.category_text_class }}" aria-hidden="true">{{ t.tier_symbol }}</span>
               <a
                 href="#"
-                class="no-underline hover:opacity-80 focus:outline-none flex-1 {{ t.category_text_class }} {{ t.tier_text_class }}"
+                class="no-underline hover:opacity-80 focus:outline-none flex-1"
                 hx-get="{% url 'practice:topic_modal' t.id %}"
                 hx-target="#modal-root"
-                hx-swap="innerHTML"
-                title="{{ t.tier_label }}"
-              >
+                hx-swap="innerHTML">
                 {{ t.name }}
+                {% if t.metric != None %}
+                  <span class="text-xs text-yellow-500 ml-1">
+                    ({% if topicstatus_method == "MAS" %}{{ t.metric }} PMI{% else %}{{ t.metric }}% wrong{% endif %})
+                  </span>
+                {% endif %}
               </a>
-              <span class="text-xs text-gray-500 ml-2">{{ t.pmi }} PMI</span>
+
+              <a
+                href="#"
+                class="ml-2 inline-flex items-center px-2 py-0.5 text-xs font-medium
+                       rounded bg-green-600 text-white hover:bg-green-700"
+                hx-get="{% url 'practice:topic_modal' t.id %}"
+                hx-target="#modal-root"
+                hx-swap="innerHTML">
+                Practice
+              </a>
             </li>
           {% endfor %}
         </ul>
       {% else %}
         <p class="text-gray-500 dark:text-gray-400 text-sm">
-          No in-transition topics yet.
+          No transition topics yet. Keep practising to surface a middle range.
         </p>
       {% endif %}
     </div>
 
-    {# ───────── Weak (PMI ≤ 40) ───────── #}
+    {# ───────── Weak Topics ───────── #}
     <div>
-      <h3 class="text-sm font-medium text-red-500 dark:text-red-400 mb-2">
-        Weak Topics ({{ weak_n }})
-      </h3>
+      <div class="flex items-center justify-between mb-2">
+        <h3 class="text-sm font-medium text-red-500 dark:text-red-400">
+          Weak Topics ({{ weak_n }})
+        </h3>
+
+        <button
+          type="button"
+          class="text-xs text-primary-600 dark:text-primary-400 hover:underline"
+          hx-get="{% url 'practice_bucket_modal' %}?bucket=weak"
+          hx-target="#modal-root"
+          hx-swap="innerHTML">
+          Show more
+        </button>
+      </div>
+
       {% if weak_topics %}
-        <ul class="list-disc pl-5 space-y-1">
+        <ul class="list-disc pl-5 space-y-1 text-red-700 dark:text-red-300">
           {% for t in weak_topics %}
             <li class="flex items-center">
-              <span class="mr-2 {{ t.category_text_class }}" aria-hidden="true">{{ t.tier_symbol }}</span>
               <a
                 href="#"
-                class="no-underline hover:opacity-80 focus:outline-none flex-1 {{ t.category_text_class }} {{ t.tier_text_class }}"
+                class="flex-1 no-underline hover:opacity-80 focus:outline-none"
                 hx-get="{% url 'practice:topic_modal' t.id %}"
                 hx-target="#modal-root"
-                hx-swap="innerHTML"
-                title="{{ t.tier_label }}"
-              >
+                hx-swap="innerHTML">
                 {{ t.name }}
+                {% if t.metric != None %}
+                  <span class="text-xs text-red-500 ml-1">
+                    ({% if topicstatus_method == "MAS" %}{{ t.metric }} PMI{% else %}{{ t.metric }}% wrong{% endif %})
+                  </span>
+                {% endif %}
               </a>
-              <span class="text-xs text-gray-500 ml-2">{{ t.pmi }} PMI</span>
+
+              <a
+                href="#"
+                class="ml-2 inline-flex items-center px-2 py-0.5 text-xs font-medium
+                       rounded bg-green-600 text-white hover:bg-green-700"
+                hx-get="{% url 'practice:topic_modal' t.id %}"
+                hx-target="#modal-root"
+                hx-swap="innerHTML">
+                Practice
+              </a>
             </li>
           {% endfor %}
         </ul>
       {% else %}
         <p class="text-gray-500 dark:text-gray-400 text-sm">
-          No weak topics identified yet.
+          No weak topics identified yet. Practise more to surface blind-spots.
         </p>
       {% endif %}
     </div>
-  </div>
-</section>
-
-
 
   </div>
 </section>
-  <!-- Part 3: Ongoing Sessions and Session Creation -->
-  <section id="ongoing-sessions" class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow">
-    {% if pending_sessions %}
-    <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-      Ongoing Practice Sessions
-    </h2>
 
-    <div class="space-y-4">
-      {% for s in pending_sessions %}
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3
-                    bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700
-                    rounded-lg px-4 py-3 shadow">
 
-          <div>
-            <h3 class="font-semibold text-gray-900 dark:text-white">
-              {{ s.name }}
-            </h3>
-            <p class="text-sm text-gray-600 dark:text-gray-400">
-              {{ s.total_questions }}&nbsp;questions&nbsp;•&nbsp;
-              started&nbsp;{{ s.start_time|date:"M d, Y H:i" }}
-            </p>
-          </div>
+    <!-- Part 3: Ongoing Sessions and Session Creation -->
+    <section id="ongoing-sessions" class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow">
 
-          <a href="{% url 'practice:take_practice' s.id %}"
-             class="inline-flex items-center justify-center px-4 py-2
-                    bg-primary-600 hover:bg-primary-700 text-white rounded-md
-                    text-sm font-medium">
-            Continue
-            <svg class="w-4 h-4 ml-1" fill="currentColor" viewBox="0 0 20 20">
-              <path fill-rule="evenodd"
-                    d="M12.293 4.293a1 1 0 011.414 1.414L10.414 9H17a1 1 0 110 2h-6.586l3.293 3.293a1 1 0 01-1.414 1.414l-5-5a1 1 0 010-1.414l5-5z"
-                    clip-rule="evenodd"/>
-            </svg>
-          </a>
+      {% if pending_sessions %}
+        <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+          Ongoing Practice Sessions
+        </h2>
+
+        <div class="space-y-4">
+          {% for s in pending_sessions %}
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3
+                        bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700
+                        rounded-lg px-4 py-3 shadow">
+
+              <div>
+                <h3 class="font-semibold text-gray-900 dark:text-white">
+                  {{ s.name }}
+                </h3>
+                <p class="text-sm text-gray-600 dark:text-gray-400">
+                  {{ s.total_questions }}&nbsp;questions&nbsp;•&nbsp;
+                  started&nbsp;{{ s.start_time|date:"M d, Y H:i" }}
+                </p>
+              </div>
+
+              <a href="{% url 'practice:take_practice' s.id %}"
+                 class="inline-flex items-center justify-center px-4 py-2
+                        bg-primary-600 hover:bg-primary-700 text-white rounded-md
+                        text-sm font-medium">
+                Continue
+                <svg class="w-4 h-4 ml-1" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd"
+                        d="M12.293 4.293a1 1 0 011.414 1.414L10.414 9H17a1 1 0 110 2h-6.586l3.293 3.293a1 1 0 01-1.414 1.414l-5-5a1 1 0 010-1.414l5-5z"
+                        clip-rule="evenodd"/>
+                </svg>
+              </a>
+            </div>
+          {% endfor %}
         </div>
-      {% endfor %}
-    </div>
 
-  {% else %}
-    <p class="text-sm text-gray-600 dark:text-gray-400">
-      No ongoing practice sessions at the moment.
-    </p>
-  {% endif %}
+      {% else %}
+        <p class="text-sm text-gray-600 dark:text-gray-400">
+          No ongoing practice sessions at the moment.
+        </p>
+      {% endif %}
 
+      <br>
+      <!-- <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Start New Practice Sessions</h2> -->
 
-
-
-
-
-<br>
-    <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Start New Practice Sessions</h2>
-
-   <!-- Subject-Tree / Capsule switcher -->
-<section x-data="{ openPanel: null }" class="mt-6">
-
-  {# 1️⃣  Centre-aligned buttons with gap #}
-  <div class="flex justify-center gap-4 mb-6">
-    <button
-     @click="openPanel = (openPanel === 'capsule' ? null : 'capsule')"
-     :class="openPanel === 'capsule'
-             ? 'bg-indigo-600 text-white'
-             : 'bg-indigo-100 dark:bg-indigo-800 text-indigo-700 dark:text-indigo-200'"
-     class="px-6 py-2 rounded-lg font-semibold transition-colors">
-     Practice Capsule Subject or its Section
-    </button>
-
-    <button
-      @click="openPanel = (openPanel === 'direct' ? null : 'direct')"
-      :class="openPanel === 'direct'
-              ? 'bg-teal-600 text-white'
-              : 'bg-teal-100 dark:bg-teal-800 text-teal-700 dark:text-teal-200'"
-      class="px-6 py-2 rounded-lg font-semibold transition-colors">
-      Practice any Topic from the syllabus
-    </button>
-  </div>
-
-  {# 2️⃣  Capsule view (shows / hides on toggle) #}
-  <div x-show="openPanel === 'capsule'" x-transition.opacity>
-   <h3 class="font-medium text-gray-900 dark:text-white mb-4">
-     Capsule Practice – pick Subject / Section
-   </h3>
-
-  <!--  {# renders ALL subjects + sections; click starts capsule #}-->
-   {% include "practice/partials/subject_sections.html" with subjects=subjects %}
-  </div>
-
-  {# 3️⃣  Direct-Topic view (shows / hides on toggle) #}
-  <div x-show="openPanel === 'direct'" x-transition.opacity>
-    <h3 class="font-medium text-gray-900 dark:text-white mb-4">
-      Direct Topic – pick from Subject Tree
-    </h3>
-
-    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      {% for subj in subjects %}
-        <details class="border rounded dark:border-gray-600 p-3
-                        bg-gray-50 dark:bg-gray-800">
-          <summary
-            class="font-semibold text-blue-700 dark:text-blue-300 cursor-pointer"
-            hx-get="{% url 'practice:ajax_subject_tree' subj.id %}"
-            hx-target="#direct-tree-{{ subj.id }}"
-            hx-swap="innerHTML"
-            hx-trigger="click once">
-            {{ subj.name }}
-          </summary>
-
-          <div id="direct-tree-{{ subj.id }}"
-               class="mt-2 text-sm text-gray-800 dark:text-gray-100">
-            <!-- Full tree loads here -->
-          </div>
-        </details>
-      {% endfor %}
-    </div>
-  </div>
-
-</section>
-
-</section>
-<!-- Part 4 – History -->
-<section id="history"
-         class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow">
-
-  <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-    Completed Practice Sessions
-  </h2>
-
-  <div class="overflow-x-auto">
-    <table class="w-full text-sm border border-gray-300 dark:border-gray-700">
-      <thead class="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200">
-        <tr>
-          <th class="px-4 py-2 w-14">#</th>
-          <th class="px-4 py-2">Session&nbsp;Name</th>
-          <th class="px-4 py-2">Total attempts</th>
-          <th class="px-4 py-2">Correct</th>
-          <th class="px-4 py-2">Date</th>
-          <th class="px-4 py-2">Review</th>
-        </tr>
-      </thead>
-
-      <tbody id="history-body"
-             hx-get="{% url 'practice:history_page' %}?page=1"
-             hx-trigger="load"
-             hx-target="this"
-             hx-swap="innerHTML">
-        <tr>
-          <td colspan="5" class="text-center py-4">Loading …</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-</section>
-<div id="modal-root"></div>
+      <!-- Practice any Topic from the syllabus (the anchor target for 1.5) -->
+   <div class="flex justify-center mt-2 mb-4">
+  <button
+    id="practice-start"
+    @click="openPanel = (openPanel === 'direct' ? null : 'direct')"
+    :class="openPanel === 'direct'
+            ? 'bg-teal-600 text-white'
+            : 'bg-teal-100 dark:bg-teal-800 text-teal-700 dark:text-teal-200'"
+    class="px-6 py-2 rounded-lg font-semibold transition-colors shadow-sm hover:shadow-md">
+    Practice any Topic from the syllabus
+  </button>
 </div>
+
+      {# 3️⃣  Direct-Topic view (shows / hides on toggle) #}
+      <div x-show="openPanel === 'direct'" x-transition.opacity>
+        <h3 class="font-medium text-gray-900 dark:text-white mb-4 mt-4">
+          Direct Topic – pick from Subject Tree
+        </h3>
+
+        <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {% for subj in subjects %}
+            <details class="border rounded dark:border-gray-600 p-3
+                            bg-gray-50 dark:bg-gray-800">
+              <summary
+                class="font-semibold text-blue-700 dark:text-blue-300 cursor-pointer"
+                hx-get="{% url 'practice:ajax_subject_tree' subj.id %}"
+                hx-target="#direct-tree-{{ subj.id }}"
+                hx-swap="innerHTML"
+                hx-trigger="click once">
+                {{ subj.name }}
+              </summary>
+
+              <div id="direct-tree-{{ subj.id }}"
+                   class="mt-2 text-sm text-gray-800 dark:text-gray-100">
+                <!-- Full tree loads here -->
+              </div>
+            </details>
+          {% endfor %}
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Part 4 – History -->
+    <section id="history"
+             class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow">
+
+      <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+        Completed Practice Sessions
+      </h2>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm border border-gray-300 dark:border-gray-700">
+          <thead class="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200">
+            <tr>
+              <th class="px-4 py-2 w-14">#</th>
+              <th class="px-4 py-2">Session&nbsp;Name</th>
+              <th class="px-4 py-2">Total attempts</th>
+              <th class="px-4 py-2">Correct</th>
+              <th class="px-4 py-2">Date</th>
+              <th class="px-4 py-2">Review</th>
+            </tr>
+          </thead>
+
+          <tbody id="history-body"
+                 hx-get="{% url 'practice:history_page' %}?page=1"
+                 hx-trigger="load"
+                 hx-target="this"
+                 hx-swap="innerHTML">
+            <tr>
+              <td colspan="5" class="text-center py-4">Loading …</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </div>
 {% endblock %}

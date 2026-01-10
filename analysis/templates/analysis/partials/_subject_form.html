@@ -20,9 +20,24 @@
     </select>
   </label>
 
-  <button
-    type="submit"
-    class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
-    Start Test
-  </button>
+  <!-- Action buttons -->
+  <div class="flex items-center gap-3 pt-1">
+    <!-- Normal in-app start -->
+    <button
+      type="submit"
+      name="attempt_mode"
+      value="app"
+      class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+      Start Test
+    </button>
+
+    <!-- OMR start -->
+    <button
+      type="submit"
+      name="attempt_mode"
+      value="omr"
+      class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+      Attempt on OMR
+    </button>
+  </div>
 </form>

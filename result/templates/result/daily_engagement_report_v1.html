@@ -1,0 +1,202 @@
+{% extends "user/base.html" %}
+{% block title %}Daily Engagement Report{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-6 sm:py-8">
+
+  <!-- Header -->
+  <div class="flex items-end justify-between gap-3 mb-5">
+    <div>
+      <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">
+        Daily Engagement Report
+      </h1>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+        Completed-first · Carryover = started today but not completed same day
+      </p>
+    </div>
+    <span class="hidden sm:inline-flex text-xs px-3 py-1 rounded-full border border-gray-200 bg-white text-gray-600
+                 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+      Admin
+    </span>
+  </div>
+
+  <!-- Table (mobile uses horizontal scroll, no cards) -->
+  <div class="overflow-x-auto rounded-2xl shadow-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800">
+    <table class="min-w-[1100px] w-full border-collapse">
+      <thead class="bg-gray-50 dark:bg-gray-800/60 border-b border-gray-200 dark:border-gray-800">
+        <!-- Main header row -->
+        <tr class="text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-200">
+
+          <!-- Date -->
+          <th class="sticky left-0 z-30 bg-gray-50 dark:bg-gray-800/60 px-4 py-3 text-left whitespace-nowrap">
+            Date
+          </th>
+
+          <!-- Highlighted focus columns -->
+          <th class="px-3 py-3 text-right whitespace-nowrap
+                     bg-indigo-50/70 dark:bg-indigo-900/20
+                     text-indigo-800 dark:text-indigo-200">
+            New
+          </th>
+          <th class="px-3 py-3 text-right whitespace-nowrap
+                     bg-indigo-50/70 dark:bg-indigo-900/20
+                     text-indigo-800 dark:text-indigo-200">
+            DAU
+          </th>
+          <th class="px-3 py-3 text-right whitespace-nowrap
+                     bg-indigo-50/70 dark:bg-indigo-900/20
+                     text-indigo-800 dark:text-indigo-200">
+            Ret (7d)
+          </th>
+          <th class="px-3 py-3 text-right whitespace-nowrap
+                     bg-indigo-50/70 dark:bg-indigo-900/20
+                     text-indigo-800 dark:text-indigo-200">
+            Avg Q/User
+          </th>
+
+          <!-- Remaining columns -->
+          <th class="px-3 py-3 text-right whitespace-nowrap">Mix P/T</th>
+          <th class="px-3 py-3 text-right whitespace-nowrap">Compl%</th>
+
+          <th class="px-3 py-3 text-right whitespace-nowrap">P Sess</th>
+          <th class="px-3 py-3 text-right whitespace-nowrap">P Qs</th>
+          <th class="px-3 py-3 text-right whitespace-nowrap">T Tests</th>
+          <th class="px-3 py-3 text-right whitespace-nowrap">T Qs</th>
+
+          <th class="px-3 py-3 text-right whitespace-nowrap">Carry P</th>
+          <th class="px-3 py-3 text-right whitespace-nowrap">Carry T</th>
+        </tr>
+
+        <!-- Subtle grouping hint row -->
+        <tr class="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
+          <th class="sticky left-0 z-30 bg-gray-50 dark:bg-gray-800/60 px-4 pb-2 text-left">Acquisition</th>
+
+          <th class="px-3 pb-2 text-right bg-indigo-50/40 dark:bg-indigo-900/10" colspan="4">
+            Focus
+          </th>
+
+          <th class="px-3 pb-2 text-right" colspan="2">Efficiency</th>
+          <th class="px-3 pb-2 text-right" colspan="4">Output (Completed)</th>
+          <th class="px-3 pb-2 text-right" colspan="2">Carryover</th>
+        </tr>
+      </thead>
+
+      <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+        {% for row in rows %}
+        <tr class="hover:bg-indigo-50/40 dark:hover:bg-indigo-900/20 transition-colors">
+
+          <!-- Date (sticky) -->
+          <td class="sticky left-0 z-20 bg-white dark:bg-gray-900 px-4 py-3 text-base font-semibold text-gray-900 dark:text-gray-100 whitespace-nowrap">
+            {{ row.date }}
+          </td>
+
+          <!-- New (highlight band) -->
+          <td class="px-3 py-3 text-right tabular-nums
+                     bg-indigo-50/30 dark:bg-indigo-900/10">
+            <span class="inline-flex min-w-[2.75rem] justify-center px-2 py-1 rounded-lg text-base font-semibold
+                         {% if row.new_users|default:0 > 0 %}
+                           text-indigo-900 dark:text-indigo-100
+                         {% else %}
+                           text-gray-700 dark:text-gray-200
+                         {% endif %}">
+              {{ row.new_users|default:0 }}
+            </span>
+          </td>
+
+          <!-- DAU (biggest emphasis) -->
+          <td class="px-3 py-3 text-right tabular-nums
+                     bg-indigo-50/30 dark:bg-indigo-900/10
+                     text-xl font-bold text-indigo-900 dark:text-indigo-100">
+            {{ row.dau|default:0 }}
+          </td>
+
+          <!-- Returning (7d) -->
+          <td class="px-3 py-3 text-right tabular-nums
+                     bg-indigo-50/30 dark:bg-indigo-900/10
+                     text-lg font-semibold text-indigo-800 dark:text-indigo-200">
+            {{ row.returning_d7|default:0 }}
+          </td>
+
+          <!-- Avg Q/User (big emphasis) -->
+          <td class="px-3 py-3 text-right tabular-nums
+                     bg-indigo-50/30 dark:bg-indigo-900/10
+                     text-xl font-bold text-gray-900 dark:text-gray-100">
+            {{ row.avg_q_per_user|default:"0.00" }}
+          </td>
+
+          <!-- Mix P/T -->
+          <td class="px-3 py-3 text-right tabular-nums text-base">
+            <span class="text-emerald-700 dark:text-emerald-300 font-semibold">
+              {{ row.practice_pct|default:"0.0" }}%
+            </span>
+            <span class="text-gray-400 dark:text-gray-500 px-1">/</span>
+            <span class="text-sky-700 dark:text-sky-300 font-semibold">
+              {{ row.test_pct|default:"0.0" }}%
+            </span>
+          </td>
+
+          <!-- Completion % -->
+          <td class="px-3 py-3 text-right tabular-nums text-base">
+            <span class="inline-flex min-w-[4.5rem] justify-center px-2 py-1 rounded-lg font-semibold
+                         {% if row.completion_rate|default:0 >= 70 %}
+                           bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200
+                         {% elif row.completion_rate|default:0 >= 40 %}
+                           bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200
+                         {% else %}
+                           bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200
+                         {% endif %}">
+              {{ row.completion_rate|default:"0.0" }}%
+            </span>
+          </td>
+
+          <!-- Practice completed -->
+          <td class="px-3 py-3 text-right tabular-nums text-base text-gray-900 dark:text-gray-100">
+            {{ row.practice_sessions_completed|default:0 }}
+          </td>
+          <td class="px-3 py-3 text-right tabular-nums text-base font-semibold text-emerald-700 dark:text-emerald-300">
+            {{ row.practice_questions_completed|default:0 }}
+          </td>
+
+          <!-- Tests completed -->
+          <td class="px-3 py-3 text-right tabular-nums text-base text-gray-900 dark:text-gray-100">
+            {{ row.tests_completed|default:0 }}
+          </td>
+          <td class="px-3 py-3 text-right tabular-nums text-base font-semibold text-sky-700 dark:text-sky-300">
+            {{ row.test_questions_completed|default:0 }}
+          </td>
+
+          <!-- Carryover -->
+          <td class="px-3 py-3 text-right tabular-nums text-base">
+            <span class="inline-flex min-w-[2.5rem] justify-center px-2 py-1 rounded-lg font-semibold
+                         {% if row.carryover_practice|default:0 > 0 %}
+                           bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200
+                         {% else %}
+                           bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200
+                         {% endif %}">
+              {{ row.carryover_practice|default:0 }}
+            </span>
+          </td>
+          <td class="px-3 py-3 text-right tabular-nums text-base">
+            <span class="inline-flex min-w-[2.5rem] justify-center px-2 py-1 rounded-lg font-semibold
+                         {% if row.carryover_tests|default:0 > 0 %}
+                           bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200
+                         {% else %}
+                           bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200
+                         {% endif %}">
+              {{ row.carryover_tests|default:0 }}
+            </span>
+          </td>
+        </tr>
+        {% empty %}
+          <tr>
+            <td colspan="13" class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
+              No data yet.
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+</div>
+{% endblock %}

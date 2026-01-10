@@ -114,6 +114,32 @@
       </select>
 
       <br><br>
+
+       <!-- Category -->
+<div class="mb-2">
+  <label class="block text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">
+    Category
+  </label>
+
+  <select name="category"
+          class="w-full min-w-[8rem] rounded-md border border-gray-300 dark:border-gray-700
+                 bg-white dark:bg-gray-800 px-2 py-1.5 text-xs
+                 focus:outline-none focus:ring-2 focus:ring-primary-500">
+
+    <!-- NULL option -->
+    <option value="" {% if not q.category %}selected{% endif %}>
+      -- Unset --
+    </option>
+
+    {% for value, label in category_choices %}
+      <option value="{{ value }}"
+              {% if q.category == value %}selected{% endif %}>
+        {{ label }}
+      </option>
+    {% endfor %}
+  </select>
+</div>
+   
    
     
       <!-- Subject -->
@@ -154,22 +180,22 @@
   <td class="px-3 py-2 align-top">
     {# View mode: Markdown => HTML #}
     <div x-show="!editOpen" x-cloak>
-      {% if q.explanation_generated %}
+      {% if q.explanation_html %}
         <h2 class="text-lg font-semibold mb-2">Correct: {{ q.correct_option|upper }}</h2>
         <div class="prose dark:prose-invert prose-headings:text-lg prose-headings:font-semibold max-w-none">
-          {{ q.explanation_generated|render_markdown }}
+          {{ q.explanation_html|render_markdown }}
         </div>
       {% else %}
-      <h2 class="text-lg font-semibold mb-2">Correct: {{ q.correct_option|upper }}</h2>
+      <h2 class="text-lg font-semibold mb-2">Correct: {{ q.correct_option|upper }} OLD EXP</h2>
         <div class="prose dark:prose-invert max-w-none">
-          No explanation available
+          {{ q.explanation_generated|render_markdown }}
         </div>
       {% endif %}
     </div>
 
     {# Edit mode: Markdown-backed field with WYSIWYG UI #}
     <div x-show="editOpen" x-cloak>
-      <textarea name="explanation_generated" id="e-md-{{ q.id }}" class="hidden">{{ q.explanation_generated|default_if_none:"" }}</textarea>
+      <textarea name="explanation_html" id="e-md-{{ q.id }}" class="hidden">{{ q.explanation_html|default_if_none:"" }}</textarea>
 
       <div class="mt-2 rounded border border-gray-200 dark:border-gray-700"
            data-tui-editor="explanation"

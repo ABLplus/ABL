@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Question Attempt History</title>
+  <style>
+    body {
+      font-family: system-ui, Arial, sans-serif;
+      padding: 16px;
+      background: #fafafa;
+    }
+
+    h2 { margin-bottom: 12px; }
+
+    form {
+      background: #fff;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      margin-bottom: 16px;
+    }
+
+    select, button {
+      padding: 4px 6px;
+      margin-right: 8px;
+    }
+
+    .info {
+      font-size: 13px;
+      color: #555;
+      margin-bottom: 12px;
+    }
+
+    .card {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 12px;
+      margin-bottom: 14px;
+    }
+
+    .q-header {
+      font-size: 13px;
+      color: #555;
+      margin-bottom: 8px;
+    }
+
+    .q-header strong {
+      color: #000;
+    }
+
+    .question {
+      margin-bottom: 8px;
+    }
+
+    .opts {
+      margin: 8px 0 10px;
+      padding-left: 18px;
+    }
+
+    .opts li {
+      margin: 3px 0;
+    }
+
+    .correct {
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+
+    .attempts {
+      border-top: 1px solid #eee;
+      margin-top: 8px;
+      padding-top: 8px;
+    }
+
+    .attempt {
+      font-size: 13px;
+      margin-bottom: 6px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 6px;
+      font-size: 11px;
+      border-radius: 4px;
+      background: #eef;
+      margin-right: 6px;
+    }
+
+    .badge.practice { background: #e7f5ff; }
+    .badge.test { background: #fff3cd; }
+
+    .muted {
+      color: #777;
+      font-size: 12px;
+    }
+
+    .empty {
+      color: #777;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+
+<h2>Question Attempt History</h2>
+
+<form method="post">
+  {% csrf_token %}
+
+  <strong>User:</strong>
+  <select name="user_id" required>
+    <option value="">-- Select --</option>
+    {% for u in users %}
+      <option value="{{ u.id }}" {% if selected_user and u.id == selected_user.id %}selected{% endif %}>
+        {{ u.username }}
+      </option>
+    {% endfor %}
+  </select>
+
+  <strong>Mode:</strong>
+  <select name="mode">
+    <option value="" {% if not mode %}selected{% endif %}>All</option>
+    <option value="practice" {% if mode == "practice" %}selected{% endif %}>Practice</option>
+    <option value="test" {% if mode == "test" %}selected{% endif %}>Test</option>
+  </select>
+
+  <strong>Topic:</strong>
+  <select name="topic_id">
+    <option value="">All</option>
+    {% for t in topics %}
+      <option value="{{ t.id }}" {% if selected_topic and t.id == selected_topic.id %}selected{% endif %}>
+        {{ t.name }}
+      </option>
+    {% endfor %}
+  </select>
+
+  <button type="submit">Load</button>
+</form>
+
+{% if not submitted %}
+  <p class="muted">Select filters and click <strong>Load</strong>.</p>
+{% endif %}
+
+{% if submitted and selected_user %}
+  <div class="info">
+    User: <strong>{{ selected_user.username }}</strong>
+    {% if mode %}| Mode: <strong>{{ mode }}</strong>{% endif %}
+    {% if selected_topic %}| Topic: <strong>{{ selected_topic.name }}</strong>{% endif %}
+    | Questions: <strong>{{ rows|length }}</strong>
+  </div>
+
+  {% for row in rows %}
+    <div class="card">
+      <div class="q-header">
+        <strong>#{{ row.sno }}</strong>
+        | QID {{ row.question.id }}
+        {% if row.topic %}| {{ row.topic.name }}{% endif %}
+        | Attempts {{ row.attempts|length }}
+      </div>
+
+      <div class="question">
+        {{ row.question.question_html|safe }}
+      </div>
+
+      <ol class="opts" type="A">
+        <li>{{ row.question.option_a|safe }}</li>
+        <li>{{ row.question.option_b|safe }}</li>
+        <li>{{ row.question.option_c|safe }}</li>
+        <li>{{ row.question.option_d|safe }}</li>
+      </ol>
+
+      <div class="correct">
+        <strong>Correct:</strong> {{ row.question.correct_option|upper }}
+      </div>
+
+      <div class="attempts">
+        {% for a in row.attempts %}
+          <div class="attempt">
+            {{ forloop.counter }}.
+            <span class="badge {{ a.mode }}">{{ a.mode }}</span>
+            Answer: <strong>{{ a.user_answered|upper }}</strong>
+            | {{ a.attempt_result }}
+            | {{ a.attempt_type|capfirst }}
+            {% if a.time_taken_seconds %}| {{ a.time_taken_seconds }}s{% endif %}
+            <div class="muted">
+              {{ a.timestamp }}{% if a.serial %} · Serial {{ a.serial }}{% endif %}
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  {% empty %}
+    <p class="empty">No logs found for this filter.</p>
+  {% endfor %}
+{% elif submitted %}
+  <p class="empty">Please select a valid user.</p>
+{% endif %}
+
+</body>
+</html>

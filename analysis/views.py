@@ -21,22 +21,239 @@ import random
 from django.db.models import (
     Sum, F, ExpressionWrapper, DecimalField, Max, Min, FloatField, Q
 )
-from django.utils import timezone
+
 from syllabus.models import Subject
 from django.db.models.functions import Coalesce
 from .models import TopicStatus
 
 
-from practice.models import PracticeSession
-from analysis.models import TopicStatus
+
 from syllabus.models import Topic  # adjust if your import path differs
 
 # import your existing PMI function
 from practice.views import _compute_and_update_topic_pmi
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth import get_user_model
+from django.core.exceptions import FieldError
+
 
 User = get_user_model()
+
+
+
+
+
+# ---------- Helpers ----------
+
+def _resolve_topicstatus_method(request) -> str:
+    profile = request.user.profile
+    method = request.session.get("topicstatus_method") or getattr(profile, "topicstatus_method", "MAS")
+    
+    return method if method in ("MAS", "PCT") else "MAS"
+
+
+def _topics_queryset_for_exam(profile):
+    """
+    Exam-scoped Topic queryset (best effort).
+    Adjust if your schema is different.
+    """
+    if not profile.exam:
+        return Topic.objects.all()
+
+    # Option A: Topic has FK 'exam'
+    try:
+        return Topic.objects.filter(exam=profile.exam)
+    except FieldError:
+        pass
+
+    # Option B: Topic -> Subject -> Exam
+    try:
+        return Topic.objects.filter(subject__exam=profile.exam)
+    except FieldError:
+        pass
+
+    # fallback
+    return Topic.objects.all()
+
+
+def _practice_ts_base_qs(user):
+    """
+    Base TopicStatus QS that represents "has practice data".
+    practice_rounds__gt=0 is your clean practice signal.
+    """
+    return (
+        TopicStatus.objects
+        .filter(user=user, practice_rounds__gt=0)
+        .select_related("topic")
+    )
+
+
+# ---------- Insights (Option A) ----------
+
+def _practice_insights_fast(request):
+    """
+    Dashboard summary using DB aggregates + small preview lists.
+    Full bucket list is fetched separately via HTMX modal endpoint.
+    """
+    user = request.user
+    profile = user.profile
+    method = _resolve_topicstatus_method(request)
+    print(f"method: {method}")
+
+    total_topics = _topics_queryset_for_exam(profile).count()
+
+    # Base TS = practiced topics universe
+    ts_qs = _practice_ts_base_qs(user)
+
+    # Method-specific filters/fields
+    if method == "MAS":
+        bucket_field = "bucket_by_mastery"
+        metric_field = "pmi"
+        # only consider rows where mastery bucket exists and pmi exists
+        ts_qs = ts_qs.filter(bucket_by_mastery__isnull=False, pmi__isnull=False)
+
+        strong_filter = Q(bucket_by_mastery=TopicStatus.BUCKET_STRONG)
+        trans_filter  = Q(bucket_by_mastery=TopicStatus.BUCKET_TRANSITION)
+        weak_filter   = Q(bucket_by_mastery=TopicStatus.BUCKET_WEAK)
+
+        strong_order = "-pmi"
+        weak_order   = "pmi"
+
+    else:  # PCT
+        bucket_field = "bucket_by_pct"
+        metric_field = "pctwrong_practice"
+        ts_qs = ts_qs.filter(bucket_by_pct__isnull=False, pctwrong_practice__isnull=False)
+
+        strong_filter = Q(bucket_by_pct=TopicStatus.BUCKET_STRONG)
+        trans_filter  = Q(bucket_by_pct=TopicStatus.BUCKET_TRANSITION)
+        weak_filter   = Q(bucket_by_pct=TopicStatus.BUCKET_WEAK)
+
+        # pctwrong: lower is better
+        strong_order = "pctwrong_practice"
+        weak_order   = "-pctwrong_practice"
+
+    practiced_topics = ts_qs.count()
+    coverage_pct = round(practiced_topics / total_topics * 100) if total_topics else 0
+
+    # ✅ Counts in ONE query (best practice)
+    counts = ts_qs.aggregate(
+        strong_n=Count("id", filter=strong_filter),
+        transition_n=Count("id", filter=trans_filter),
+        weak_n=Count("id", filter=weak_filter),
+    )
+    print("Bucket counts:", counts)
+    print("method:", method)
+    strong_n = counts["strong_n"] or 0
+    transition_n = counts["transition_n"] or 0
+    weak_n = counts["weak_n"] or 0
+
+    mastery_pct = round((strong_n / total_topics) * 100) if total_topics else 0
+
+    # ✅ Preview lists (small)
+    strong_preview = list(
+        ts_qs.filter(strong_filter)
+             .only("topic__id", "topic__name", "topic__tier", metric_field)
+             .order_by(strong_order)[:5]
+    )
+    weak_preview = list(
+        ts_qs.filter(weak_filter)
+             .only("topic__id", "topic__name", "topic__tier", metric_field)
+             .order_by(weak_order)[:5]
+    )
+
+    # transition preview: random 5. For sqlite and your size, ORDER BY ? is acceptable.
+    transition_preview = list(
+        ts_qs.filter(trans_filter)
+             .only("topic__id", "topic__name", "topic__tier", metric_field)
+             .order_by("?")[:5]
+    )
+
+    # Normalize to small dicts so templates are clean & light
+    def pack(ts):
+        tier_key = (getattr(ts.topic, "tier", None) or "general").lower()
+        raw = getattr(ts, metric_field, None)
+        val = float(raw) if raw is not None else None
+        return {
+            "id": ts.topic.id,
+            "name": ts.topic.name,
+            "tier": tier_key,
+            "tier_label": TIER_LABEL.get(tier_key, "Generally Asked"),
+            "tier_symbol": TIER_SYMBOL.get(tier_key, "■"),
+            "tier_text_class": TIER_TEXT_CLASS.get(tier_key, "text-base font-semibold"),
+            "metric": (round(val, 1) if method == "MAS" else round(val, 2)) if val is not None else None,
+        }
+
+    return {
+        "topicstatus_method": method,
+        "metric_field": metric_field,
+        "bucket_field": bucket_field,
+
+        "total_topics": total_topics,
+        "practiced_topics": practiced_topics,
+        "coverage_pct": coverage_pct,
+
+        "strong_n": strong_n,
+        "transition_n": transition_n,
+        "weak_n": weak_n,
+        "mastery_pct": mastery_pct,
+
+        "strong_topics": [pack(x) for x in strong_preview],
+        "transition_topics": [pack(x) for x in transition_preview],
+        "weak_topics": [pack(x) for x in weak_preview],
+    }
+
+# Allowed sortable fields
+SORT_MAP = {
+    "pmi": "pmi",
+    "practice_wrong": "pctwrong_practice",
+    "test_wrong": "pctwrong_test",
+    "practice_rounds": "practice_rounds",
+}
+
+DEFAULT_SORT = "-pmi"  # High → Low
+
+
+def user_topic_metrics(request):
+    users = User.objects.order_by("username")
+
+    selected_user = None
+    topic_statuses = []
+
+    # Sorting
+    sort = request.GET.get("sort", DEFAULT_SORT)
+    if sort.lstrip("-") not in SORT_MAP.values():
+        sort = DEFAULT_SORT
+
+    if request.method == "POST":
+        user_id = request.POST.get("user_id")
+    else:
+        user_id = request.GET.get("user_id")
+
+    if user_id:
+        selected_user = User.objects.filter(id=user_id).first()
+        print("Selected user:", selected_user)
+
+        if selected_user:
+            topic_statuses = (
+                TopicStatus.objects
+                .select_related("topic", "subject")
+                .filter(
+                    user=selected_user,
+                    pmi__isnull=False,
+                    pctwrong_practice__isnull=False,
+                )
+                .order_by(sort)
+            )
+            user_id=selected_user.id
+            print(f"Fetched {topic_statuses.count()} TopicStatus for user {selected_user.username} with id {user_id}")
+
+    context = {
+        "users": users,
+        "selected_user": selected_user,
+        "topic_statuses": topic_statuses,
+        "sort": sort,
+    }
+    return render(request, "analysis/user_topic_metrics.html", context)
 
 
 @staff_member_required
@@ -192,8 +409,7 @@ def _get_mode(request):
     return request.session.get("dash_mode", request.user.profile.mode)
 
 
-import random
-from django.db.models import Sum
+
 
 # PMI category colors
 CATEGORY_TEXT_CLASS = {
@@ -230,7 +446,8 @@ def _insights_context(request):
     PMI-based Insights with uniform casing, balanced font size, and tier-specific emphasis.
     """
     user = request.user
-    total_topics = Topic.objects.count()
+    total_topics = Topic.objects.count() 
+
 
     # Coverage info
     tas = (
@@ -315,6 +532,10 @@ def _insights_context(request):
 
         "mastery_pct":        mastery_pct,
         "strong_count":       strong_n,
+          
+      
+
+
     }
 
 
@@ -384,9 +605,9 @@ def _test_insights(user):
     # ── 3. Count of full-length tests completed ────────────────────────
     total_tests = Test.objects.filter(
         user=user,
-        status="completed",
-        test_type="full_length"
+        status="completed"
     ).count()
+    
 
     # ── 4. Test-level max/min marks ────────────────────────────────────
     marks_agg = Test.objects.filter(
@@ -450,84 +671,119 @@ def _test_insights(user):
 def dashboard(request):
     mode = _get_mode(request)
     user = request.user
+    profile = user.profile
 
-    profile   = request.user.profile
     exam_date = profile.exam_date
-    
     days_left = (exam_date - timezone.now().date()).days if exam_date else "--"
-
-
+    days_since_joined = (timezone.now().date() - profile.date_joined).days
 
     context = {
-        "profile":     profile,
-        "current_mode":  mode,
-        "days_left":     days_left,
-        
-
+        "profile": profile,
+        "current_mode": mode,
+        "days_left": days_left,
+        "days_since_joined": days_since_joined,
+        "topicstatus_method": _resolve_topicstatus_method(request),
     }
 
     if mode == "test":
-        pending_test= Test.objects.filter(user=user,status='pending')
+        pending_test = Test.objects.filter(user=user, status="pending")
         template = "analysis/test_dash.html"
-        # Allow new test creation only if fewer than 2 are active
+
         can_create = pending_test.count() < 2
 
-        # Build (test, next_serial) tuples
         pending_tests_with_next_serial = []
         for t in pending_test:
             highest = (
                 t.questionlog_set
-                .filter(user_answered__isnull=False)
-                .aggregate(Max("serial"))["serial__max"]
+                 .filter(user_answered__isnull=False)
+                 .aggregate(Max("serial"))["serial__max"]
             )
             next_serial = (highest + 1) if highest and highest < t.total_questions else 1
             pending_tests_with_next_serial.append((t, next_serial))
 
-        insights = _test_insights(request.user)
-
+        insights = _test_insights(user)
 
         context.update({
-            "pending_tests":   pending_tests_with_next_serial,
-            'can_create':        can_create,
+            "pending_tests": pending_tests_with_next_serial,
+            "can_create": can_create,
             "test_insights": insights,
-
         })
 
-
-    else:  # fallback to practice
-        # 1. Ongoing (pending) practice sessions
-        pending_sessions = PracticeSession.objects.filter(
-            user=user,
-            status='pending'
-        )
-
-        # Allow new session creation only if fewer than 2 are active
+    else:
+        pending_sessions = PracticeSession.objects.filter(user=user, status="pending")
         can_create = pending_sessions.count() < 2
 
-        # 2. Previous (completed) sessions, most recent first
         previous_sessions = PracticeSession.objects.filter(
-            user=user,
-            status='completed'
-        ).order_by('-end_time')
+            user=user, status="completed"
+        ).order_by("-end_time")
 
-        # 3. All subjects for the chained form and subject-tree nav
-        subjects = Subject.objects.all().order_by('name')
-
-        # 4. All OLT types for the dropdown
-
+        subjects = Subject.objects.all().order_by("name")
 
         template = "analysis/practice_dash.html"
 
         context.update({
-            'pending_sessions':  pending_sessions,
-            'can_create':        can_create,
-            'previous_sessions': previous_sessions,
-            'subjects':          subjects,
-            **_insights_context(request),
-
+            "pending_sessions": pending_sessions,
+            "can_create": can_create,
+            "previous_sessions": previous_sessions,
+            "subjects": subjects,
+            **_practice_insights_fast(request),
         })
 
     return render(request, template, context)
+
+
+@login_required
+def practice_bucket_modal(request):
+    """
+    Returns full list HTML for a bucket (strong/transition/weak) based on user's method (MAS/PCT).
+    Called via HTMX when user clicks "Show more".
+    """
+    user = request.user
+    method = _resolve_topicstatus_method(request)
+
+    bucket = request.GET.get("bucket")  # expected: strong / transition / weak
+    if bucket not in (TopicStatus.BUCKET_STRONG, TopicStatus.BUCKET_TRANSITION, TopicStatus.BUCKET_WEAK):
+        bucket = TopicStatus.BUCKET_TRANSITION
+
+    ts_qs = _practice_ts_base_qs(user)
+
+    if method == "MAS":
+        metric_field = "pmi"
+        ts_qs = ts_qs.filter(bucket_by_mastery=bucket, pmi__isnull=False)
+        order_by = "-pmi" if bucket == TopicStatus.BUCKET_STRONG else "pmi"
+    else:
+        metric_field = "pctwrong_practice"
+        ts_qs = ts_qs.filter(bucket_by_pct=bucket, pctwrong_practice__isnull=False)
+        # pctwrong: strong = lowest, weak = highest
+        order_by = "pctwrong_practice" if bucket == TopicStatus.BUCKET_STRONG else "-pctwrong_practice"
+
+    rows = list(
+        ts_qs.only("topic__id", "topic__name", "topic__tier", metric_field)
+            .order_by(order_by)
+    )
+
+    def pack(ts):
+        tier_key = (getattr(ts.topic, "tier", None) or "general").lower()
+        raw = getattr(ts, metric_field, None)
+        val = float(raw) if raw is not None else None
+        return {
+            "id": ts.topic.id,
+            "name": ts.topic.name,
+            "tier": tier_key,
+            "tier_label": TIER_LABEL.get(tier_key, "Generally Asked"),
+            "tier_symbol": TIER_SYMBOL.get(tier_key, "■"),
+            "tier_text_class": TIER_TEXT_CLASS.get(tier_key, "text-base font-semibold"),
+            "metric": (round(val, 1) if method == "MAS" else round(val, 2)) if val is not None else None,
+        }
+
+    context = {
+        "bucket": bucket,
+        "method": method,
+        "metric_field": metric_field,
+        "rows": [pack(x) for x in rows],
+    }
+    return render(request, "analysis/partials/practice_bucket_modal.html", context)
+
 
 
 @login_required

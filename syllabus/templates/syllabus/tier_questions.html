@@ -59,7 +59,7 @@
       <div class="rounded-xl bg-white/70 dark:bg-gray-800/60 shadow ring-1 ring-gray-200/60 dark:ring-gray-700/60 p-4">
         <div class="text-sm text-gray-500">Question share (since {{ summary.start_year }})</div>
         <div class="text-lg font-semibold">
-          {{ summary.tier_label }}: 
+          {{ summary.tier_label }}:
           <span class="text-primary-600 dark:text-primary-400">{{ summary.tier_questions }}</span>
           / {{ summary.total_questions }}
           <span class="text-sm text-gray-600">({{ summary.tier_questions_pct }}%)</span>
@@ -69,7 +69,7 @@
       <div class="rounded-xl bg-white/70 dark:bg-gray-800/60 shadow ring-1 ring-gray-200/60 dark:ring-gray-700/60 p-4">
         <div class="text-sm text-gray-500">Topic share (across entire exam)</div>
         <div class="text-lg font-semibold">
-          {{ summary.tier_label }}: 
+          {{ summary.tier_label }}:
           <span class="text-primary-600 dark:text-primary-400">{{ summary.topics_in_tier }}</span>
           / {{ summary.total_topics_in_exam }}
           <span class="text-sm text-gray-600">({{ summary.topics_in_tier_pct }}%)</span>
@@ -98,13 +98,17 @@
 
               <div class="mt-1 flex flex-wrap gap-2">
                 {% for t in sec.topics %}
-                  <div class="px-2 py-1 rounded-lg bg-gray-50 dark:bg-gray-900/40 ring-1 ring-inset ring-gray-200 dark:ring-gray-700/60"
-                       title="Weightage: {{ t.weightage }}% • Count: {{ t.count }}">
+                  <div
+                    class="px-2 py-1 rounded-lg bg-gray-50 dark:bg-gray-900/40 ring-1 ring-inset
+                      {% if selected_tier == 'tier1' %} ring-green-200 dark:ring-green-800/50
+                      {% elif selected_tier == 'tier2' %} ring-blue-200 dark:ring-blue-800/50
+                      {% else %} ring-amber-200 dark:ring-amber-800/50 {% endif %}"
+                    title="Weightage: {{ t.weightage }}% • Count: {{ t.count }}"
+                  >
                     <span class="
-                      {% if selected_tier == 'most' %} text-2xl font-semibold
-                      {% elif selected_tier == 'general' %} text-xl font-semibold
-                      {% elif selected_tier == 'rare' %} text-base
-                      {% else %} text-sm text-gray-600 dark:text-gray-400 {% endif %}
+                      {% if selected_tier == 'tier1' %} text-2xl font-semibold
+                      {% elif selected_tier == 'tier2' %} text-xl font-semibold
+                      {% else %} text-base {% endif %}
                     ">
                       {{ t.name }}
                     </span>

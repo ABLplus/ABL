@@ -34,14 +34,11 @@ class TestTemplate(models.Model):
     def __str__(self):
         return f"Tmpl[{self.pk}] u={self.user} exam={self.exam} year={self.year} subj={self.subject} sec={self.section} attempts={self.no_of_attempts}"
 
-
-
 class Test(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, db_index=True)
     attempt_serial=models.PositiveSmallIntegerField(default=1)
     name = models.CharField(max_length=255, blank=True, null=True)
     template = models.ForeignKey(TestTemplate, on_delete=models.SET_NULL, null=True, blank=True, db_index=True)
-    attempt_serial = models.PositiveIntegerField(default=1, db_index=True)
     test_type = models.CharField(
         max_length=50,
         blank=True,
@@ -92,9 +89,6 @@ class Test(models.Model):
     def __str__(self):
         return f"Test {self.id} - {self.user.username} - {self.name or 'Unnamed'}"
 
-
-
-
 class QuestionLog(models.Model):
     user = models.ForeignKey('auth.User', on_delete=models.CASCADE, db_index=True)
     question = models.ForeignKey('question.Question', on_delete=models.CASCADE, db_index=True)
@@ -139,54 +133,29 @@ class QuestionLog(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True, blank=True, null=True)
     time_taken_seconds = models.PositiveIntegerField(blank=True, null=True)
 
-    # User/self-defined error tag (points to your analysis.SelfError model)
-    self_error = models.ForeignKey(
-        'analysis.Errortype',
-        on_delete=models.SET_NULL,
-        blank=True,
-        null=True,
-        related_name='question_logs',
-        db_index=True,
-    )
-    error_note = models.CharField(max_length=255, blank=True, null=True)
+    
 
     class Meta:
-        # For review screens; you can still use .order_by('serial') in queries explicitly.
-        ordering = ['serial', 'timestamp']
+        ordering = ["serial", "timestamp"]
 
         indexes = [
-            # Hot paths for summaries
-            models.Index(fields=['test', 'serial'], name='ql_test_serial_idx'),
-            models.Index(fields=['practiceSession', 'serial'], name='ql_practice_serial_idx'),
-
-            # Exactly what you requested:
-            models.Index(fields=['user', 'test', 'serial'], name='ql_user_test_serial_idx'),
-            models.Index(fields=['user', 'practiceSession', 'serial'], name='ql_user_practice_serial_idx'),
-            models.Index(fields=['user', 'self_error'], name='ql_user_selferror_idx'),
-            models.Index(fields=['user', 'topic'], name='ql_user_topic_idx'),
-
-            # Helpful general history query
-            models.Index(fields=['user', 'question'], name='ql_user_question_idx'),
-
-            # If you filter by correctness for a user
-            models.Index(fields=['user', 'attempt_result'], name='ql_user_attempt_result_idx'),
+            models.Index(fields=["user", "question"], name="ql_user_question_idx"),
+            models.Index(fields=["user", "topic"], name="ql_user_topic_idx"),
+            # add others later only if a real query pattern needs them
         ]
 
         constraints = [
-            # Ensure exactly one mode is active
             models.CheckConstraint(
-                check=(
-                    models.Q(test__isnull=False, practiceSession__isnull=True) |
-                    models.Q(test__isnull=True, practiceSession__isnull=False)
-                ),
-                name='only_one_mode_active'
+            condition=(
+                models.Q(test__isnull=False, practiceSession__isnull=True) |
+                models.Q(test__isnull=True, practiceSession__isnull=False)
             ),
-
-            # Prevent duplicates inside a session
-            models.UniqueConstraint(fields=['test', 'question'], name='unique_question_per_test'),
-            models.UniqueConstraint(fields=['test', 'serial'], name='unique_serial_per_test'),
-            models.UniqueConstraint(fields=['practiceSession', 'question'], name='unique_question_per_practice'),
-            models.UniqueConstraint(fields=['practiceSession', 'serial'], name='unique_serial_per_practice'),
+            name='only_one_mode_active',
+        ),
+            models.UniqueConstraint(fields=["test", "question"], name="unique_question_per_test"),
+            models.UniqueConstraint(fields=["test", "serial"], name="unique_serial_per_test"),
+            models.UniqueConstraint(fields=["practiceSession", "question"], name="unique_question_per_practice"),
+            models.UniqueConstraint(fields=["practiceSession", "serial"], name="unique_serial_per_practice"),
         ]
 
     # ── Validation & helpers ──
@@ -222,7 +191,10 @@ class TopicAttemptSummary(models.Model):
     topic = models.ForeignKey('syllabus.Topic', on_delete=models.CASCADE, db_index=True)
     mode  = models.CharField(max_length=8, choices=MODE_CHOICES)
 
+    total_test_questions     = models.PositiveIntegerField(default=0)
+
     # Attempt outcomes
+    
     total_attempts   = models.PositiveIntegerField(default=0)
     correct_attempts = models.PositiveIntegerField(default=0)
     wrong_attempts   = models.PositiveIntegerField(default=0)
@@ -239,9 +211,11 @@ class TopicAttemptSummary(models.Model):
     guesswork_wrong = models.PositiveIntegerField(default=0)
     blind_wrong     = models.PositiveIntegerField(default=0)
 
-    # Scoring / mastery metric (keep same formula you use elsewhere)
+    last_n_questions_test =models.JSONField(default=list)  # store last N question IDs attempted in this topic-mode
+
+    # Scoring (keep same formula you use elsewhere)
     net_marks = models.DecimalField(max_digits=6, decimal_places=2, default=0.0)
-    mastery_index = models.DecimalField(max_digits=5, decimal_places=2, default=0.0)
+    
 
     last_updated = models.DateTimeField(auto_now=True, blank=True, null=True)
 
@@ -272,9 +246,6 @@ class TopicAttemptSummary(models.Model):
     def wrong_rate(self):
         return 0 if self.total_attempts == 0 else (self.wrong_attempts / self.total_attempts) * 100
 
-
-
-
 class QuestionAttemptSummary(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, db_index=True)
     question = models.ForeignKey('question.Question', on_delete=models.CASCADE, db_index=True)
@@ -289,13 +260,13 @@ class QuestionAttemptSummary(models.Model):
     sureshot_attempts = models.PositiveIntegerField(default=0)
     applied_attempts = models.PositiveIntegerField(default=0)
     guesswork_attempts = models.PositiveIntegerField(default=0)
-    blind_attempts = models.PositiveIntegerField(default=0)
+   
 
     # Wrong Attempts per Attempt Type
     sureshot_wrong = models.PositiveIntegerField(default=0)
     applied_wrong = models.PositiveIntegerField(default=0)
     guesswork_wrong = models.PositiveIntegerField(default=0)
-    blind_wrong = models.PositiveIntegerField(default=0)
+    
 
     # Scoring
     net_marks = models.DecimalField(max_digits=6, decimal_places=2, default=0.0)
@@ -327,3 +298,45 @@ class QuestionAttemptSummary(models.Model):
             return 0
         return (self.wrong_attempts / self.total_attempts) * 100
 
+class TopicOLTSummary(models.Model):
+    MODE_CHOICES = [
+        ("practice", "Practice"),
+        ("test", "Test"),
+    ]
+
+    user  = models.ForeignKey(User, on_delete=models.CASCADE)
+    subject= models.ForeignKey("syllabus.Subject", on_delete=models.CASCADE)
+    section = models.ForeignKey("syllabus.Section", on_delete=models.CASCADE, null=True, blank=True)
+    topic = models.ForeignKey("syllabus.Topic", on_delete=models.CASCADE)
+    olt   = models.ForeignKey("question.OLT", on_delete=models.CASCADE)
+    mode  = models.CharField(max_length=10, choices=MODE_CHOICES)
+
+    # Attempts
+    total_attempts   = models.PositiveIntegerField(default=0)
+    correct_attempts = models.PositiveIntegerField(default=0)
+    wrong_attempts   = models.PositiveIntegerField(default=0)
+
+    # Attempt types
+    sureshot_attempts  = models.PositiveIntegerField(default=0)
+    applied_attempts   = models.PositiveIntegerField(default=0)
+    guesswork_attempts = models.PositiveIntegerField(default=0)
+
+    sureshot_wrong  = models.PositiveIntegerField(default=0)
+    applied_wrong   = models.PositiveIntegerField(default=0)
+    guesswork_wrong = models.PositiveIntegerField(default=0)
+
+    # Optional score / mastery
+    net_marks      = models.FloatField(default=0.0)
+    
+
+    last_updated = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = [("user", "topic", "olt", "mode")]
+        indexes = [
+            models.Index(fields=["user", "topic", "mode"]),
+            models.Index(fields=["user", "olt", "mode"]),
+        ]
+
+    def __str__(self):
+        return f"{self.user} · {self.topic} · {self.olt} · {self.mode}"

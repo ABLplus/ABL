@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ABL+ Topic Status Demo (PCT method)</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 0; padding: 24px; }
+    .wrap { max-width: 900px; margin: 0 auto; }
+    h1 { margin: 0 0 8px; font-size: 20px; }
+    p { margin: 0 0 16px; opacity: 0.85; }
+    .card { border: 1px solid rgba(127,127,127,.35); border-radius: 14px; padding: 16px; margin: 12px 0; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    label { display: block; font-size: 12px; opacity: .85; margin-bottom: 6px; }
+    input, select, button { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(127,127,127,.35); background: transparent; }
+    .btns { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+    button { cursor: pointer; font-weight: 600; }
+    .out { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    .pill { display: inline-flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 999px; border: 1px solid rgba(127,127,127,.35); width: fit-content; }
+    .big { font-size: 28px; font-weight: 800; letter-spacing: .5px; }
+    .muted { opacity: .75; font-size: 12px; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    .debug { white-space: pre-wrap; font-size: 12px; opacity: .85; }
+    .note { font-size: 12px; opacity: .85; line-height: 1.4; }
+    .ok { color: #22c55e; }
+    .warn { color: #f59e0b; }
+    .bad { color: #ef4444; }
+    .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>ABL+ Topic Status Demo — PCT method</h1>
+    <p>Enter <span class="mono">pctwrong_test</span> and <span class="mono">pctwrong_practice</span> (0–100). Use NULL if missing. Lower wrong% ⇒ higher mastery.</p>
+
+    <div class="card">
+      <div class="grid">
+        <div>
+          <label>pctwrong_practice</label>
+          <select id="pMode">
+            <option value="value">Value</option>
+            <option value="null">NULL</option>
+          </select>
+          <div style="margin-top:8px">
+            <input id="pWrong" type="number" min="0" max="100" step="1" value="30" />
+          </div>
+          <div class="muted">NULL means: no practice-mode evidence (not negative).</div>
+        </div>
+
+        <div>
+          <label>pctwrong_test</label>
+          <select id="tMode">
+            <option value="value">Value</option>
+            <option value="null">NULL</option>
+          </select>
+          <div style="margin-top:8px">
+            <input id="tWrong" type="number" min="0" max="100" step="1" value="35" />
+          </div>
+          <div class="muted">NULL means: no test-mode evidence (practice-only cap at G1).</div>
+        </div>
+      </div>
+
+      <div class="btns">
+        <button id="calcBtn">Calculate</button>
+        <button id="swapBtn" type="button">Swap</button>
+        <button id="randomBtn" type="button">Random</button>
+        <button id="perfectBtn" type="button">Set Perfect (0% wrong)</button>
+      </div>
+
+      <div class="two">
+        <div class="pill mono" id="mtPill">Test mastery: —</div>
+        <div class="pill mono" id="mpPill">Practice mastery: —</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="out">
+        <div>
+          <div class="muted">Status</div>
+          <div id="state" class="big">—</div>
+          <div class="pill"><span class="muted">Bucket:</span> <span id="bucket">—</span></div>
+        </div>
+        <div>
+          <div class="muted">Authority</div>
+          <div id="authority" class="pill mono">—</div>
+          <div class="muted" style="margin-top:10px">Effective mastery</div>
+          <div id="score" class="pill mono">—</div>
+        </div>
+        <div>
+          <div class="muted">Notes</div>
+          <div id="notes" class="note">—</div>
+        </div>
+      </div>
+
+      <div style="margin-top:14px">
+        <div class="muted">Debug</div>
+        <div id="debug" class="debug mono">—</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="muted">Rules (PCT)</div>
+      <ul class="note">
+        <li><b>Mastery</b> = <span class="mono">100 - pctwrong</span></li>
+        <li>If both exist: <span class="mono">e = 0.6*test_mastery + 0.4*practice_mastery</span></li>
+        <li>If only test exists: <span class="mono">e = test_mastery</span></li>
+        <li>If only practice exists: <span class="mono">e = practice_mastery</span>, but max state = <b>G1</b></li>
+        <li>G3 only if <span class="mono">test_mastery ≥ 85</span></li>
+        <li>G2 only if <span class="mono">test_mastery ≥ 70</span></li>
+      </ul>
+    </div>
+  </div>
+
+<script>
+  function clamp(x) {
+    if (x === null || x === undefined || Number.isNaN(x)) return null;
+    const v = Number(x);
+    if (v < 0) return 0;
+    if (v > 100) return 100;
+    return v;
+  }
+
+  function masteryFromPctWrong(pctWrong) {
+    const w = clamp(pctWrong);
+    if (w === null) return null;
+    return 100 - w;
+  }
+
+  function bucketOf(state) {
+    if (state === "INS") return "INSUFFICIENT";
+    if (["G1","G2","G3"].includes(state)) return "STRONG";
+    if (["G","B","R"].includes(state)) return "TRANSITION";
+    return "WEAK";
+  }
+
+  function mapScoreToState(score) {
+    const s = clamp(score);
+    if (s === null) return "INS";
+    if (s >= 85) return "G3";
+    if (s >= 70) return "G2";
+    if (s >= 60) return "G1";
+    if (s >= 50) return "G";
+    if (s >= 40) return "B";
+    if (s >= 30) return "R";
+    if (s >= 20) return "R1";
+    return "R2";
+  }
+
+  function resolvePCT({pctwrong_test, pctwrong_practice}) {
+    const mt = masteryFromPctWrong(pctwrong_test);       // test mastery
+    const mp = masteryFromPctWrong(pctwrong_practice);   // practice mastery
+
+    // No evidence
+    if (mt === null && mp === null) {
+      return {
+        state: "INS",
+        authority: "NONE",
+        bucket: "INSUFFICIENT",
+        score: null,
+        mt, mp,
+        notes: "Insufficient evidence (both pctwrong values are NULL).",
+        debug: {mt, mp}
+      };
+    }
+
+    // Practice-only mode (cap max to G1)
+    if (mt === null) {
+      let base = mapScoreToState(mp);
+      if (base === "G2" || base === "G3") base = "G1";
+      return {
+        state: base,
+        authority: "PRACTICE",
+        bucket: bucketOf(base),
+        score: mp,
+        mt, mp,
+        notes: "Practice-only evidence. Status is capped at G1 until test evidence exists.",
+        debug: {mode: "practice-only", mt, mp}
+      };
+    }
+
+    // Test-only mode
+    if (mp === null) {
+      let base = mapScoreToState(mt);
+      // gates
+      if (base === "G3" && mt < 85) base = (mt >= 70) ? "G2" : "G1";
+      if (base === "G2" && mt < 70) base = "G1";
+      return {
+        state: base,
+        authority: "TEST",
+        bucket: bucketOf(base),
+        score: mt,
+        mt, mp,
+        notes: "Test-only evidence. Using pure test mastery (no penalty for missing practice).",
+        debug: {mode: "test-only", mt, mp}
+      };
+    }
+
+    // Both exist: blended effective mastery
+    const e = 0.6 * mt + 0.4 * mp;
+    let base = mapScoreToState(e);
+
+    // certification gates (based on test mastery)
+    if (base === "G3" && mt < 85) base = (mt >= 70) ? "G2" : "G1";
+    if (base === "G2" && mt < 70) base = "G1";
+
+    return {
+      state: base,
+      authority: "TEST",
+      bucket: bucketOf(base),
+      score: Number(e.toFixed(2)),
+      mt, mp,
+      notes: "Test is primary; practice nudges stability. Certification is gated by test mastery.",
+      debug: {mode: "blended", mt, mp, e}
+    };
+  }
+
+  // UI wiring
+  const pMode = document.getElementById("pMode");
+  const tMode = document.getElementById("tMode");
+  const pWrong = document.getElementById("pWrong");
+  const tWrong = document.getElementById("tWrong");
+
+  function syncModeUI() {
+    pWrong.disabled = (pMode.value === "null");
+    tWrong.disabled = (tMode.value === "null");
+    pWrong.style.opacity = pWrong.disabled ? "0.5" : "1";
+    tWrong.style.opacity = tWrong.disabled ? "0.5" : "1";
+  }
+
+  function render(out) {
+    document.getElementById("state").textContent = out.state;
+    document.getElementById("bucket").textContent = out.bucket;
+    document.getElementById("authority").textContent = `Authority: ${out.authority}`;
+    document.getElementById("score").textContent = (out.score === null) ? "e: —" : `e: ${out.score}`;
+    document.getElementById("notes").textContent = out.notes;
+
+    document.getElementById("mtPill").textContent = (out.mt === null) ? "Test mastery: —" : `Test mastery: ${out.mt.toFixed(2)}`;
+    document.getElementById("mpPill").textContent = (out.mp === null) ? "Practice mastery: —" : `Practice mastery: ${out.mp.toFixed(2)}`;
+
+    document.getElementById("debug").textContent = JSON.stringify(out.debug, null, 2);
+
+    const stateEl = document.getElementById("state");
+    stateEl.classList.remove("ok","warn","bad");
+    if (["G3","G2","G1"].includes(out.state)) stateEl.classList.add("ok");
+    else if (["G","B","R"].includes(out.state)) stateEl.classList.add("warn");
+    else stateEl.classList.add("bad");
+  }
+
+  function calculate() {
+    const pw = (pMode.value === "null") ? null : Number(pWrong.value);
+    const tw = (tMode.value === "null") ? null : Number(tWrong.value);
+    render(resolvePCT({pctwrong_test: tw, pctwrong_practice: pw}));
+  }
+
+  document.getElementById("calcBtn").addEventListener("click", calculate);
+
+  document.getElementById("swapBtn").addEventListener("click", () => {
+    const pm = pMode.value, tm = tMode.value;
+    pMode.value = tm; tMode.value = pm;
+    const pv = pWrong.value, tv = tWrong.value;
+    pWrong.value = tv; tWrong.value = pv;
+    syncModeUI();
+    calculate();
+  });
+
+  document.getElementById("randomBtn").addEventListener("click", () => {
+    const rnull = () => Math.random() < 0.15;
+    pMode.value = rnull() ? "null" : "value";
+    tMode.value = rnull() ? "null" : "value";
+    if (pMode.value === "value") pWrong.value = Math.floor(Math.random() * 101);
+    if (tMode.value === "value") tWrong.value = Math.floor(Math.random() * 101);
+    syncModeUI();
+    calculate();
+  });
+
+  document.getElementById("perfectBtn").addEventListener("click", () => {
+    pMode.value = "value";
+    tMode.value = "value";
+    pWrong.value = 0;
+    tWrong.value = 0;
+    syncModeUI();
+    calculate();
+  });
+
+  pMode.addEventListener("change", () => { syncModeUI(); calculate(); });
+  tMode.addEventListener("change", () => { syncModeUI(); calculate(); });
+  pWrong.addEventListener("input", calculate);
+  tWrong.addEventListener("input", calculate);
+
+  // init
+  syncModeUI();
+  calculate();
+</script>
+</body>
+</html>

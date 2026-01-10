@@ -51,7 +51,7 @@
               <th class="px-3 py-2 text-left">Section</th>
               <th class="px-3 py-2 text-left">Topic</th>
               <th class="px-3 py-2 text-right">PMI</th>
-              <th class="px-3 py-2 text-right">Window</th>
+              <th class="px-3 py-2 text-right">Practice Rounds</th>
               <th class="px-3 py-2 text-right">Updated</th>
             </tr>
           </thead>
@@ -63,7 +63,7 @@
                 <td class="px-3 py-2">{{ ts.topic.name }}</td>
                 <td class="px-3 py-2 text-right">{{ ts.pmi|floatformat:2 }}%</td>
                 <td class="px-3 py-2 text-right">
-                  {% if ts.rounds %}{{ ts.rounds }}{% else %}—{% endif %}
+                  {% if ts.practice_rounds %}{{ ts.practice_rounds }}{% else %}—{% endif %}
                 </td>
                 <td class="px-3 py-2 text-right">
                   {% if ts.updated_at %}{{ ts.updated_at|date:"d M Y H:i" }}{% else %}—{% endif %}

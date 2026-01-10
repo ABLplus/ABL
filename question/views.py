@@ -371,8 +371,7 @@ def question_list(request):
     )
 
     total_count = qs.count()
-    for q in qs:
-        print(f"{q.id}-{q.question_html}")
+    
    
 
     context = {
@@ -395,6 +394,7 @@ def question_list(request):
         "filter_olt":     olt_code,
         "filter_status": check_status,
         "total_count":    total_count,
+        "category_choices": Question.CATEGORY_CHOICES,
     }
     
     return render(request,
@@ -426,7 +426,6 @@ def ajax_question_subtopics(request, pk):
                   {'q': q, 'subtopics': subtopics})
 
 
-
 @require_POST
 @staff_member_required
 def check_save(request, pk):
@@ -443,11 +442,13 @@ def check_save(request, pk):
     q.topic_id    = request.POST.get('topic')    or q.topic_id
     q.subtopic_id = request.POST.get('subtopic') or q.subtopic_id
     q.olt_id      = request.POST.get('olt')      or q.olt_id
+    q.category    = request.POST.get('category') or q.category
 
     # Question statement (HTML via Toast UI)
     q_html = request.POST.get('question_html')
     if q_html is not None:
         q.question_html = q_html
+        
 
     # Options (plain strings)
     for f in ['option_a', 'option_b', 'option_c', 'option_d']:
@@ -461,9 +462,13 @@ def check_save(request, pk):
         q.correct_option = co
 
     # Explanation (Markdown) if present
-    exp_md = request.POST.get('explanation_generated')
+    exp_md = request.POST.get('explanation_html')
+    
     if exp_md is not None:
-        q.explanation_generated = exp_md
+        q.explanation_html= exp_md
+
+    
+
 
     # Mark as checked (will enforce your validation in model.save)
     q.check_status = 'checked'

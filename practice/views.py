@@ -10,842 +10,17 @@ from django.contrib import messages
 from django.urls import reverse
 from django.utils import timezone
 from django.db import transaction
-from django.db.models import Count, Q, F, Sum, Case, When, IntegerField, Q, Min, Max
-
-from collections import defaultdict
-from decimal import Decimal
+from django.db.models import Count, Q, F, Sum, Min, Max, Prefetch
 from django.contrib.auth.models import User
-from django.http import JsonResponse
 from django.core.paginator import Paginator
-from django.db.models import F, FloatField, Value, Case, When, ExpressionWrapper
-from django.utils.http import urlencode
 from collections import Counter
-from django.db.models import Prefetch
 from analysis.models import TopicStatus
 from django.conf import settings
-from django.db.models import Sum
-from django.utils import timezone
-# practice/views.py
-
-from django.db.models import (
-    F, Value, FloatField, IntegerField, Case, When, ExpressionWrapper, OuterRef, Subquery
-)
-from syllabus.models import Subject, Section, Topic
-from django.db.models.functions import Greatest
-from urllib.parse import urlencode
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
-@login_required
-def create_capsule(request):
-    if request.method == "POST":
-        subject_id = request.POST.get("subject")
-        section_id = request.POST.get("section")
-
-        if subject_id:
-            subj = Subject.objects.get(pk=subject_id)
-            print(subj.name)
-            context = {'subject': subj}
-
-        if section_id:
-            section = Section.objects.get(pk=section_id)
-            print(section.name)
-            context = {'section': section}
-
-
-    return render(request, "practice/create_capsule.html", context)
     
-@login_required
-def subject_modal(request, subject_id):
-    subject = get_object_or_404(Subject, pk=subject_id)
-    return render(request, "practice/partials/subject_modal.html", {"subject": subject})
-
-@login_required
-def section_modal(request, section_id):
-    section = get_object_or_404(Section, pk=section_id)
-    return render(request, "practice/partials/section_modal.html", {"section": section})
-
-
-
-
-@login_required
-def topic_summary(request):
-    target_user = request.user
-    user_qs_param = request.GET.get("user")
-    if user_qs_param and request.user.is_staff:
-        target_user = get_object_or_404(User, pk=user_qs_param)
-
-    # Base queryset
-    summaries = (
-        TopicAttemptSummary.objects
-        .filter(user=target_user)
-        .select_related("topic__section__subject", "topic__section")
-    )
-
-    # ---- Filters ----
-    valid_modes = {value for value, _ in TopicAttemptSummary.MODE_CHOICES}
-    mode = (request.GET.get("mode") or "").strip()
-    if mode and mode in valid_modes:
-        summaries = summaries.filter(mode=mode)
-    else:
-        mode = ""  # normalize
-
-    q = (request.GET.get("q") or "").strip()
-    if q:
-        summaries = summaries.filter(topic__name__icontains=q)
-
-    # Subject filter (dropdown)
-    subject_id = (request.GET.get("subject") or "").strip()
-    if subject_id.isdigit():
-        summaries = summaries.filter(topic__section__subject_id=int(subject_id))
-
-    # ---- Metrics annotations (all as percentages except rounds) ----
-    # Safe denominators
-    denom_total = Case(
-        When(total_attempts=0, then=Value(1)),  # avoid div-by-zero; values below guard display
-        default=F("total_attempts"),
-        output_field=IntegerField(),
-    )
-    denom_ss = Case(
-        When(sureshot_attempts=0, then=Value(1)),
-        default=F("sureshot_attempts"),
-        output_field=IntegerField(),
-    )
-    denom_ap = Case(
-        When(applied_attempts=0, then=Value(1)),
-        default=F("applied_attempts"),
-        output_field=IntegerField(),
-    )
-    denom_gw = Case(
-        When(guesswork_attempts=0, then=Value(1)),
-        default=F("guesswork_attempts"),
-        output_field=IntegerField(),
-    )
-
-    # Rights by type (guard negatives)
-    ss_right = Greatest(F("sureshot_attempts") - F("sureshot_wrong"), Value(0))
-    ap_right = Greatest(F("applied_attempts") - F("applied_wrong"), Value(0))
-    gw_right = Greatest(F("guesswork_attempts") - F("guesswork_wrong"), Value(0))
-
-    # Wrong rate (already existed)
-    wrong_rate_expr = Case(
-        When(total_attempts=0, then=Value(0.0)),
-        default=ExpressionWrapper(
-            100.0 * F("wrong_attempts") / F("total_attempts"),
-            output_field=FloatField(),
-        ),
-        output_field=FloatField(),
-    )
-
-    # 6 Metrics
-    cki_expr = Case(
-        When(total_attempts=0, then=Value(0.0)),
-        default=ExpressionWrapper(
-            100.0 * (F("sureshot_attempts") + F("applied_attempts")) / denom_total,
-            output_field=FloatField(),
-        ),
-        output_field=FloatField(),
-    )
-    pki_expr = Case(
-        When(total_attempts=0, then=Value(0.0)),
-        default=ExpressionWrapper(
-            100.0 * (ss_right + ap_right) / denom_total,
-            output_field=FloatField(),
-        ),
-        output_field=FloatField(),
-    )
-    cg_expr = ExpressionWrapper(cki_expr - pki_expr, output_field=FloatField())
-
-    fcr_expr = Case(
-        When(sureshot_attempts=0, then=Value(0.0)),
-        default=ExpressionWrapper(
-            100.0 * F("sureshot_wrong") / denom_ss,
-            output_field=FloatField(),
-        ),
-        output_field=FloatField(),
-    )
-    af_expr = Case(
-        When(applied_attempts=0, then=Value(0.0)),
-        default=ExpressionWrapper(
-            100.0 * F("applied_wrong") / denom_ap,
-            output_field=FloatField(),
-        ),
-        output_field=FloatField(),
-    )
-    gw_wrong_pct_expr = Case(
-        When(guesswork_attempts=0, then=Value(0.0)),
-        default=ExpressionWrapper(
-            100.0 * F("guesswork_wrong") / denom_gw,
-            output_field=FloatField(),
-        ),
-        output_field=FloatField(),
-    )
-
-    # ---- PMI + Rounds from TopicStatus via Subquery ----
-    ts_pmi_sq = Subquery(
-        TopicStatus.objects
-        .filter(user=target_user, topic=OuterRef("topic"))
-        .values("pmi")[:1]
-    )
-    ts_rounds_sq = Subquery(
-        TopicStatus.objects
-        .filter(user=target_user, topic=OuterRef("topic"))
-        .values("rounds")[:1]
-    )
-
-    summaries = summaries.annotate(
-        wrong_rate_value=wrong_rate_expr,
-        cki_value=cki_expr,
-        pki_value=pki_expr,
-        cg_value=cg_expr,
-        fcr_value=fcr_expr,
-        af_value=af_expr,
-        gw_wrong_pct_value=gw_wrong_pct_expr,
-        pmi_value=ts_pmi_sq,
-        rounds_value=ts_rounds_sq,
-        subject_name=F("topic__section__subject__name"),
-        section_name=F("topic__section__name"),
-    )
-
-    # ---- Sorting ----
-    sort_map = {
-        "subject": "subject_name",
-        "section": "section_name",
-        "topic": "topic__name",
-        "mode": "mode",
-        "total": "total_attempts",
-        "correct": "correct_attempts",
-        "wrong": "wrong_attempts",
-        "wrong_rate": "wrong_rate_value",
-        "net": "net_marks",
-        "ss": "sureshot_attempts",
-        "ap": "applied_attempts",
-        "gw": "guesswork_attempts",
-        "ssw": "sureshot_wrong",
-        "apw": "applied_wrong",
-        "gww": "guesswork_wrong",
-        # NEW metrics:
-        "cki": "cki_value",
-        "pki": "pki_value",
-        "cg": "cg_value",
-        "fcr": "fcr_value",
-        "af": "af_value",
-        "gw_wrong_pct": "gw_wrong_pct_value",
-        # PMI + rounds
-        "pmi": "pmi_value",
-        "rounds": "rounds_value",
-    }
-
-    sort_key = (request.GET.get("sort") or "topic").strip()
-    sort_dir = (request.GET.get("dir") or "asc").strip().lower()
-    orm_field = sort_map.get(sort_key, "topic__name")
-
-    if sort_dir == "desc":
-        summaries = summaries.order_by(f"-{orm_field}", "topic__name", "mode")
-    else:
-        summaries = summaries.order_by(orm_field, "topic__name", "mode")
-
-    # Keep other params when toggling sort
-    base_params = request.GET.copy()
-    base_params.pop("sort", None)
-    base_params.pop("dir", None)
-    base_qs = urlencode(base_params, doseq=True)
-
-    # Subject choices for dropdown (subjects that this user has summaries for)
-    subject_choices = (
-        Subject.objects
-        .filter(sections__topics__topicattemptsummary__user=target_user)
-        .distinct()
-        .order_by("name")
-    )
-
-    all_users = User.objects.only("id", "username").order_by("username")
-
-    context = {
-        "target_user": target_user,
-        "summaries": summaries,
-        "all_users": all_users,
-        "mode_choices": TopicAttemptSummary.MODE_CHOICES,
-        "current_mode": mode,
-        "q": q,
-        "active_sort": sort_key,
-        "active_dir": sort_dir,
-        "base_qs": base_qs,
-        "subject_choices": subject_choices,
-        "current_subject_id": subject_id,
-    }
-    return render(request, "practice/topic_summary.html", context)
-
-
-
-
-def start_capsule_subject(request):
-    return render(
-        request,
-        "practice/practice_home.html", )
-
-@login_required
-def history_page(request):
-    sessions = PracticeSession.objects.filter(user=request.user).order_by("-end_time")
-    page_obj  = Paginator(sessions, 5).get_page(request.GET.get("page", 1))
-    return render(request,
-                  "practice/partials/history_rows.html",
-                  {"page_obj": page_obj})
-
-# PMI HELPER FUNCTION
-
-def _compute_and_update_topic_pmi(user, topic, *, newly_completed_session_id=None):
-    """
-    Compute PMI over the last N completed practice sessions for (user, topic)
-    and persist on TopicStatus.pmi as a percentage.
-    Rules:
-      - Only last N sessions (default N=3 via ABL_PMI_WINDOW) are considered.
-      - PMI can be negative (penalties > rewards).
-      - PMI is capped at 100 on the upper side (no lower clamp).
-      - If only 1 session in window, cap positive PMI at 55% (negatives allowed).
-      - Also store TopicStatus.subject and TopicStatus.section from Topic.
-    """
-    N = getattr(settings, "ABL_PMI_WINDOW", 3)
-
-    # Identify the last N completed sessions (IDs), then aggregate on that fixed window
-    base_qs = (
-        PracticeSession.objects
-        .filter(user=user, topic=topic, status="completed")
-        .order_by("-end_time")
-    )
-    recent_ids_all = list(base_qs.values_list("id", flat=True))
-    session_count = len(recent_ids_all)
-    recent_ids = recent_ids_all[:N]
-    if session_count == 0:
-        return
-
-    window_qs = PracticeSession.objects.filter(id__in=recent_ids)
-
-    agg = window_qs.aggregate(
-        S_a = Sum("sureshot_attempts"),
-        A_a = Sum("applied_attempts"),
-        G_a = Sum("guesswork_attempts"),
-
-        S_w = Sum("sureshot_wrong"),
-        A_w = Sum("applied_wrong"),
-        G_w = Sum("guesswork_wrong"),
-    )
-
-    # Coalesce None → 0
-    S_a = agg["S_a"] or 0
-    A_a = agg["A_a"] or 0
-    G_a = agg["G_a"] or 0
-
-    S_w = agg["S_w"] or 0
-    A_w = agg["A_w"] or 0
-    G_w = agg["G_w"] or 0
-
-    # Rights (guard against negatives)
-    S_r = max(S_a - S_w, 0)
-    A_r = max(A_a - A_w, 0)
-    G_r = max(G_a - G_w, 0)
-
-    denom = S_a + A_a + G_a
-
-    if denom <= 0:
-        pmi_pct = 0.0
-    else:
-        # PMI_raw = ((Sr*2 + Ar*1.5 + Gr*0.75) - (Sw*0.75 + Aw*0.5)) / denom * 2
-        reward  = S_r * 2.0 + A_r * 1.5 + G_r * 0.75
-        penalty = S_w * 0.75 + A_w * 0.5
-        pmi_raw = ((reward - penalty) / denom) * 2.0
-
-        # Convert to percentage: allow negative, cap upper at 100
-        pmi_pct = pmi_raw * 100
-        if pmi_pct > 100.0:
-            pmi_pct = 100.0
-
-        # First-session positive cap at 55%
-        if session_count == 1:
-            pmi_pct = min(pmi_pct, 55.0)
-
-    # Pull subject/section from the topic
-    section = topic.section
-    subject = section.subject
-    exam    = subject.exam
-
-    # Upsert TopicStatus (stable identifiers only: user+topic)
-    topic_status, _ = TopicStatus.objects.get_or_create(
-        user=user,
-        topic=topic,
-        defaults={
-            "pmi": pmi_pct,
-            "rounds": session_count,
-            "section": section,
-            "subject": subject,
-            "exam": exam,  
-        },
-    )
-
-    # Update dynamic fields
-    print(f"PMI for {user.username} / {topic.name} updated to {pmi_pct} over last {session_count} sessions")
-    topic_status.pmi = pmi_pct
-    if hasattr(topic_status, "rounds"):
-        topic_status.rounds = session_count
-    if hasattr(topic_status, "section"):
-        topic_status.section = section
-    if hasattr(topic_status, "subject"):
-        topic_status.subject = subject
-    if hasattr(topic_status, "exam"):
-        topic_status.exam = exam
-
-    # Optional timestamps if not auto-managed
-    if hasattr(topic_status, "updated_at"):
-        topic_status.updated_at = timezone.now()
-
-    topic_status.save()
-
-
-
-
-
-
-
-def _finalise_session_and_update_summary(session: PracticeSession) -> None:
-    """
-    Populate PracticeSession stats **and** upsert TopicAttemptSummary
-    in ONE atomic transaction. Also recompute TopicStatus.pmi using last-N sessions.
-    """
-    logs = session.questionlog_set.all()
-
-    # Aggregate once – cheaper & 100 % accurate
-    agg = logs.aggregate(
-        total_q         = Count("id"),
-        answered_q      = Count("id", filter=Q(user_answered__isnull=False)),
-        correct_q       = Count("id", filter=Q(attempt_result="right")),
-        sureshot_q      = Count("id", filter=Q(attempt_type="sureshot")),
-        applied_q       = Count("id", filter=Q(attempt_type="applied")),
-        guesswork_q     = Count("id", filter=Q(attempt_type="guesswork")),
-
-        sureshot_wrong  = Count("id", filter=Q(attempt_type="sureshot", attempt_result="wrong")),
-        applied_wrong   = Count("id", filter=Q(attempt_type="applied",  attempt_result="wrong")),
-        guesswork_wrong = Count("id", filter=Q(attempt_type="guesswork",attempt_result="wrong")),
-    )
-
-    wrong_q      = (agg["answered_q"] or 0) - (agg["correct_q"] or 0)
-    unattempted  = (agg["total_q"]    or 0) - (agg["answered_q"] or 0)
-
-    # Simple net-mark rule (+2 / −0.66) – tweak if you use a different formula
-    net_marks = ((agg["correct_q"] or 0) * 2.0) - (wrong_q * 0.66)
-
-    attempt_count = agg["answered_q"] or 0
-
-    with transaction.atomic():
-        # ── update PracticeSession ────────────────────────────────────────────
-        session.total_questions   = agg["total_q"] or 0
-        session.correct_answers   = agg["correct_q"] or 0
-        session.unattempted       = unattempted
-        session.total_score       = net_marks
-
-        session.sureshot_attempts = agg["sureshot_q"] or 0
-        session.applied_attempts  = agg["applied_q"] or 0
-        session.guesswork_attempts= agg["guesswork_q"] or 0
-
-        session.sureshot_wrong    = agg["sureshot_wrong"] or 0
-        session.applied_wrong     = agg["applied_wrong"] or 0
-        session.guesswork_wrong   = agg["guesswork_wrong"] or 0
-
-        session.status            = "completed"
-        session.end_time          = timezone.now()
-        session.save()
-
-        # ── upsert TopicAttemptSummary ───────────────────────────────────────
-        summary, _ = TopicAttemptSummary.objects.get_or_create(
-            user  = session.user,
-            topic = session.topic,
-            mode  = "practice",
-            defaults = {
-                "total_attempts":   0,
-                "correct_attempts": 0,
-                "wrong_attempts":   0,
-                "net_marks":        0,
-                "sureshot_attempts": 0,
-                "applied_attempts":  0,
-                "guesswork_attempts":0,
-                "sureshot_wrong":    0,
-                "applied_wrong":     0,
-                "guesswork_wrong":   0,
-            },
-        )
-
-        # increment counters from this session
-        summary.total_attempts      = F("total_attempts")      + (agg["answered_q"] or 0)
-        summary.correct_attempts    = F("correct_attempts")    + (agg["correct_q"] or 0)
-        summary.wrong_attempts      = F("wrong_attempts")      + wrong_q
-
-        summary.sureshot_attempts   = F("sureshot_attempts")   + (agg["sureshot_q"] or 0)
-        summary.applied_attempts    = F("applied_attempts")    + (agg["applied_q"] or 0)
-        summary.guesswork_attempts  = F("guesswork_attempts")  + (agg["guesswork_q"] or 0)
-
-        summary.sureshot_wrong      = F("sureshot_wrong")      + (agg["sureshot_wrong"] or 0)
-        summary.applied_wrong       = F("applied_wrong")       + (agg["applied_wrong"] or 0)
-        summary.guesswork_wrong     = F("guesswork_wrong")     + (agg["guesswork_wrong"] or 0)
-
-        summary.net_marks           = F("net_marks")           + net_marks
-        summary.save()
-
-        # ── recompute TopicStatus.pmi from last-N sessions (emergent trend) ──
-        _compute_and_update_topic_pmi(session.user, session.topic)
-        
-        # Optional: streaks / profile counters
-        session.user.profile.register_attempt(increment=attempt_count)
-
-# # ── Helper ──────────────────────────────────────────────────────────────────
-# def _finalise_session_and_update_summary(session: PracticeSession) -> None:
-#     """
-#     Populate PracticeSession stats **and** upsert TopicAttemptSummary
-#     in ONE atomic transaction.
-#     """
-#     logs = session.questionlog_set.all()
-
-#     # Aggregate once – cheaper & 100 % accurate
-#     agg = logs.aggregate(
-#         total_q         = Count("id"),
-#         answered_q      = Count("id", filter=Q(user_answered__isnull=False)),
-#         correct_q       = Count("id", filter=Q(attempt_result="right")),
-#         sureshot_q      = Count("id", filter=Q(attempt_type="sureshot")),
-#         applied_q       = Count("id", filter=Q(attempt_type="applied")),
-#         guesswork_q     = Count("id", filter=Q(attempt_type="guesswork")),
-
-#         sureshot_wrong  = Count("id", filter=Q(attempt_type="sureshot", attempt_result="wrong")),
-#         applied_wrong   = Count("id", filter=Q(attempt_type="applied",  attempt_result="wrong")),
-#         guesswork_wrong = Count("id", filter=Q(attempt_type="guesswork",attempt_result="wrong")),
-
-#     )
-
-#     wrong_q      = agg["answered_q"] - agg["correct_q"]
-#     unattempted  = agg["total_q"]    - agg["answered_q"]
-#     print("finalise tak to aya")
-
-#     # Simple net-mark rule (+2 / −0.66) – tweak if you use a different formula
-#     net_marks = (agg["correct_q"] * 2) - (wrong_q * 0.66)
-
-#     attempt_count = agg["answered_q"]
-
-#     with transaction.atomic():                            # -------- NEW --------
-#         # ── update PracticeSession ────────────────────────────────────────────
-#         session.total_questions   = agg["total_q"]
-#         session.correct_answers   = agg["correct_q"]
-#         session.unattempted       = unattempted
-#         session.total_score       = net_marks
-
-#         session.sureshot_attempts = agg["sureshot_q"]
-#         session.applied_attempts  = agg["applied_q"]
-#         session.guesswork_attempts= agg["guesswork_q"]
-
-
-#         session.sureshot_wrong    = agg["sureshot_wrong"]
-#         session.applied_wrong     = agg["applied_wrong"]
-#         session.guesswork_wrong   = agg["guesswork_wrong"]
-
-
-#         session.status            = "completed"
-#         session.end_time          = timezone.now()
-#         session.save()
-
-#         # ── upsert TopicAttemptSummary ───────────────────────────────────────
-#         summary, _ = TopicAttemptSummary.objects.get_or_create(
-#             user  = session.user,
-#             topic = session.topic,
-#             mode  = "practice",
-#             defaults = {
-#                 "total_attempts":   0,
-#                 "correct_attempts": 0,
-#                 "wrong_attempts":   0,
-#                 "net_marks":        0,
-#             },
-#         )
-
-
-#         # update (add) current-session numbers
-#         summary.total_attempts   = F("total_attempts")   + agg["answered_q"]
-#         summary.correct_attempts = F("correct_attempts") + agg["correct_q"]
-#         summary.wrong_attempts   = F("wrong_attempts")   + wrong_q
-
-#         summary.sureshot_attempts  = F("sureshot_attempts")  + agg["sureshot_q"]
-#         summary.applied_attempts   = F("applied_attempts")   + agg["applied_q"]
-#         summary.guesswork_attempts = F("guesswork_attempts") + agg["guesswork_q"]
-
-
-#         summary.sureshot_wrong  = F("sureshot_wrong")  + agg["sureshot_wrong"]
-#         summary.applied_wrong   = F("applied_wrong")   + agg["applied_wrong"]
-#         summary.guesswork_wrong = F("guesswork_wrong") + agg["guesswork_wrong"]
-
-
-#         summary.net_marks       = F("net_marks") + net_marks
-#         summary.save()
-#         session.user.profile.register_attempt(increment=attempt_count)
-#         # ── recompute TopicStatus.pmi from last-N sessions (emergent trend) ──
-#         _compute_and_update_topic_pmi(session.user, session.topic)
-
-
-# ── PAGE LOAD : take_practice ───────────────────────────────────────────────
-@login_required
-def take_practice(request, session_id):
-    session = get_object_or_404(
-        PracticeSession, id=session_id, user=request.user
-    )
-
-    first_log = (
-        session.questionlog_set
-        .filter(user_answered__isnull=True)
-        .order_by("serial")
-        .first()
-        or session.questionlog_set.order_by("serial").first()
-    )
-
-    return render(
-        request,
-        "practice/take_practice.html",
-        {
-            "session":      session,
-            "first_serial": first_log.serial if first_log else 1,
-        },
-    )
-
-
-# ── HTMX ENDPOINT : question card / result / nav ────────────────────────────
-@login_required
-def practice_question_htmx(request, session_id, serial):
-    session = get_object_or_404(
-        PracticeSession, id=session_id, user=request.user
-    )
-    qlog = get_object_or_404(
-        QuestionLog, practiceSession=session, serial=serial
-    )
-    print("yaha to araha hai ")
-    # ---------- POST  : save answer -----------------------------------------
-    if request.method == "POST":
-        user_answered = request.POST.get("option")
-        attempt_type  = request.POST.get("attempt_type")
-
-        if not qlog.user_answered:                       # ensure only first save
-            qlog.user_answered = user_answered
-            qlog.attempt_type  = attempt_type
-            qlog.timestamp     = timezone.now()
-            qlog.attempt_result = (
-                "right"
-                if user_answered
-                and user_answered.lower() == qlog.question.correct_option.lower()
-                else "wrong"
-            )
-            qlog.save()
-
-        # next *unattempted* question
-        next_log = (
-            session.questionlog_set
-            .filter(user_answered__isnull=True, serial__gt=serial)
-            .order_by("serial")
-            .first()
-        )
-
-        # ----------- nothing left  →  COMPLETE SESSION ----------------------
-        if not next_log:
-            print("Khatam")
-            _finalise_session_and_update_summary(session)
-
-            return render(
-                request,
-                "practice/partials/question_result.html",
-                {
-                    "qlog": qlog,
-                    "next_log": None,                  # important to hide next button
-                    "prev_serial": serial - 1,
-
-                },
-            )
-
-        # Otherwise return result + next button
-        return render(
-            request,
-            "practice/partials/question_result.html",
-            {"qlog": qlog, "next_log": next_log, "prev_serial": serial - 1},
-        )
-
-    # ---------- GET : navigation / first load -------------------------------
-    prev_serial = serial - 1 if serial > 1 else None
-    next_log_any = (
-        session.questionlog_set
-        .filter(serial__gt=serial)
-        .order_by("serial")
-        .first()
-    )
-
-
-
-
-    if qlog.user_answered:                                 # -------- NEW -----
-        # already attempted → show result / explanation
-        return render(
-            request,
-            "practice/partials/question_result.html",
-            {
-                "qlog":      qlog,
-                "next_log":  next_log_any,
-                "prev_serial": prev_serial,
-            },
-        )
-    # not attempted yet → normal question card
-    return render(
-        request,
-        "practice/partials/question_card.html",
-        {
-            "qlog":      qlog,
-            "prev_serial": prev_serial,
-        },
-    )
-# ── SUMMARY PAGE (simple) ─────────────────────────────────────
-
-
-@login_required
-def practice_summary(request, session_id):
-    """
-    Practice session summary with filters:
-      - result: right|wrong
-      - attempt_type: sureshot|applied|guesswork
-    """
-    session = get_object_or_404(PracticeSession, id=session_id, user=request.user)
-
-    PENDING  = "pending"
-    COMPLETE = "completed"
-
-    next_log = (
-        session.questionlog_set
-        .filter(user_answered__isnull=True)
-        .order_by("serial")
-        .first()
-    )
-    if session.status == PENDING:
-        if next_log is None:
-            _finalise_session_and_update_summary(session)
-            session.refresh_from_db()
-        else:
-            return redirect("dashboard")
-
-    # ---------- NEW: compute session-level stats (Practice mode; no blind) ----------
-    total_qs = session.total_questions or 0
-    attempts = max(total_qs - (session.unattempted or 0), 0)
-    right    = session.correct_answers or 0
-    wrong    = max(attempts - right, 0)
-
-    ss_attempts      = session.sureshot_attempts or 0
-    ss_wrong         = session.sureshot_wrong or 0
-
-    applied_attempts = session.applied_attempts or 0
-    applied_wrong    = session.applied_wrong or 0
-
-    guess_attempts   = session.guesswork_attempts or 0
-    guess_wrong      = session.guesswork_wrong or 0
-
-    session_stats = {
-        "total_qs": total_qs,
-        "right": right,
-        "wrong": wrong,
-
-        "ss_attempts": ss_attempts,
-        "ss_wrong": ss_wrong,
-        "ss_wrong_pct": _pct(ss_wrong, ss_attempts),
-        "ss_attempt_pct": _pct(ss_attempts, attempts),
-
-        "applied_attempts": applied_attempts,
-        "applied_wrong": applied_wrong,
-        "applied_wrong_pct": _pct(applied_wrong, applied_attempts),
-        "applied_attempt_pct": _pct(applied_attempts, attempts),
-
-        "guess_attempts": guess_attempts,
-        "guess_wrong": guess_wrong,
-        "guess_wrong_pct": _pct(guess_wrong, guess_attempts),
-        "guess_attempt_pct": _pct(guess_attempts, attempts),
-
-        "overall_wrong_pct": _pct(wrong, attempts),
-    }
-    # ---------- END NEW ----------
-
-    # ✅ Always initialize logs_qs BEFORE filtering
-    logs_qs = session.questionlog_set.select_related("question__subject")
-
-    # --- Filters ------------------------------------------------------
-    selected_result = request.GET.get("result") or ""
-    if selected_result in ("right", "wrong"):
-        logs_qs = logs_qs.filter(attempt_result=selected_result)
-    else:
-        selected_result = ""
-
-    selected_attempt_type = request.GET.get("attempt_type") or ""
-    if selected_attempt_type in ("sureshot", "applied", "guesswork"):
-        logs_qs = logs_qs.filter(attempt_type=selected_attempt_type)
-    else:
-        selected_attempt_type = ""
-
-    logs = list(logs_qs.order_by("serial"))
-
-    subject_counter = Counter(
-        [log.question.subject.name for log in logs if getattr(log.question, "subject", None)]
-    )
-    subjects = [{"name": name, "count": count} for name, count in sorted(subject_counter.items())]
-
-    selected_subject = request.GET.get("subject") or ""
-    if not selected_subject and len(subjects) == 1:
-        selected_subject = subjects[0]["name"]
-
-    if selected_subject:
-        logs = [l for l in logs if l.question.subject and l.question.subject.name == selected_subject]
-
-    context = {
-        "session": session,
-        "logs": logs,
-        "log_count": len(logs),
-        "subjects": subjects,
-        "selected_subject": selected_subject,
-        "selected_result": selected_result,
-        "selected_attempt_type": selected_attempt_type,
-
-        # NEW
-        "session_stats": session_stats,
-    }
-    return render(request, "practice/practice_summary.html", context)
-
-
-@login_required
-def practice_home(request):
-    user = request.user
-
-    # 1. Ongoing (pending) practice sessions
-    pending_sessions = PracticeSession.objects.filter(
-        user=user,
-        status='pending'
-    )
-
-    # Allow new session creation only if fewer than 2 are active
-    can_create = pending_sessions.count() < 2
-
-    # 2. Previous (completed) sessions, most recent first
-    previous_sessions = PracticeSession.objects.filter(
-        user=user,
-        status='completed'
-    ).order_by('-end_time')
-
-    # 3. All subjects for the chained form and subject-tree nav
-    subjects = Subject.objects.all().order_by('name')
-
-    # 4. All OLT types for the dropdown
-    olts = OLT.objects.all().order_by('name')
-
-    return render(request, 'practice/practice_home.html', {
-        'pending_sessions':  pending_sessions,
-        'can_create':        can_create,
-        'previous_sessions': previous_sessions,
-        'subjects':          subjects,
-        'olts':              olts,
-    })
-
-
 @login_required
 def create_practice(request):
     """
@@ -947,12 +122,475 @@ def create_practice(request):
         ])
 
     return redirect("practice:take_practice", session.id)
+# ── PAGE LOAD : take_practice ───────────────────────────────────────────────
+@login_required
+def take_practice(request, session_id):
+    session = get_object_or_404(
+        PracticeSession, id=session_id, user=request.user
+    )
+
+    first_log = (
+        session.questionlog_set
+        .filter(user_answered__isnull=True)
+        .order_by("serial")
+        .first()
+        or session.questionlog_set.order_by("serial").first()
+    )
+
+    return render(
+        request,
+        "practice/take_practice.html",
+        {
+            "session":      session,
+            "first_serial": first_log.serial if first_log else 1,
+        },
+    )
+
+# ── HTMX ENDPOINT : question card / result / nav ────────────────────────────
+@login_required
+def practice_question_htmx(request, session_id, serial):
+    session = get_object_or_404(
+        PracticeSession, id=session_id, user=request.user
+    )
+    qlog = get_object_or_404(
+        QuestionLog, practiceSession=session, serial=serial
+    )
+    
+    # ---------- POST  : save answer -----------------------------------------
+    if request.method == "POST":
+        user_answered = request.POST.get("option")
+        attempt_type  = request.POST.get("attempt_type")
+
+        if not qlog.user_answered:                       # ensure only first save
+            qlog.user_answered = user_answered
+            qlog.attempt_type  = attempt_type
+            qlog.timestamp     = timezone.now()
+            qlog.attempt_result = (
+                "right"
+                if user_answered
+                and user_answered.lower() == qlog.question.correct_option.lower()
+                else "wrong"
+            )
+            qlog.save()
+
+        # next *unattempted* question
+        next_log = (
+            session.questionlog_set
+            .filter(user_answered__isnull=True, serial__gt=serial)
+            .order_by("serial")
+            .first()
+        )
+
+        # ----------- nothing left  →  COMPLETE SESSION ----------------------
+        if not next_log:            
+            _finalise_session_and_update_summary(session)
+
+            return render(
+                request,
+                "practice/partials/question_result.html",
+                {
+                    "qlog": qlog,
+                    "next_log": None,                  # important to hide next button
+                    "prev_serial": serial - 1,
+
+                },
+            )
+
+        # Otherwise return result + next button
+        return render(
+            request,
+            "practice/partials/question_result.html",
+            {"qlog": qlog, "next_log": next_log, "prev_serial": serial - 1},
+        )
+
+    # ---------- GET : navigation / first load -------------------------------
+    prev_serial = serial - 1 if serial > 1 else None
+    next_log_any = (
+        session.questionlog_set
+        .filter(serial__gt=serial)
+        .order_by("serial")
+        .first()
+    )
+
+    if qlog.user_answered:                                 
+        
+        # already attempted → show result / explanation
+        return render(
+            request,
+            "practice/partials/question_result.html",
+            {
+                "qlog":      qlog,
+                "next_log":  next_log_any,
+                "prev_serial": prev_serial,
+            },
+        )
+    # not attempted yet → normal question card
+    return render(
+        request,
+        "practice/partials/question_card.html",
+        {
+            "qlog":      qlog,
+            "prev_serial": prev_serial,
+        },
+    )
+
+# PMI computation utility
+def _compute_and_update_topic_pmi(user, topic, *, newly_completed_session_id=None):
+    """
+    Compute PMI over the last N completed practice sessions for (user, topic)
+    and persist on TopicStatus.pmi as a percentage.
+
+    Rules:
+      - Only last N sessions (default N=3 via ABL_PMI_WINDOW) are considered
+        for the PMI window.
+      - PMI can be negative (penalties > rewards).
+      - PMI is capped at 100 on the upper side (no lower clamp).
+      - If only 1 session in *window*, cap positive PMI at 55% (negatives allowed).
+      - Also store TopicStatus.subject, TopicStatus.section, TopicStatus.exam
+        from Topic.
+    """
+    N = getattr(settings, "ABL_PMI_WINDOW", 3)
+    print(f"Computing PMI for user={user}, topic={topic}, window={N}")
+
+    # Base queryset: all completed sessions for that user+topic
+    base_qs = PracticeSession.objects.filter(
+        user=user,
+        topic=topic,
+        status="completed",
+    )
+
+    # If we are recomputing "historically" for a particular session,
+    # restrict the window to sessions up to and including that one.
+    if newly_completed_session_id is not None:
+        try:
+            anchor = PracticeSession.objects.get(
+                id=newly_completed_session_id,
+                user=user,
+                topic=topic,
+            )
+            base_qs = base_qs.filter(end_time__lte=anchor.end_time)
+        except PracticeSession.DoesNotExist:
+            # If something is off, just fall back to all completed sessions.
+            pass
+
+    base_qs = base_qs.order_by("-end_time")
+
+    # Total completed sessions (lifetime) for practice_rounds
+    total_session_count = base_qs.count()
+    if total_session_count == 0:
+        return
+
+    # Last N session IDs (PMI window)
+    recent_ids = list(base_qs.values_list("id", flat=True)[:N])
+    window_session_count = len(recent_ids)
+    print(f'window_session_count: {window_session_count}')
+    if window_session_count == 0:
+        return
+
+    window_qs = PracticeSession.objects.filter(id__in=recent_ids)
+
+    agg = window_qs.aggregate(
+        S_a=Sum("sureshot_attempts"),
+        A_a=Sum("applied_attempts"),
+        G_a=Sum("guesswork_attempts"),
+
+        S_w=Sum("sureshot_wrong"),
+        A_w=Sum("applied_wrong"),
+        G_w=Sum("guesswork_wrong"),
+    )
+
+    # Coalesce None → 0
+    S_a = agg["S_a"] or 0
+    A_a = agg["A_a"] or 0
+    G_a = agg["G_a"] or 0
+
+    S_w = agg["S_w"] or 0
+    A_w = agg["A_w"] or 0
+    G_w = agg["G_w"] or 0
+
+    # Rights (guard against negatives)
+    S_r = max(S_a - S_w, 0)
+    A_r = max(A_a - A_w, 0)
+    G_r = max(G_a - G_w, 0)
+
+    denom = S_a + A_a + G_a
+    print(f"Denom: {denom}, S_r: {S_r}, A_r: {A_r}, G_r: {G_r}, S_w: {S_w}, A_w: {A_w}, G_w: {G_w}")
 
 
+    if denom <= 0:
+        pmi_pct = 0.0
+    else:
+        # PMI_raw = ((Sr*2 + Ar*1.5 + Gr*0.75) - (Sw*0.75 + Aw*0.5)) / denom * 2
+        reward = S_r * 2.0 + A_r * 1.5 + G_r * 0.75
+        print(f"Reward: {reward}")
+        penalty = S_w * 0.75 + A_w * 0.5
+        print(f"Penalty: {penalty}")
+        pmi_raw = ((reward - penalty) / (denom * 2.0)) 
 
+        # Convert to percentage: allow negative, cap upper at 100
+        pmi_pct = pmi_raw * 100.0
+        if pmi_pct > 100.0:
+            pmi_pct = 100.0
+
+        # First-session-in-window positive cap at 55%
+        # (matches the rule: "If only 1 session in window...")
+        if window_session_count == 1 and pmi_pct > 55.0:
+            pmi_pct = 55.0
+
+    # Pull subject/section from the topic
+    section = topic.section
+    subject = section.subject
+    exam = subject.exam
+
+    # Upsert TopicStatus (stable identifiers only: user+topic)
+    topic_status, _ = TopicStatus.objects.get_or_create(
+        user=user,
+        topic=topic,
+        defaults={
+            "pmi": pmi_pct,
+            # store *total* completed practice rounds, not just window
+            "practice_rounds": total_session_count,
+            "section": section,
+            "subject": subject,
+            "exam": exam,
+        },
+    )
+
+    # Update dynamic fields
+    print(
+        f"PMI for {user.username} / {topic.name} updated to "
+        f"{pmi_pct:.2f} over last {window_session_count} sessions "
+        f"(total={total_session_count})"
+    )
+
+    topic_status.pmi = pmi_pct
+
+    if hasattr(topic_status, "practice_rounds"):
+        topic_status.practice_rounds = total_session_count
+    if hasattr(topic_status, "section"):
+        topic_status.section = section
+    if hasattr(topic_status, "subject"):
+        topic_status.subject = subject
+    if hasattr(topic_status, "exam"):
+        topic_status.exam = exam
+
+    # Optional timestamps if not auto-managed
+    if hasattr(topic_status, "updated_at"):
+        topic_status.updated_at = timezone.now()
+
+    topic_status.save()
+
+# ── FINALISE SESSION & UPDATE SUMMARY ─────────────────────────────────────
+def _finalise_session_and_update_summary(session: PracticeSession) -> None:
+    """
+    Populate PracticeSession stats **and** upsert TopicAttemptSummary
+    in ONE atomic transaction. Also recompute TopicStatus.pmi using last-N sessions.
+    """
+    logs = session.questionlog_set.all()
+
+    # Aggregate once – cheaper & 100 % accurate
+    agg = logs.aggregate(
+        total_q         = Count("id"),
+        answered_q      = Count("id", filter=Q(user_answered__isnull=False)),
+        correct_q       = Count("id", filter=Q(attempt_result="right")),
+        sureshot_q      = Count("id", filter=Q(attempt_type="sureshot")),
+        applied_q       = Count("id", filter=Q(attempt_type="applied")),
+        guesswork_q     = Count("id", filter=Q(attempt_type="guesswork")),
+
+        sureshot_wrong  = Count("id", filter=Q(attempt_type="sureshot", attempt_result="wrong")),
+        applied_wrong   = Count("id", filter=Q(attempt_type="applied",  attempt_result="wrong")),
+        guesswork_wrong = Count("id", filter=Q(attempt_type="guesswork",attempt_result="wrong")),
+    )
+
+    wrong_q      = (agg["answered_q"] or 0) - (agg["correct_q"] or 0)
+    
+
+    # Simple net-mark rule (+2 / −0.66) – tweak if you use a different formula
+    net_marks = ((agg["correct_q"] or 0) * 2.0) - (wrong_q * 0.66)
+
+    attempt_count = agg["answered_q"] or 0
+
+    with transaction.atomic():
+        # ── update PracticeSession ────────────────────────────────────────────
+        session.total_questions   = agg["total_q"] or 0
+        session.correct_answers   = agg["correct_q"] or 0
+        
+        session.total_score       = net_marks
+
+        session.sureshot_attempts = agg["sureshot_q"] or 0
+        session.applied_attempts  = agg["applied_q"] or 0
+        session.guesswork_attempts= agg["guesswork_q"] or 0
+
+        session.sureshot_wrong    = agg["sureshot_wrong"] or 0
+        session.applied_wrong     = agg["applied_wrong"] or 0
+        session.guesswork_wrong   = agg["guesswork_wrong"] or 0
+
+        session.status            = "completed"
+        session.end_time          = timezone.now()
+        session.save()
+
+        # ── upsert TopicAttemptSummary ───────────────────────────────────────
+        summary, _ = TopicAttemptSummary.objects.get_or_create(
+            user  = session.user,
+            topic = session.topic,
+            mode  = "practice",
+            defaults = {
+                "total_attempts":   0,
+                "correct_attempts": 0,
+                "wrong_attempts":   0,
+                "net_marks":        0,
+                "sureshot_attempts": 0,
+                "applied_attempts":  0,
+                "guesswork_attempts":0,
+                "sureshot_wrong":    0,
+                "applied_wrong":     0,
+                "guesswork_wrong":   0,
+            },
+        )
+
+        # increment counters from this session
+        summary.total_attempts      = F("total_attempts")      + (agg["answered_q"] or 0)
+        summary.correct_attempts    = F("correct_attempts")    + (agg["correct_q"] or 0)
+        summary.wrong_attempts      = F("wrong_attempts")      + wrong_q
+
+        summary.sureshot_attempts   = F("sureshot_attempts")   + (agg["sureshot_q"] or 0)
+        summary.applied_attempts    = F("applied_attempts")    + (agg["applied_q"] or 0)
+        summary.guesswork_attempts  = F("guesswork_attempts")  + (agg["guesswork_q"] or 0)
+
+        summary.sureshot_wrong      = F("sureshot_wrong")      + (agg["sureshot_wrong"] or 0)
+        summary.applied_wrong       = F("applied_wrong")       + (agg["applied_wrong"] or 0)
+        summary.guesswork_wrong     = F("guesswork_wrong")     + (agg["guesswork_wrong"] or 0)
+
+        summary.net_marks           = F("net_marks")           + net_marks
+        summary.save()
+
+        # ── recompute TopicStatus.pmi from last-N sessions (emergent trend) ──
+        _compute_and_update_topic_pmi(session.user, session.topic)
+        
+        # Optional: streaks / profile counters
+        session.user.profile.register_attempt(increment=attempt_count)
+
+        
+
+
+# ── SUMMARY PAGE (simple) ─────────────────────────────────────
+@login_required
+def practice_summary(request, session_id):
+    """
+    Practice session summary with filters:
+      - result: right|wrong
+      - attempt_type: sureshot|applied|guesswork
+    """
+    session = get_object_or_404(PracticeSession, id=session_id, user=request.user)
+
+    PENDING  = "pending"
+    COMPLETE = "completed"
+
+    next_log = (
+        session.questionlog_set
+        .filter(user_answered__isnull=True)
+        .order_by("serial")
+        .first()
+    )
+    if session.status == PENDING:
+        if next_log is None:
+            _finalise_session_and_update_summary(session)
+            session.refresh_from_db()
+        else:
+            return redirect("dashboard")
+
+    # ---------- NEW: compute session-level stats (Practice mode; no blind) ----------
+    total_qs = session.total_questions or 0
+    attempts = max(total_qs, 0)
+    right    = session.correct_answers or 0
+    wrong    = max(attempts - right, 0)
+
+    ss_attempts      = session.sureshot_attempts or 0
+    ss_wrong         = session.sureshot_wrong or 0
+
+    applied_attempts = session.applied_attempts or 0
+    applied_wrong    = session.applied_wrong or 0
+
+    guess_attempts   = session.guesswork_attempts or 0
+    guess_wrong      = session.guesswork_wrong or 0
+
+    session_stats = {
+        "total_qs": total_qs,
+        "right": right,
+        "wrong": wrong,
+
+        "ss_attempts": ss_attempts,
+        "ss_wrong": ss_wrong,
+        "ss_wrong_pct": _pct(ss_wrong, ss_attempts),
+        "ss_attempt_pct": _pct(ss_attempts, attempts),
+
+        "applied_attempts": applied_attempts,
+        "applied_wrong": applied_wrong,
+        "applied_wrong_pct": _pct(applied_wrong, applied_attempts),
+        "applied_attempt_pct": _pct(applied_attempts, attempts),
+
+        "guess_attempts": guess_attempts,
+        "guess_wrong": guess_wrong,
+        "guess_wrong_pct": _pct(guess_wrong, guess_attempts),
+        "guess_attempt_pct": _pct(guess_attempts, attempts),
+
+        "overall_wrong_pct": _pct(wrong, attempts),
+    }
+    # ---------- END NEW ----------
+
+    # ✅ Always initialize logs_qs BEFORE filtering
+    logs_qs = session.questionlog_set.select_related("question__subject")
+
+    # --- Filters ------------------------------------------------------
+    selected_result = request.GET.get("result") or ""
+    if selected_result in ("right", "wrong"):
+        logs_qs = logs_qs.filter(attempt_result=selected_result)
+    else:
+        selected_result = ""
+
+    selected_attempt_type = request.GET.get("attempt_type") or ""
+    if selected_attempt_type in ("sureshot", "applied", "guesswork"):
+        logs_qs = logs_qs.filter(attempt_type=selected_attempt_type)
+    else:
+        selected_attempt_type = ""
+
+    logs = list(logs_qs.order_by("serial"))
+
+    subject_counter = Counter(
+        [log.question.subject.name for log in logs if getattr(log.question, "subject", None)]
+    )
+    subjects = [{"name": name, "count": count} for name, count in sorted(subject_counter.items())]
+
+    selected_subject = request.GET.get("subject") or ""
+    if not selected_subject and len(subjects) == 1:
+        selected_subject = subjects[0]["name"]
+
+    if selected_subject:
+        logs = [l for l in logs if l.question.subject and l.question.subject.name == selected_subject]
+
+    context = {
+        "session": session,
+        "logs": logs,
+        "log_count": len(logs),
+        "subjects": subjects,
+        "selected_subject": selected_subject,
+        "selected_result": selected_result,
+        "selected_attempt_type": selected_attempt_type,
+
+        # NEW
+        "session_stats": session_stats,
+    }
+    return render(request, "practice/practice_summary.html", context)
+
+@login_required
+def history_page(request):
+    sessions = PracticeSession.objects.filter(user=request.user).order_by("-end_time")
+    page_obj  = Paginator(sessions, 5).get_page(request.GET.get("page", 1))
+    return render(request,
+                  "practice/partials/history_rows.html",
+                  {"page_obj": page_obj})
 
 # ——— HTMX endpoints for chained selects ———
-
 @login_required
 def ajax_load_sections(request):
     subject_id = request.GET.get("subject")
@@ -1052,7 +690,6 @@ def ajax_subject_tree(request, subject_id):
         {"sections": sections_data},
     )
 
-
 def _pct(part, whole):
     try:
         return (float(part) / float(whole) * 100.0) if whole else 0.0
@@ -1060,13 +697,34 @@ def _pct(part, whole):
         return 0.0
 
 
+@login_required
+def ajax_subject_sections(request, subject_id):
+    """
+    Return an HTMX fragment with all Sections that belong to a Subject.
+    Called by the Capsule-Practice accordion in practice_home.html.
+    """
+    subject  = get_object_or_404(Subject, pk=subject_id)
+    sections = subject.sections.all()   # or Section.objects.filter(subject=subject)
 
-def _pct(part, whole):
-    try:
-        return (float(part) / float(whole) * 100.0) if whole else 0.0
-    except ZeroDivisionError:
-        return 0.0
+    return render(
+        request,
+        "practice/partials/subject_sections.html",    # see next file
+        {
+            "subject": subject,
+            "sections": sections,
+        },
+    )
 
+# ── MODAL CONTENT ENDPOINTS ────────────────────────────────────────────────
+@login_required
+def subject_modal(request, subject_id):
+    subject = get_object_or_404(Subject, pk=subject_id)
+    return render(request, "practice/partials/subject_modal.html", {"subject": subject})
+
+@login_required
+def section_modal(request, section_id):
+    section = get_object_or_404(Section, pk=section_id)
+    return render(request, "practice/partials/section_modal.html", {"section": section})
 
 @login_required
 def topic_modal(request, topic_id):
@@ -1082,7 +740,7 @@ def topic_modal(request, topic_id):
     session_rows = []
     for idx, s in enumerate(sessions_qs, start=1):
         total_qs = s.total_questions or 0
-        attempts = max(total_qs - (s.unattempted or 0), 0)
+        attempts = max(total_qs, 0)
         right    = s.correct_answers or 0
         wrong    = max(attempts - right, 0)
 
@@ -1128,7 +786,6 @@ def topic_modal(request, topic_id):
     if session_rows:
         agg = sessions_qs.aggregate(
             total_questions_sum   = Sum("total_questions"),
-            unattempted_sum       = Sum("unattempted"),
             correct_sum           = Sum("correct_answers"),
 
             sureshot_attempts_sum = Sum("sureshot_attempts"),
@@ -1145,7 +802,7 @@ def topic_modal(request, topic_id):
         )
 
         overall_total_qs = agg["total_questions_sum"] or 0
-        overall_attempts = max(overall_total_qs - (agg["unattempted_sum"] or 0), 0)
+        overall_attempts = max(overall_total_qs, 0)
         overall_right    = agg["correct_sum"] or 0
         overall_wrong    = max(overall_attempts - overall_right, 0)
 
@@ -1174,7 +831,7 @@ def topic_modal(request, topic_id):
             "guess_wrong": overall_gw_wrong,
             "guess_wrong_pct": _pct(overall_gw_wrong, overall_gw_attempts),
 
-            # attempt distribution across all rounds (denominator = total attempted across rounds)
+            # attempt distribution across all practice_rounds (denominator = total attempted across rounds)
             "ss_attempt_pct": _pct(overall_ss_attempts, overall_attempts),
             "applied_attempt_pct": _pct(overall_ap_attempts, overall_attempts),
             "guess_attempt_pct": _pct(overall_gw_attempts, overall_attempts),
@@ -1212,51 +869,7 @@ def topic_modal(request, topic_id):
         },
     )
 
-
 def modal_empty(request):
     # Returning empty clears the modal when swapped into #modal-root
     return HttpResponse("")
 
-
-@login_required
-def ajax_subject_sections(request, subject_id):
-    """
-    Return an HTMX fragment with all Sections that belong to a Subject.
-    Called by the Capsule-Practice accordion in practice_home.html.
-    """
-    subject  = get_object_or_404(Subject, pk=subject_id)
-    sections = subject.sections.all()   # or Section.objects.filter(subject=subject)
-
-    return render(
-        request,
-        "practice/partials/subject_sections.html",    # see next file
-        {
-            "subject": subject,
-            "sections": sections,
-        },
-    )
-
-# @login_required
-# def topic_summary(request):
-
-
-#     target_user = request.user
-#     user_qs_param = request.GET.get("user")
-#     if user_qs_param and request.user.is_staff:
-#         target_user = get_object_or_404(User, pk=user_qs_param)
-
-#     summaries = (
-#         TopicAttemptSummary.objects
-#         .filter(user=target_user)
-#         .select_related("topic__section__subject", "topic__section")
-#         .order_by("topic__name", "mode")
-#     )
-
-#     all_users = User.objects.only("id", "username").order_by("username")
-
-#     context = {
-#         "target_user": target_user,
-#         "summaries": summaries,
-#         "all_users": all_users,
-#     }
-#     return render(request, "practice/topic_summary.html", context)

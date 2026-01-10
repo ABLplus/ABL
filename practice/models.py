@@ -16,7 +16,7 @@ class PracticeSession(models.Model):
     # Session Stats
     total_questions = models.PositiveIntegerField(default=0)
     correct_answers = models.PositiveIntegerField(default=0)
-    unattempted = models.PositiveIntegerField(default=0)
+    
     total_score = models.DecimalField(max_digits=6, decimal_places=2, default=0.0)
 
     # Attempt Type Tracking
@@ -43,7 +43,7 @@ class PracticeSession(models.Model):
     )
 
     def wrong_answers(self):
-        return self.total_questions - self.correct_answers - self.unattempted
+        return self.total_questions - self.correct_answers
 
     def __str__(self):
         return f"PracticeSession {self.id} - {self.user.username} - {self.name or 'Unnamed'}"

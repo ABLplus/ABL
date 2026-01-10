@@ -25,25 +25,9 @@ SECRET_KEY = 'django-insecure-8fu1w&y)p_3x00frq=%^=6bm*unyt5^!-cy#xwitwaommt!8)v
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
 
-CKEDITOR_CONFIGS = {
-    'default': {
-        'toolbar': 'Custom',
-        'toolbar_Custom': [
-            ['Bold', 'Italic', 'Underline', 'Strike', 'Subscript', 'Superscript'],
-            ['NumberedList', 'BulletedList'],
-            ['Table'],
-            ['Link', 'Unlink'],
-            ['RemoveFormat', 'Source'],
-            ['Maximize'],
-        ],
-        'height': 300,
-        'width': 'auto',
-        'contentsCss': ['/static/ckeditor/ckeditor/ckeditor_dark.css'],
-        'bodyClass': 'ckeditor-dark-mode',
-    }
-}
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -54,7 +38,7 @@ INSTALLED_APPS = [
     'result',
     'tests',
     'user',
-    'ckeditor',
+   
     'question',
     'django.contrib.humanize',
     'django.contrib.admin',

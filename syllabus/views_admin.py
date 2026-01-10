@@ -2,10 +2,9 @@
 from collections import defaultdict
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib import messages
-from django.shortcuts import render, redirect
-from django.urls import reverse
+from django.shortcuts import render
 from django.db.models import Count
-from syllabus.models import Exam, Subject, Section, Topic
+from syllabus.models import Exam, Subject, Topic
 from question.models import Question
 from syllabus.services.topic_weightage import recompute_topic_weightage_relative
 
@@ -96,7 +95,7 @@ def topic_weight_view(request):
                     "id": t.id,
                     "name": t.name,
                     "count": topic_count.get(t.id, 0),
-                    "tier": t.tier if hasattr(t, "tier") else "never",
+                    "tier": getattr(t, "tier", "tier3"),          # ✅ default tier3
                     "weightage": getattr(t, "weightage", 0),
                 })
             sections_block.append({
@@ -116,20 +115,20 @@ def topic_weight_view(request):
     return render(request, "syllabus/topic_weight.html", context)
 
 
+# --- Tier Questions View (updated for tier1/tier2/tier3) ---
 
 TIER_CHOICES = [
-    ("most", "Most Asked"),
-    ("general", "Generally Asked"),
-    ("rare", "Rarely Asked"),
-    ("never", "Never Asked"),
+    ("tier1", "Tier 1"),
+    ("tier2", "Tier 2"),
+    ("tier3", "Tier 3"),
 ]
 DEFAULT_YEAR = 2013
 
-@staff_member_required
+
 def tier_questions_view(request):
     exams = Exam.objects.order_by("name")
     selected_exam_id = request.GET.get("exam")
-    selected_tier = request.GET.get("tier") or "most"
+    selected_tier = request.GET.get("tier") or "tier1"
     start_year = int(request.GET.get("year") or DEFAULT_YEAR)
     only_checked = request.GET.get("only_checked") == "on"
     only_pyq = request.GET.get("only_pyq", "on") == "on"  # default ON
@@ -155,7 +154,7 @@ def tier_questions_view(request):
         return render(request, "syllabus/tier_questions.html", context)
 
     # Base question queryset (by year, PYQ, checked)
-    base_q = Question.objects.filter(subject__exam=exam, year__gte=start_year, exam_name= exam.name)
+    base_q = Question.objects.filter(subject__exam=exam, year__gte=start_year, exam_name=exam.name)
     if only_pyq:
         base_q = base_q.filter(source_type="PYQ")
     if only_checked:
@@ -163,34 +162,31 @@ def tier_questions_view(request):
     total_questions = base_q.count()
 
     # All topics in the exam
-    all_topics_qs = Topic.objects.filter(section__subject__exam=exam) \
-                                 .select_related("section", "section__subject") \
-                                 .order_by("section__subject__name", "section__id", "id")
+    all_topics_qs = (
+        Topic.objects.filter(section__subject__exam=exam)
+        .select_related("section", "section__subject")
+        .order_by("section__subject__name", "section__id", "id")
+    )
     all_topic_ids = list(all_topics_qs.values_list("id", flat=True))
     total_topics_in_exam = len(all_topic_ids)
 
-    # Counts per topic for the selected window
+    # Counts per topic for the selected window (for summary metrics)
     per_topic_counts = (
         base_q.filter(topic_id__in=all_topic_ids)
-              .values("topic_id")
-              .annotate(n=Count("id"))
+        .values("topic_id")
+        .annotate(n=Count("id"))
     )
     count_map = {row["topic_id"]: row["n"] for row in per_topic_counts}
 
-    # Determine which topics are "in the selected tier"
-    if selected_tier == "never":
-        # dynamic: topics with 0 questions in the window
-        topics_in_tier_ids = [tid for tid in all_topic_ids if count_map.get(tid, 0) == 0]
-    else:
-        # stored tier filter
-        topics_in_tier_ids = list(
-            all_topics_qs.filter(tier=selected_tier).values_list("id", flat=True)
-        )
+    # Stored tier filter (no dynamic "never" anymore)
+    topics_in_tier_ids = list(
+        all_topics_qs.filter(tier=selected_tier).values_list("id", flat=True)
+    )
 
     topics_in_tier_count = len(topics_in_tier_ids)
     topics_in_tier_pct = round((topics_in_tier_count * 100 / total_topics_in_exam), 2) if total_topics_in_exam else 0.0
 
-    # Tier question total = sum of counts for those topics (for "never" this should be 0)
+    # Tier question total (within the selected year window)
     tier_questions = sum(count_map.get(tid, 0) for tid in topics_in_tier_ids)
     tier_questions_pct = round((tier_questions * 100 / total_questions), 2) if total_questions else 0.0
 
@@ -204,12 +200,7 @@ def tier_questions_view(request):
 
         subject_tier_topics = []
         for sec in s.sections.all().order_by("id"):
-            # topics under this section that match the tier
-            if selected_tier == "never":
-                tier_topics = [t for t in sec.topics.all() if count_map.get(t.id, 0) == 0]
-            else:
-                tier_topics = [t for t in sec.topics.all() if t.tier == selected_tier]
-
+            tier_topics = [t for t in sec.topics.all() if getattr(t, "tier", "tier3") == selected_tier]
             if not tier_topics:
                 continue
 
@@ -229,7 +220,6 @@ def tier_questions_view(request):
             subject_tier_topics.extend(tier_topics)
 
         if secs_block:
-            # per-subject tier topic % chip
             subj_tier_count = len(subject_tier_topics)
             subj_pct = round((subj_tier_count * 100 / subject_total_topics), 2) if subject_total_topics else 0.0
             data.append({
@@ -244,7 +234,7 @@ def tier_questions_view(request):
     context["summary"] = {
         "exam_name": exam.name,
         "tier": selected_tier,
-        "tier_label": dict(TIER_CHOICES).get(selected_tier, selected_tier.title()),
+        "tier_label": dict(TIER_CHOICES).get(selected_tier, selected_tier.upper()),
         "tier_questions": tier_questions,
         "total_questions": total_questions,
         "tier_questions_pct": tier_questions_pct,

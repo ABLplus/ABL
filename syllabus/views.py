@@ -1,6 +1,6 @@
 
 from django.shortcuts import render, redirect, get_object_or_404
-from .models import Exam,Topic, Subject, SubTopic, MicroTopic, Ques, Section
+from .models import Exam,Topic, Subject, SubTopic, MicroTopic, Ques, Section, TopicDemand
 from .forms import ExamForm, SubjectForm, TopicForm, MicroTopicForm, SubTopicForm, QuesEditForm, QuesForm
 from django.urls import reverse
 from utils.llm_module import call_gpt_explanation
@@ -9,6 +9,8 @@ from question.models import Question
 from django.http import HttpResponseBadRequest
 from django.db.models import Count, Q
 from django.contrib.admin.views.decorators import staff_member_required
+from .llm_utils import analyze_topic_with_llm
+
 
 @staff_member_required
 def ques_summary_view(request):
@@ -105,7 +107,7 @@ def section_topic_subtopic_view(request):
         # Preload related objects
         sections = Section.objects.filter(subject=selected_subject).prefetch_related('topics__subtopics')
         # Count questions by section/topic/subtopic
-        ques_queryset = Question.objects.filter(subject=selected_subject).values(
+        ques_queryset = Question.objects.filter(subject=selected_subject, exam_name__in=["CSE Prelims", "CDS", "CAPF"]).values(
             'section_id', 'topic_id', 'subtopic_id'
         )
 
@@ -322,12 +324,6 @@ def exam_detail_view(request, exam_id):
     }
     return render(request, 'syllabus/exam_detail.html', context)
 
-
-
-
-
-
-
 def safe_int(val):
     try:
         return int(val)
@@ -483,9 +479,7 @@ def ques_edit_view(request):
         }
     )
 
-
 # HTMX Dropdown Views
-
 def get_section_dropdown(request):
     mode = request.GET.get('mode', 'filter')  # 'filter' or 'edit'
     subject_id = request.GET.get('subject_id') or request.GET.get('subject')
@@ -501,8 +495,6 @@ def get_section_dropdown(request):
         'sections':    sections,
         'selected_id': selected,
     })
-
-
 
 def get_topic_dropdown(request):
     mode       = request.GET.get('mode', 'filter')              # 'filter' (default) or 'edit'
@@ -522,9 +514,6 @@ def get_topic_dropdown(request):
         'selected_id': selected,
     })
 
-
-
-
 def get_subtopic_dropdown(request):
     mode     = request.GET.get('mode', 'filter')
     topic_id = request.GET.get('topic_id') or request.GET.get('topic')
@@ -542,8 +531,6 @@ def get_subtopic_dropdown(request):
         'subtopics'  : subtopics,
         'selected_id': selected,
     })
-
-
 
 def get_syllabus_chain(request):
     level = request.GET.get("level")  # 'subject' | 'section' | 'topic' | None
@@ -600,3 +587,235 @@ def get_syllabus_chain(request):
         "question_id": s(q_id),
     }
     return render(request, "syllabus/partials/syllabus_chain.html", ctx)
+
+
+
+
+
+
+def build_topic_payload_from_topic(topic_id: int):
+    """
+    Given a Topic ID, returns (topic_path, pyq_list).
+
+    topic_path: "Subject > Section > Topic"
+    pyq_list:   list of dicts (question_stem, option_a..d, year, id)
+    """
+    topic = get_object_or_404(
+        Topic.objects.select_related("section__subject"),
+        pk=topic_id
+    )
+    section = topic.section
+    subject = section.subject
+
+    topic_path = f"{subject.name} > {section.name} > {topic.name}"
+
+    qs = Question.objects.filter(
+        subject=subject,
+        section=section,
+        topic=topic,
+        exam_name__in=["CSE Prelims", "CDS", "CAPF"],     # 🔁 adjust to your value
+        source_type="PYQ",       # 🔁 drop/modify if you don't have this
+    ).order_by("year", "id")
+
+    pyq_list = []
+    for q in qs:
+        pyq_list.append(
+            {
+                "id": q.id,
+                "year": getattr(q, "year", None),
+                "question_stem": getattr(q, "question_html", None)
+                                  or getattr(q, "question_text", ""),
+                "option_a": q.option_a,
+                "option_b": q.option_b,
+                "option_c": q.option_c,
+                "option_d": q.option_d,
+            }
+        )
+
+    return topic_path, pyq_list
+
+
+ 
+def topic_report_view(request):
+    # All topics with subject + section pre-fetched for labels
+    topics = (
+        Topic.objects
+        .select_related("section__subject")
+        .order_by("section__subject__name", "section__name", "name")
+    )
+
+    selected_topic_id = None
+    topic_path = None
+    pyq_list = None
+    report_markdown = None
+    topic_demand = None
+    selected_model = None
+
+    # Common exam name key
+    EXAM_NAME = "UPSC CSE (Prelims)"
+
+    if request.method == "GET":
+        # Step 1: user selects topic → we load payload and any existing saved demand
+        selected_topic_id = request.GET.get("topic")
+        if selected_topic_id:
+            topic_path, pyq_list = build_topic_payload_from_topic(selected_topic_id)
+
+            # Try to load existing saved demand for this topic
+            try:
+                topic = Topic.objects.select_related("section__subject").get(pk=selected_topic_id)
+                topic_demand = TopicDemand.objects.get(topic=topic, exam_name=EXAM_NAME)
+                report_markdown = topic_demand.demand_insights
+                selected_model = topic_demand.model_used or "gpt-4.1"
+            except (Topic.DoesNotExist, TopicDemand.DoesNotExist):
+                topic_demand = None
+                report_markdown = None
+                selected_model = "gpt-4.1"
+
+    elif request.method == "POST":
+        # Step 2: user clicks "Generate / Regenerate Report" for a topic
+        selected_topic_id = request.POST.get("topic")
+        selected_model = request.POST.get("model") or "gpt-4.1"
+
+        if selected_topic_id:
+            topic_path, pyq_list = build_topic_payload_from_topic(selected_topic_id)
+            report_markdown = analyze_topic_with_llm(topic_path, pyq_list, model_name=selected_model)
+
+            topic = Topic.objects.select_related("section__subject").get(pk=selected_topic_id)
+            subject = topic.section.subject
+            section = topic.section
+
+            years = sorted({q.get("year") for q in pyq_list if q.get("year")})
+            if years:
+                year_span = f"{years[0]}–{years[-1]}" if len(years) > 1 else str(years[0])
+            else:
+                year_span = ""
+
+            topic_demand, _created = TopicDemand.objects.update_or_create(
+                topic=topic,
+                exam_name=EXAM_NAME,
+                defaults={
+                    "subject": subject,
+                    "section": section,
+                    "demand_insights": report_markdown,
+                    "model_used": selected_model,
+                    "pyq_count": len(pyq_list),
+                    "year_span": year_span,
+                },
+            )
+
+    context = {
+        "topics": topics,
+        "selected_topic_id": selected_topic_id,
+        "topic_path": topic_path,
+        "pyq_list": pyq_list,
+        "report_markdown": report_markdown,
+        "topic_demand": topic_demand,
+        "selected_model": selected_model or "gpt-4.1",
+    }
+    return render(request, "syllabus/topic_report.html", context)
+
+
+def subject_topic_demand_view(request):
+    subjects = Subject.objects.all().order_by("name")
+
+    selected_subject_id = None
+    selected_model = None
+
+    topic_demands = []
+    current_topic_demand = None
+    prev_topic_id = None
+    next_topic_id = None
+    EXAM_NAME = "UPSC CSE (Prelims)"
+
+    if request.method == "POST":
+        # POST: Generate/Re-generate topic demands for ALL topics under a subject
+        selected_subject_id = request.POST.get("subject")
+        selected_model = request.POST.get("model") or "gpt-4.1"
+
+        if selected_subject_id:
+            subject = get_object_or_404(Subject, pk=selected_subject_id)
+
+            # All topics for this subject (via sections)
+            topics = (
+                Topic.objects
+                .select_related("section__subject")
+                .filter(section__subject=subject)
+                .order_by("section__name", "name")
+            )
+
+            for topic in topics:
+                topic_path, pyq_list = build_topic_payload_from_topic(topic.id)
+                report_markdown = analyze_topic_with_llm(
+                    topic_path, pyq_list, model_name=selected_model
+                )
+
+                years = sorted({q.get("year") for q in pyq_list if q.get("year")})
+                if years:
+                    year_span = f"{years[0]}–{years[-1]}" if len(years) > 1 else str(years[0])
+                else:
+                    year_span = ""
+
+                TopicDemand.objects.update_or_create(
+                    topic=topic,
+                    exam_name=EXAM_NAME,
+                    defaults={
+                        "subject": subject,
+                        "section": topic.section,
+                        "demand_insights": report_markdown,
+                        "model_used": selected_model,
+                        "pyq_count": len(pyq_list),
+                        "year_span": year_span,
+                    },
+                )
+
+    else:
+        # GET: just show subject dropdown and, if selected, existing demands
+        selected_subject_id = request.GET.get("subject")
+        selected_model = "gpt-4.1"
+
+    # After either GET or POST, if a subject is selected, load its TopicDemands
+    if selected_subject_id:
+        subject = get_object_or_404(Subject, pk=selected_subject_id)
+
+        topic_demands_qs = (
+            TopicDemand.objects
+            .filter(subject=subject, exam_name=EXAM_NAME)
+            .select_related("topic__section", "section")
+            .order_by("section__name", "topic__name")
+        )
+        topic_demands = list(topic_demands_qs)
+
+        if topic_demands:
+            # Determine which topic demand to show
+            requested_topic_id = request.GET.get("topic_id")
+
+            if requested_topic_id:
+                # Try to show the specific topic requested, else fall back to first
+                for td in topic_demands:
+                    if str(td.topic_id) == requested_topic_id:
+                        current_topic_demand = td
+                        break
+                if current_topic_demand is None:
+                    current_topic_demand = topic_demands[0]
+            else:
+                # Default: show first topic's demand
+                current_topic_demand = topic_demands[0]
+
+            # Compute prev/next within this ordered list
+            idx = topic_demands.index(current_topic_demand)
+            if idx > 0:
+                prev_topic_id = topic_demands[idx - 1].topic_id
+            if idx < len(topic_demands) - 1:
+                next_topic_id = topic_demands[idx + 1].topic_id
+
+    print(len(topic_demands))
+    context = {
+        "subjects": subjects,
+        "selected_subject_id": selected_subject_id,
+        "selected_model": selected_model or "gpt-4.1",
+        "current_topic_demand": current_topic_demand,
+        "topic_demands_count": len(topic_demands),
+        "prev_topic_id": prev_topic_id,
+        "next_topic_id": next_topic_id,
+    }
+    return render(request, "syllabus/subject_topic_demand.html", context)

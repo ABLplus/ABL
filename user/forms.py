@@ -5,11 +5,17 @@ from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 
 from .models import Profile, Exam
+from django.core.validators import RegexValidator
+
+phone_validator = RegexValidator(
+    regex=r'^\+?1?\d{9,15}$',
+    message="Enter a valid mobile number."
+)
 
 
 class CustomUserCreationForm(UserCreationForm):
     mobile_number = forms.CharField(
-        max_length=15,
+        validators=[phone_validator],
         required=False,
         help_text="Optional. Enter your mobile number."
     )

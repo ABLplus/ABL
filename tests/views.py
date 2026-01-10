@@ -11,7 +11,8 @@ from syllabus.models import *
 from django.http import HttpResponse
 from django.urls import reverse
 from django.http import HttpResponse, HttpResponseBadRequest
-
+from django.views.decorators.http import require_POST
+from services.n2 import finalise_session
 
 
 MARKS_RIGHT = Decimal('2.0')
@@ -19,196 +20,25 @@ MARKS_WRONG = Decimal('2.0') / Decimal('3.0')
 
 
 def submit_test(request, test_id):
-    test = get_object_or_404(Test, id=test_id, user=request.user)
+    """
+    Finalise a Test attempt and redirect to result page.
+    """
+    test = get_object_or_404(
+        Test,
+        id=test_id,
+        user=request.user,
+    )
+
+    # Guard: already submitted
     if test.status == "completed":
         return redirect("test_result", test_id=test.id)
 
-    # ─── 1. Fetch logs (Question + Topic pre-fetched) ───────────────────
-    logs = (test.questionlog_set
-            .select_related("question__topic", "topic")
-            .all())
-    total_questions = len(logs)
-
-    # ─── 2. Existing summaries cache ────────────────────────────────────
-    contrib_logs = [l for l in logs                      # sureshot/applied/guesswork
-                    if l.attempt_type in ("sureshot", "applied", "guesswork")]
-
-    question_ids = {l.question_id for l in contrib_logs}
-    topic_ids    = {(l.topic_id or l.question.topic_id) for l in contrib_logs}
-
-    q_map = {s.question_id: s for s in
-             QuestionAttemptSummary.objects.filter(user=request.user,
-                                                   question_id__in=question_ids)}
-    t_map = {s.topic_id: s for s in
-             TopicAttemptSummary.objects.filter(user=request.user,
-                                                topic_id__in=topic_ids,
-                                                mode="test")}
-
-    q_new, q_upd, t_new, t_upd = [], [], [], []
-
-    # ─── 3. Test-level counters ─────────────────────────────────────────
-    correct_answers = wrong_answers = unattempted = 0
-    sureshot_cnt = applied_cnt = guess_cnt = 0
-    sureshot_wrong = applied_wrong = guess_wrong = 0
-    blind_cnt = blind_wrong = 0
-
-    # ─── 4. Iterate once over logs ──────────────────────────────────────
-    for log in logs:
-        aid = log.attempt_type
-        result = log.attempt_result
-
-        if aid in ("sureshot", "applied", "guesswork"):
-            # Marks & summaries
-            if result == "right":
-                correct_answers += 1
-            else:
-                wrong_answers += 1
-
-            if aid == "sureshot":
-                sureshot_cnt += 1
-                if result == "wrong":
-                    sureshot_wrong += 1
-            elif aid == "applied":
-                applied_cnt += 1
-                if result == "wrong":
-                    applied_wrong += 1
-            elif aid == "guesswork":
-                guess_cnt += 1
-                if result == "wrong":
-                    guess_wrong += 1
-
-            # QUESTION summary
-            qs = q_map.get(log.question_id)
-            if not qs:
-                qs = QuestionAttemptSummary(
-                    user=request.user,
-                    question=log.question,
-                    topic=log.question.topic
-                )
-                q_new.append(qs)
-                q_map[log.question_id] = qs
-
-            qs.total_attempts += 1
-            if result == "right":
-                qs.correct_attempts += 1
-            else:
-                qs.wrong_attempts += 1
-
-            if aid == "sureshot":
-                qs.sureshot_attempts += 1
-                if result == "wrong":
-                    qs.sureshot_wrong += 1
-            elif aid == "applied":
-                qs.applied_attempts += 1
-                if result == "wrong":
-                    qs.applied_wrong += 1
-            elif aid == "guesswork":
-                qs.guesswork_attempts += 1
-                if result == "wrong":
-                    qs.guesswork_wrong += 1
-
-            qs.net_marks = (qs.correct_attempts * MARKS_RIGHT
-                            - qs.wrong_attempts   * MARKS_WRONG)
-
-            if qs not in q_new:
-                q_upd.append(qs)
-
-            # TOPIC summary  (mode='test')
-            topic_id = log.topic_id or log.question.topic_id
-            if topic_id is not None:
-                ts = t_map.get(topic_id)
-                if not ts:
-                    ts = TopicAttemptSummary(
-                        user=request.user,
-                        topic_id=topic_id,
-                        mode="test"
-                    )
-                    t_new.append(ts)
-                    t_map[topic_id] = ts
-
-                ts.total_attempts += 1
-                if result == "right":
-                    ts.correct_attempts += 1
-                else:
-                    ts.wrong_attempts += 1
-
-                if aid == "sureshot":
-                    ts.sureshot_attempts += 1
-                    if result == "wrong":
-                        ts.sureshot_wrong += 1
-                elif aid == "applied":
-                    ts.applied_attempts += 1
-                    if result == "wrong":
-                        ts.applied_wrong += 1
-                elif aid == "guesswork":
-                    ts.guesswork_attempts += 1
-                    if result == "wrong":
-                        ts.guesswork_wrong += 1
-
-                ts.net_marks = (ts.correct_attempts * MARKS_RIGHT
-                                - ts.wrong_attempts   * MARKS_WRONG)
-
-                if ts not in t_new:
-                    t_upd.append(ts)
-
-        else:          # 'blind' or 'unattempted'
-            unattempted += 1
-            if aid == "blind":
-                blind_cnt += 1
-                if result == "wrong":
-                    blind_wrong += 1
-
-    total_score = (correct_answers * MARKS_RIGHT
-                   - wrong_answers  * MARKS_WRONG)
-
-    # ─── 5. Transactional write ────────────────────────────────────────
-    with transaction.atomic():
-        if q_new:
-            QuestionAttemptSummary.objects.bulk_create(q_new, ignore_conflicts=True)
-        if q_upd:
-            QuestionAttemptSummary.objects.bulk_update(
-                q_upd,
-                ['total_attempts', 'correct_attempts', 'wrong_attempts',
-                 'sureshot_attempts', 'applied_attempts', 'guesswork_attempts',
-                 'sureshot_wrong', 'applied_wrong', 'guesswork_wrong',
-                 'net_marks']
-            )
-
-        if t_new:
-            TopicAttemptSummary.objects.bulk_create(t_new, ignore_conflicts=True)
-        if t_upd:
-            TopicAttemptSummary.objects.bulk_update(
-                t_upd,
-                ['total_attempts', 'correct_attempts', 'wrong_attempts',
-                 'sureshot_attempts', 'applied_attempts', 'guesswork_attempts',
-                 'sureshot_wrong', 'applied_wrong', 'guesswork_wrong',
-                 'net_marks']
-            )
-
-        # Update Test row (blind stats kept here only)
-        test.total_questions   = total_questions
-        test.correct_answers   = correct_answers
-        test.unattempted       = unattempted
-        test.total_score       = total_score
-
-        test.sureshot_attempts = sureshot_cnt
-        test.applied_attempts  = applied_cnt
-        test.guesswork_attempts= guess_cnt
-        test.blind_attempts    = blind_cnt
-
-        test.sureshot_wrong    = sureshot_wrong
-        test.applied_wrong     = applied_wrong
-        test.guesswork_wrong   = guess_wrong
-        test.blind_wrong       = blind_wrong
-
-        test.status            = "completed"
-        test.end_time          = timezone.now()
-        test.save()
-
-        attempt_count = len(contrib_logs)
-        request.user.profile.register_attempt(increment=attempt_count)
+    # Only pending tests can be submitted
+    if test.status == "pending":
+        finalise_session(test, mode="test")
 
     return redirect("test_result", test_id=test.id)
+
 
 def blind_attempt(request, test_id):
     test = get_object_or_404(Test, id=test_id, user=request.user)
@@ -345,7 +175,7 @@ def start_test(request):
             return _hx_redirect_or_normal(request, reverse("dashboard"))
 
         test_name = f"{subject.name} – Subject Test"
-        test_type = "sectional"
+        test_type = "full_length"
         year      = None  # not used for subject tests
         exam      = None
 
@@ -407,60 +237,6 @@ def _hx_redirect_or_normal(request, url: str):
         return resp
     return redirect(url)
 
-# @login_required
-# def reset_question(request, test_id, serial):
-#     if request.method == 'POST':
-#         qlog = get_object_or_404(QuestionLog, test_id=test_id, user=request.user, serial=serial)
-#         qlog.user_answered = None
-#         qlog.attempt_type = 'unattempted'
-#         qlog.attempt_result = None
-#         qlog.save()
-#     return redirect('take_test', test_id=test_id, serial=serial)
-
-# @login_required
-# def take_test(request, test_id, serial):
-#     test = get_object_or_404(Test, id=test_id, user=request.user)
-#     question_log = get_object_or_404(QuestionLog, test=test, serial=serial)
-
-#     if request.method == 'POST':
-#         user_answered = request.POST.get('option')
-#         attempt_type = request.POST.get('attempt_type')
-
-#         # Save user answer
-#         question_log.user_answered = user_answered
-#         question_log.attempt_type = attempt_type
-#         question_log.timestamp=timezone.now()
-
-#         # Calculate result
-
-#         if user_answered.lower() == question_log.question.correct_option.lower():
-#             question_log.attempt_result = 'right'
-#         else:
-#             question_log.attempt_result = 'wrong'
-
-#         question_log.save()
-
-#         # Move to next question
-#         next_serial = serial + 1
-#         if next_serial > test.total_questions:
-#             return redirect('proceed_to_submit', test_id=test.id)
-#         else:
-#             return redirect('take_test', test_id=test.id, serial=next_serial)
-
-#     prev_serial = serial - 1 if serial > 1 else None
-#     next_serial = serial + 1 if serial < test.total_questions else None
-
-#     all_question_logs = test.questionlog_set.only('id', 'serial', 'attempt_type').order_by('serial')
-#     context = {
-#         'test': test,
-#         'question_log': question_log,
-#         'current_serial': serial,
-#         'total_questions': test.total_questions,
-#         'prev_serial': prev_serial,
-#         'next_serial': next_serial,
-#         'all_question_logs':all_question_logs,
-#     }
-#     return render(request, 'tests/take_test.html', context)
 
 def _is_htmx(request):
     # Works whether or not django-htmx middleware is installed

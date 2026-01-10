@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ABL+ Topic Status Demo (PMI/TMI → State)</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 0; padding: 24px; }
+    .wrap { max-width: 900px; margin: 0 auto; }
+    h1 { margin: 0 0 8px; font-size: 20px; }
+    p { margin: 0 0 16px; opacity: 0.85; }
+    .card { border: 1px solid rgba(127,127,127,.35); border-radius: 14px; padding: 16px; margin: 12px 0; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    label { display: block; font-size: 12px; opacity: .85; margin-bottom: 6px; }
+    input, select, button { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(127,127,127,.35); background: transparent; }
+    input[type="number"] { appearance: textfield; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+    .btns { display: flex; gap: 10px; margin-top: 12px; }
+    button { cursor: pointer; font-weight: 600; }
+    .out { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    .pill { display: inline-flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 999px; border: 1px solid rgba(127,127,127,.35); width: fit-content; }
+    .big { font-size: 28px; font-weight: 800; letter-spacing: .5px; }
+    .muted { opacity: .75; font-size: 12px; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    .debug { white-space: pre-wrap; font-size: 12px; opacity: .85; }
+    .note { font-size: 12px; opacity: .85; line-height: 1.4; }
+    .ok { color: #22c55e; }
+    .warn { color: #f59e0b; }
+    .bad { color: #ef4444; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>ABL+ Topic Status Demo</h1>
+    <p>Enter PMI & TMI (0–100). Use “NULL” if a metric doesn’t exist for that topic. This implements <span class="mono">Option B</span> balanced rules.</p>
+
+    <div class="card">
+      <div class="grid">
+        <div>
+          <label>PMI (Practice Mastery Index)</label>
+          <select id="pmiMode">
+            <option value="value">Value</option>
+            <option value="null">NULL</option>
+          </select>
+          <div style="margin-top:8px">
+            <input id="pmi" type="number" min="0" max="100" step="1" value="70" />
+          </div>
+          <div class="muted">PMI NULL means: no practice-mode engagement (not negative).</div>
+        </div>
+
+        <div>
+          <label>TMI (Test Mastery Index)</label>
+          <select id="tmiMode">
+            <option value="value">Value</option>
+            <option value="null">NULL</option>
+          </select>
+          <div style="margin-top:8px">
+            <input id="tmi" type="number" min="0" max="100" step="1" value="70" />
+          </div>
+          <div class="muted">TMI NULL means: no test evidence (PMI-only mode, capped at G1).</div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>PMI Attempts (optional for demo)</label>
+          <input id="pmiAttempts" type="number" min="0" step="1" value="10" />
+        </div>
+        <div>
+          <label>TMI Attempts (optional for demo)</label>
+          <input id="tmiAttempts" type="number" min="0" step="1" value="20" />
+        </div>
+      </div>
+
+      <div class="btns">
+        <button id="calcBtn">Calculate</button>
+        <button id="swapBtn" type="button">Swap PMI ↔ TMI</button>
+        <button id="randomBtn" type="button">Random</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="out">
+        <div>
+          <div class="muted">Status</div>
+          <div id="state" class="big">—</div>
+          <div id="bucketPill" class="pill"><span class="muted">Bucket:</span> <span id="bucket">—</span></div>
+        </div>
+        <div>
+          <div class="muted">Authority</div>
+          <div id="authorityPill" class="pill mono">—</div>
+          <div class="muted" style="margin-top:10px">Effective Score</div>
+          <div id="scorePill" class="pill mono">—</div>
+        </div>
+        <div>
+          <div class="muted">Notes</div>
+          <div id="notes" class="note">—</div>
+        </div>
+      </div>
+
+      <div style="margin-top:14px">
+        <div class="muted">Debug</div>
+        <div id="debug" class="debug mono">—</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="muted">Locked rules (Option B)</div>
+      <ul class="note">
+        <li><b>NULL semantics</b>: PMI NULL = unknown practice; don’t penalize. TMI NULL = no test evidence → PMI-only cap at G1.</li>
+        <li><b>Score formula (when both exist)</b>: <span class="mono">eTMI = 0.6*TMI + 0.4*PMI</span></li>
+        <li><b>G3 gate</b>: only if <span class="mono">TMI ≥ 85</span> and <span class="mono">PMI ≥ 30</span> (else drop to G2)</li>
+        <li><b>G2 gate</b>: only if <span class="mono">TMI ≥ 70</span></li>
+        <li><b>Low PMI rule (balanced)</b>: if <span class="mono">PMI &lt; 30</span> and <span class="mono">70 ≤ TMI &lt; 85</span> ⇒ cap at <b>G</b></li>
+      </ul>
+    </div>
+  </div>
+
+<script>
+  // ---------- Resolver (mirrors the Python version you locked) ----------
+  function clamp01(x) {
+    if (x === null || x === undefined || Number.isNaN(x)) return null;
+    const v = Number(x);
+    if (v < 0) return 0;
+    if (v > 100) return 100;
+    return v;
+  }
+
+  function bucketOf(state) {
+    if (state === "INS") return "INSUFFICIENT";
+    if (["G1","G2","G3"].includes(state)) return "STRONG";
+    if (["G","B","R"].includes(state)) return "TRANSITION";
+    return "WEAK";
+  }
+
+  function mapScoreToState(score) {
+    const s = clamp01(score);
+    if (s === null) return "INS";
+    if (s >= 85) return "G3";
+    if (s >= 70) return "G2";
+    if (s >= 60) return "G1";
+    if (s >= 50) return "G";
+    if (s >= 40) return "B";
+    if (s >= 30) return "R";
+    if (s >= 20) return "R1";
+    return "R2";
+  }
+
+  function resolveTopicState({pmi, tmi, pmiAttempts=0, tmiAttempts=0, MIN_TMI_ATTEMPTS=20, MIN_PMI_ATTEMPTS=1}) {
+    const pmiVal = (pmi === null) ? null : clamp01(pmi);
+    const tmiVal = (tmi === null) ? null : clamp01(tmi);
+
+    const hasPmi = (pmiVal !== null) && (pmiAttempts >= MIN_PMI_ATTEMPTS);
+    const hasTmi = (tmiVal !== null) && (tmiAttempts >= MIN_TMI_ATTEMPTS);
+
+    // no evidence
+    if (!hasPmi && !hasTmi) {
+      return {
+        state: "INS",
+        authority: "NONE",
+        bucket: bucketOf("INS"),
+        score: null,
+        notes: "Insufficient evidence (no valid PMI/TMI).",
+        debug: {hasPmi, hasTmi, pmiVal, tmiVal}
+      };
+    }
+
+    // PMI-only mode (no valid TMI)
+    if (!hasTmi) {
+      let base = mapScoreToState(hasPmi ? pmiVal : 0);
+      // cap at G1
+      if (base === "G2" || base === "G3") base = "G1";
+      return {
+        state: base,
+        authority: "PMI",
+        bucket: bucketOf(base),
+        score: hasPmi ? pmiVal : 0,
+        notes: "PMI-only mode (no valid TMI). Max status is G1 (uncertified).",
+        debug: {mode:"PMI-only", hasPmi, hasTmi, pmiVal, tmiVal}
+      };
+    }
+
+    // TMI exists, PMI missing => pure TMI mapping (no nudging, no penalty)
+    if (!hasPmi) {
+      let base = mapScoreToState(tmiVal);
+
+      // explicit gates (safety)
+      if (base === "G2" && tmiVal < 70) base = "G1";
+      if (base === "G3" && tmiVal < 85) base = (tmiVal >= 70) ? "G2" : "G1";
+
+      return {
+        state: base,
+        authority: "TMI",
+        bucket: bucketOf(base),
+        score: tmiVal,
+        notes: "PMI is NULL/invalid: using pure TMI (no penalty).",
+        debug: {mode:"TMI-only (PMI missing)", hasPmi, hasTmi, pmiVal, tmiVal}
+      };
+    }
+
+    // Both exist => eTMI
+    const eTMI = 0.6 * tmiVal + 0.4 * pmiVal;
+    let base = mapScoreToState(eTMI);
+
+    // Gates
+    if (base === "G2" && tmiVal < 70) base = "G1";
+
+    if (base === "G3") {
+      if (tmiVal < 85) base = (tmiVal >= 70) ? "G2" : "G1";
+      else if (pmiVal < 30) base = "G2"; // block G3 under low PMI
+    }
+
+    // Option B low-PMI rules
+    if (pmiVal < 30) {
+      if (tmiVal >= 70 && tmiVal < 85) {
+        if (["G1","G2","G3"].includes(base)) base = "G";
+      } else if (tmiVal >= 85) {
+        if (base === "G3") base = "G2";
+      }
+    }
+
+    let notes = "TMI-primary with PMI nudging (eTMI).";
+    if (pmiVal < 30 && tmiVal >= 70 && tmiVal < 85) notes += " Low-PMI cap applied: max G.";
+    if (tmiVal >= 85 && pmiVal < 30) notes += " G3 blocked under low PMI: max G2.";
+
+    return {
+      state: base,
+      authority: "TMI",
+      bucket: bucketOf(base),
+      score: Number(eTMI.toFixed(2)),
+      notes,
+      debug: {mode:"eTMI", hasPmi, hasTmi, pmiVal, tmiVal, eTMI}
+    };
+  }
+
+  // ---------- UI wiring ----------
+  const pmiMode = document.getElementById("pmiMode");
+  const tmiMode = document.getElementById("tmiMode");
+  const pmiInput = document.getElementById("pmi");
+  const tmiInput = document.getElementById("tmi");
+  const pmiAttempts = document.getElementById("pmiAttempts");
+  const tmiAttempts = document.getElementById("tmiAttempts");
+
+  function syncModeUI() {
+    pmiInput.disabled = (pmiMode.value === "null");
+    tmiInput.disabled = (tmiMode.value === "null");
+    pmiInput.style.opacity = pmiInput.disabled ? "0.5" : "1";
+    tmiInput.style.opacity = tmiInput.disabled ? "0.5" : "1";
+  }
+
+  function render(out) {
+    document.getElementById("state").textContent = out.state;
+    document.getElementById("bucket").textContent = out.bucket;
+
+    const auth = document.getElementById("authorityPill");
+    auth.textContent = `Authority: ${out.authority}`;
+
+    const score = document.getElementById("scorePill");
+    score.textContent = (out.score === null) ? "Score: —" : `Score: ${out.score}`;
+
+    document.getElementById("notes").textContent = out.notes;
+
+    document.getElementById("debug").textContent = JSON.stringify(out.debug, null, 2);
+
+    // mild color cue
+    const stateEl = document.getElementById("state");
+    stateEl.classList.remove("ok","warn","bad");
+    if (["G3","G2","G1"].includes(out.state)) stateEl.classList.add("ok");
+    else if (["G","B","R"].includes(out.state)) stateEl.classList.add("warn");
+    else if (["R1","R2","INS"].includes(out.state)) stateEl.classList.add("bad");
+  }
+
+  function calculate() {
+    const pmi = (pmiMode.value === "null") ? null : Number(pmiInput.value);
+    const tmi = (tmiMode.value === "null") ? null : Number(tmiInput.value);
+
+    const out = resolveTopicState({
+      pmi,
+      tmi,
+      pmiAttempts: Number(pmiAttempts.value || 0),
+      tmiAttempts: Number(tmiAttempts.value || 0),
+      MIN_TMI_ATTEMPTS: 20,
+      MIN_PMI_ATTEMPTS: 1
+    });
+    render(out);
+  }
+
+  document.getElementById("calcBtn").addEventListener("click", calculate);
+
+  document.getElementById("swapBtn").addEventListener("click", () => {
+    // swap modes and values
+    const pm = pmiMode.value, tm = tmiMode.value;
+    pmiMode.value = tm; tmiMode.value = pm;
+
+    const pv = pmiInput.value, tv = tmiInput.value;
+    pmiInput.value = tv; tmiInput.value = pv;
+
+    const pa = pmiAttempts.value, ta = tmiAttempts.value;
+    pmiAttempts.value = ta; tmiAttempts.value = pa;
+
+    syncModeUI();
+    calculate();
+  });
+
+  document.getElementById("randomBtn").addEventListener("click", () => {
+    // randomize (sometimes null)
+    const rnull = () => Math.random() < 0.15;
+    pmiMode.value = rnull() ? "null" : "value";
+    tmiMode.value = rnull() ? "null" : "value";
+    if (pmiMode.value === "value") pmiInput.value = Math.floor(Math.random() * 101);
+    if (tmiMode.value === "value") tmiInput.value = Math.floor(Math.random() * 101);
+
+    // attempts: make TMI attempts valid if TMI exists half the time
+    pmiAttempts.value = (pmiMode.value === "null") ? 0 : (1 + Math.floor(Math.random()*40));
+    tmiAttempts.value = (tmiMode.value === "null") ? 0 : (10 + Math.floor(Math.random()*30));
+
+    syncModeUI();
+    calculate();
+  });
+
+  pmiMode.addEventListener("change", () => { syncModeUI(); calculate(); });
+  tmiMode.addEventListener("change", () => { syncModeUI(); calculate(); });
+  pmiInput.addEventListener("input", () => calculate());
+  tmiInput.addEventListener("input", () => calculate());
+  pmiAttempts.addEventListener("input", () => calculate());
+  tmiAttempts.addEventListener("input", () => calculate());
+
+  // init
+  syncModeUI();
+  calculate();
+</script>
+</body>
+</html>
