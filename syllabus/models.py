@@ -25,7 +25,7 @@ class Subject(models.Model):
     
 
 class Section(models.Model):
-    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='sections',default=1)
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='sections')
     name = models.CharField(max_length=100)
     class Meta:
         unique_together = ('subject', 'name')

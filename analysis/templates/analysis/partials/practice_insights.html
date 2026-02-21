@@ -1,120 +1,199 @@
- <!-- Part 2: Insights -->
-    <section id="insights" class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow">
-      <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Insights</h2>
+<section id="insights" class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow">
 
-      {# 4 columns now: Coverage · Strong · Transition · Weak #}
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+  <!-- Header row: Title + subject pills -->
+  <div class="flex flex-col gap-3 mb-4">
+    <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Insights</h2>
 
-        {# ───────── Coverage ───────── #}
-        <div class="space-y-2">
-          <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">Coverage</h3>
-          <p class="text-2xl font-bold text-gray-900 dark:text-white">
-            {{ coverage_pct }}% Topics Covered
-            <span class="text-sm font-medium text-gray-500 dark:text-gray-400">
-              ({{ practiced_topics }}/{{ total_topics }})
-            </span>
-          </p>
-        </div>
+    <!-- Subject pills (2-line wrap) -->
+    <div class="flex flex-wrap gap-2 max-h-[5.25rem] overflow-hidden">
+      {# "All" pill - optional, keep if you plan filtering #}
+      <a href="#"
+         class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium
+                border border-gray-200 dark:border-gray-700
+                bg-gray-50 dark:bg-gray-900
+                text-gray-700 dark:text-gray-200
+                hover:bg-gray-100 dark:hover:bg-gray-800">
+        All Subjects
+      </a>
 
-        {# ───────── Strong Topics ───────── #}
-        <div>
-          <h3 class="text-sm font-medium text-green-500 dark:text-green-400 mb-2">
-            Strong Topics ({{best_no}})
-          </h3>
-          {% if best_topics %}
-            <ul class="list-disc pl-5 space-y-1 text-green-700 dark:text-green-300">
-              {% for t in best_topics %}
-                <li>
-                  {{ t.name }}
-                  <span class="text-xs text-green-500">({{ t.pct }}% wrong)</span>
-                </li>
-              {% endfor %}
-            </ul>
-          {% else %}
-            <p class="text-gray-500 dark:text-gray-400 text-sm">
-              No strong topics indicated yet. Keep practising to unlock insights.
-            </p>
-          {% endif %}
-        </div>
+      {% for s in subjects %}
+        <a href="#"
+           class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium
+                  border border-gray-200 dark:border-gray-700
+                  bg-white dark:bg-gray-900
+                  text-gray-700 dark:text-gray-200
+                  hover:bg-gray-50 dark:hover:bg-gray-800">
+          {{ s.name }}
+        </a>
+      {% endfor %}
+    </div>
 
-        {# ───────── In-Transition Topics ───────── #}
-        <div>
-          <h3 class="text-sm font-medium text-yellow-500 dark:text-yellow-400 mb-2">
-            In-Transition Topics ({{mid_no}})
-          </h3>
-          {% if mid_topics %}
-            <ul class="list-disc pl-5 space-y-1 text-orange-700 dark:text-orange-300">
-              {% for t in mid_topics %}
-                <li class="flex items-center">
-                  <a
-                    href="#"
-                    class="no-underline hover:opacity-80 focus:outline-none flex-1"
-                    style="color: {{ t.color }};"
-                    hx-get="{% url 'practice:topic_modal' t.id %}"
-                    hx-target="#modal-root"
-                    hx-swap="innerHTML"
-                  >
-                    {{ t.name }}
-                    <span class="text-xs text-yellow-500 ml-1">({{ t.pct }}% wrong)</span>
-                  </a>
-                  <a
-                    href="#"
-                    class="ml-2 inline-flex items-center px-2 py-0.5 text-xs font-medium
-                           rounded bg-green-600 text-white hover:bg-green-700"
-                    hx-get="{% url 'practice:topic_modal' t.id %}"
-                    hx-target="#modal-root"
-                    hx-swap="innerHTML"
-                  >
-                    Practice
-                  </a>
-                </li>
-              {% endfor %}
-            </ul>
-          {% else %}
-            <p class="text-gray-500 dark:text-gray-400 text-sm">
-              No in-transition topics yet. Keep practising to surface a middle range.
-            </p>
-          {% endif %}
-        </div>
+    {# If you want a "Show all subjects" toggle later, add it here (Alpine) #}
+  </div>
 
-        {# ─────────  Weak ───────── #}
-        <div>
-          <h3 class="text-sm font-medium text-red-500 dark:text-red-400 mb-2">
-            Weak Topics ({{worst_no}})
-          </h3>
-          {% if worst_topics %}
-            <ul class="list-disc pl-5 space-y-1 text-red-700 dark:text-red-300">
-              {% for t in worst_topics %}
-                <li class="flex items-center">
-                  <a
-                    href="#"
-                    class="flex-1 no-underline hover:opacity-80 focus:outline-none"
-                    hx-get="{% url 'practice:topic_modal' t.id %}"
-                    hx-target="#modal-root"
-                    hx-swap="innerHTML"
-                  >
-                    {{ t.name }}
-                    <span class="text-xs text-red-500 ml-1">({{ t.pct }}% wrong)</span>
-                  </a>
-                  <a
-                    href="#"
-                    class="ml-2 inline-flex items-center px-2 py-0.5 text-xs font-medium
-                           rounded bg-green-600 text-white hover:bg-green-700"
-                    hx-get="{% url 'practice:topic_modal' t.id %}"
-                    hx-target="#modal-root"
-                    hx-swap="innerHTML"
-                  >
-                    Practice
-                  </a>
-                </li>
-              {% endfor %}
-            </ul>
-          {% else %}
-            <p class="text-gray-500 dark:text-gray-400 text-sm">
-              No weak topics identified yet. Practise more to surface blind-spots.
-            </p>
-          {% endif %}
-        </div>
+  {# 4 columns: Coverage · Strong · Transition · Weak #}
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
 
+    {# ───────── Coverage ───────── #}
+    <div class="space-y-2">
+      <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">Coverage</h3>
+      <p class="text-2xl font-bold text-gray-900 dark:text-white">
+        {{ coverage_pct }}% Topics Covered
+        <span class="text-sm font-medium text-gray-500 dark:text-gray-400">
+          ({{ practiced_topics }}/{{ total_topics }})
+        </span>
+      </p>
+
+      {# Optional: show which method is active #}
+      <p class="text-xs text-gray-500 dark:text-gray-400">
+        Method: <span class="font-semibold">{{ topicstatus_method }}</span>
+      </p>
+    </div>
+
+    {# ───────── Strong Topics ───────── #}
+    <div>
+      <div class="flex items-center justify-between mb-2">
+        <h3 class="text-sm font-medium text-green-500 dark:text-green-400">
+          Strong Topics ({{ strong_n }})
+        </h3>
+
+        <button
+          type="button"
+          class="text-xs text-primary-600 dark:text-primary-400 hover:underline"
+          hx-get="{% url 'practice_bucket_modal' %}?bucket=strong"
+          hx-target="#modal-root"
+          hx-swap="innerHTML">
+          Show more
+        </button>
       </div>
-    </section>
+
+      {% if strong_topics %}
+        <ul class="list-disc pl-5 space-y-1 text-green-700 dark:text-green-300">
+          {% for t in strong_topics %}
+            <li>
+              {{ t.name }}
+              {% if t.metric != None %}
+                <span class="text-xs text-green-500">
+                  ({% if topicstatus_method == "MAS" %}{{ t.metric }} PMI{% else %}{{ t.metric }}% wrong{% endif %})
+                </span>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="text-gray-500 dark:text-gray-400 text-sm">
+          No strong topics indicated yet. Keep practising to unlock insights.
+        </p>
+      {% endif %}
+    </div>
+
+    {# ───────── Transition Topics ───────── #}
+    <div>
+      <div class="flex items-center justify-between mb-2">
+        <h3 class="text-sm font-medium text-yellow-500 dark:text-yellow-400">
+          Transition Topics ({{ transition_n }})
+        </h3>
+
+        <button
+          type="button"
+          class="text-xs text-primary-600 dark:text-primary-400 hover:underline"
+          hx-get="{% url 'practice_bucket_modal' %}?bucket=transition"
+          hx-target="#modal-root"
+          hx-swap="innerHTML">
+          Show more
+        </button>
+      </div>
+
+      {% if transition_topics %}
+        <ul class="list-disc pl-5 space-y-1 text-orange-700 dark:text-orange-300">
+          {% for t in transition_topics %}
+            <li class="flex items-center">
+              <a
+                href="#"
+                class="no-underline hover:opacity-80 focus:outline-none flex-1"
+                hx-get="{% url 'practice:topic_modal' t.id %}"
+                hx-target="#modal-root"
+                hx-swap="innerHTML">
+                {{ t.name }}
+                {% if t.metric != None %}
+                  <span class="text-xs text-yellow-500 ml-1">
+                    ({% if topicstatus_method == "MAS" %}{{ t.metric }} PMI{% else %}{{ t.metric }}% wrong{% endif %})
+                  </span>
+                {% endif %}
+              </a>
+
+              <a
+                href="#"
+                class="ml-2 inline-flex items-center px-2 py-0.5 text-xs font-medium
+                       rounded bg-green-600 text-white hover:bg-green-700"
+                hx-get="{% url 'practice:topic_modal' t.id %}"
+                hx-target="#modal-root"
+                hx-swap="innerHTML">
+                Practice
+              </a>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="text-gray-500 dark:text-gray-400 text-sm">
+          No transition topics yet. Keep practising to surface a middle range.
+        </p>
+      {% endif %}
+    </div>
+
+    {# ───────── Weak Topics ───────── #}
+    <div>
+      <div class="flex items-center justify-between mb-2">
+        <h3 class="text-sm font-medium text-red-500 dark:text-red-400">
+          Weak Topics ({{ weak_n }})
+        </h3>
+
+        <button
+          type="button"
+          class="text-xs text-primary-600 dark:text-primary-400 hover:underline"
+          hx-get="{% url 'practice_bucket_modal' %}?bucket=weak"
+          hx-target="#modal-root"
+          hx-swap="innerHTML">
+          Show more
+        </button>
+      </div>
+
+      {% if weak_topics %}
+        <ul class="list-disc pl-5 space-y-1 text-red-700 dark:text-red-300">
+          {% for t in weak_topics %}
+            <li class="flex items-center">
+              <a
+                href="#"
+                class="flex-1 no-underline hover:opacity-80 focus:outline-none"
+                hx-get="{% url 'practice:topic_modal' t.id %}"
+                hx-target="#modal-root"
+                hx-swap="innerHTML">
+                {{ t.name }}
+                {% if t.metric != None %}
+                  <span class="text-xs text-red-500 ml-1">
+                    ({% if topicstatus_method == "MAS" %}{{ t.metric }} PMI{% else %}{{ t.metric }}% wrong{% endif %})
+                  </span>
+                {% endif %}
+              </a>
+
+              <a
+                href="#"
+                class="ml-2 inline-flex items-center px-2 py-0.5 text-xs font-medium
+                       rounded bg-green-600 text-white hover:bg-green-700"
+                hx-get="{% url 'practice:topic_modal' t.id %}"
+                hx-target="#modal-root"
+                hx-swap="innerHTML">
+                Practice
+              </a>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="text-gray-500 dark:text-gray-400 text-sm">
+          No weak topics identified yet. Practise more to surface blind-spots.
+        </p>
+      {% endif %}
+    </div>
+
+  </div>
+</section>

@@ -16,7 +16,7 @@ from tests.models import (
 )
 from practice.models import PracticeSession
 from analysis.models import TopicStatus
-from user.models import UserDailyStats   # adjust app label if different
+from user.models import UserDailyStats, UserOverallStats   # adjust app label if different
 from syllabus.models import Topic, Subject
 from question.models import OLT
 
@@ -78,7 +78,7 @@ def finalise_session(session, mode: str) -> None:
         update_user_daily_stats(aggregates)                   # UserDailyStats
         register_profile_attempts(aggregates)                 # Profile.register_attempt
         register_subscription_attempts(aggregates)            # optional, safe no-op if none
-
+        update_overalluser_stats(aggregates)                # UserOverallStats
 
 # ─────────────────────────────────────────────────────────────
 # 1. Aggregation
@@ -654,11 +654,11 @@ def update_user_daily_stats(agg: dict) -> None:
 
     uds.sureshot_attempts += total["sureshot_q"]
     uds.applied_attempts += total["applied_q"]
-    uds.guess_attempts += total["guesswork_q"]
+    uds.guesswork_attempts += total["guesswork_q"]
 
     uds.sureshot_wrong += total["sureshot_wrong"]
     uds.applied_wrong += total["applied_wrong"]
-    uds.guess_wrong += total["guesswork_wrong"]
+    uds.guesswork_wrong += total["guesswork_wrong"]
 
     if mode == "practice":
         uds.practice_time += hours
@@ -682,11 +682,37 @@ def register_subscription_attempts(agg: dict) -> None:
     Safe no-op if user has no subscription.
     """
     user = agg["user"]
-    attempt_count = agg["total"]["answered_q"]
+    attempt_count = agg["total"]["total_q"]
     sub = getattr(user, "subscription", None)
     if attempt_count and sub:
         # strict=False so it never raises here; you can enforce limits earlier.
-        sub.count_attempts(increment=attempt_count, strict=False)
+        sub.c(increment=attempt_count, strict=False)
+
+def update_overalluser_stats(agg: dict) -> None:
+    """
+    Update UserOverallStats for this user.
+    """
+    user = agg["user"]
+    total = agg["total"]
+
+    uos, _ = UserOverallStats.objects.get_or_create(
+        user=user,
+        defaults={},
+    )
+
+    uos.total_attempts += total["answered_q"]
+    uos.total_correct += total["correct_q"]
+    uos.total_wrong += total["wrong_q"]
+
+    uos.sureshot_attempts += total["sureshot_q"]
+    uos.applied_attempts += total["applied_q"]
+    uos.guesswork_attempts += total["guesswork_q"]
+
+    uos.sureshot_wrong += total["sureshot_wrong"]
+    uos.applied_wrong += total["applied_wrong"]
+    uos.guesswork_wrong += total["guesswork_wrong"]
+
+    uos.save()        
 
 def _compute_and_update_topic_pmi(user, topic) -> None:
     """

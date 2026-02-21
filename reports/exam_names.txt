@@ -1,23 +1,26 @@
 Exam Report (Ques Count by Exam)
 ==================================================
 
-CSE Prelims: 3269 questions
-UPPCS: 2027 questions
+CSE Prelims: 3266 questions
+UPPSC: 2025 questions
 CDS: 1018 questions
 CAPF: 526 questions
 BPSC: 435 questions
-RPSC: 278 questions
-MPPCS: 269 questions
-CGPSC: 216 questions
-UKPSC: 210 questions
-UP Lower Subordinate: 188 questions
-JPSC: 108 questions
-UP RO/ARO: 26 questions
-UP UDA/LDA: 14 questions
+RPSC: 277 questions
+MPPSC: 269 questions
+CGPSC: 215 questions
+UKPSC: 209 questions
+UP Lower Subordinate: 190 questions
+JPSC: 107 questions
+UP RO/ARO: 24 questions
+UP UDA/LDA: 15 questions
 (NULL): 5 questions
-U.P.S.C.: 1 questions
-U.P.P,.C.S.: 1 questions
-U.P.Lower (Spl): 1 questions
-U.P. Lower Spl.: 1 questions
-U.P. Lower (Spl.): 1 questions
-U.P. Lower (Spl): 1 questions
+UPSC: 4 questions
+UP BEO: 2 questions
+U.P Lower Sub. (Spl): 2 questions
+U.P.P.C.S. (pl): 1 questions
+U.P.P.C.S,.: 1 questions
+U.P. P.C.S. (Spl.): 1 questions
+R.A.S./R.T.S,: 1 questions
+Jharkhand P.C.S,: 1 questions
+Chhattisgarh P.C.S,: 1 questions

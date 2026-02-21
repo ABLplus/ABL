@@ -392,6 +392,10 @@ class UserDailyStats(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, db_index=True)
     date = models.DateField(db_index=True)
 
+    #session
+    practice_sessions = models.PositiveIntegerField(default=0)
+    test_sessions     = models.PositiveIntegerField(default=0)
+
     total_attempts = models.PositiveIntegerField(default=0)
     total_correct  = models.PositiveIntegerField(default=0)     
     total_wrong    = models.PositiveIntegerField(default=0)
@@ -409,6 +413,10 @@ class UserDailyStats(models.Model):
     # Time spent (in hours, decimal)
     practice_time = models.FloatField(default=0.0)   # e.g., 1.75 hours = 1h 45m
     test_time     = models.FloatField(default=0.0)
+
+    #Daily coverage & mastery%
+    coverage_pct = models.FloatField(default=0.0)  # % of syllabus topics attempted
+    mastery_pct  = models.FloatField(default=0.0)  # % of attempted topics mastered (if using mastery system)
     
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -566,3 +574,56 @@ class Payment(models.Model):
         self.save(update_fields=["status", "completed_at"])
 
     
+class UserOverallStats(models.Model):
+    """
+    Aggregate overall statistics per user.
+    Updated ONCE per session finalisation using aggregated QuestionLogs.
+    """
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, db_index=True)
+
+    # Overall counts 
+    overall_attempts = models.PositiveIntegerField(default=0)
+    
+    #Test counts
+    number_of_tests  = models.PositiveIntegerField(default=0)
+
+    test_attempts    = models.PositiveIntegerField(default=0)
+    test_correct     = models.PositiveIntegerField(default=0)
+    test_wrong       = models.PositiveIntegerField(default=0)
+    
+    test_sureshot_attempts = models.PositiveIntegerField(default=0)
+    test_applied_attempts  = models.PositiveIntegerField(default=0) 
+    test_guesswork_attempts    = models.PositiveIntegerField(default=0)
+
+    test_sureshot_wrong = models.PositiveIntegerField(default=0)
+    test_applied_wrong  = models.PositiveIntegerField(default=0)    
+    test_guesswork_wrong    = models.PositiveIntegerField(default=0)
+
+    # Practice counts
+
+    number_of_practice_sessions = models.PositiveIntegerField(default=0)
+
+    practice_attempts= models.PositiveIntegerField(default=0)
+    practice_correct = models.PositiveIntegerField(default=0)
+    practice_wrong   = models.PositiveIntegerField(default=0)
+
+    practice_sureshot_attempts = models.PositiveIntegerField(default=0)
+    practice_applied_attempts  = models.PositiveIntegerField(default=0)
+    practice_guesswork_attempts    = models.PositiveIntegerField(default=0)
+
+    practice_sureshot_wrong = models.PositiveIntegerField(default=0)
+    practice_applied_wrong  = models.PositiveIntegerField(default=0)
+    practice_guesswork_wrong = models.PositiveIntegerField(default=0)
+
+
+    # Time spent (in hours, decimal)
+    practice_time = models.FloatField(default=0.0)   # e.g., 1.75 hours = 1h 45m
+    test_time     = models.FloatField(default=0.0)
+
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.user.username} – Overall Stats"

@@ -24,7 +24,7 @@ from django.utils import timezone
 from collections import OrderedDict
 
 from django.contrib.auth import get_user_model
-from syllabus.models import Topic  # adjust if needed
+from syllabus.models import Topic, Section  # adjust if needed
 
 User = get_user_model()
 
@@ -44,6 +44,7 @@ def question_log_history_view(request):
     """
 
     users = User.objects.order_by("username")
+    sections= Section.objects.order_by("name")
     topics = Topic.objects.order_by("name")
 
     selected_user = None
@@ -59,10 +60,18 @@ def question_log_history_view(request):
         mode = (request.POST.get("mode") or "").strip().lower()
         topic_id = request.POST.get("topic_id") or ""
         page_number = request.POST.get("page", 1)
+        section_id = request.POST.get("Section_id") or ""
 
         # Fetch selected user/topic efficiently
         selected_user = User.objects.filter(id=user_id).only("id", "username").first()
         selected_topic = Topic.objects.filter(id=topic_id).only("id", "name").first() if topic_id else None
+
+        if section_id:
+            topics = topics.filter(section_id=section_id)
+
+        
+
+
 
         if selected_user:
             qs = (
@@ -88,16 +97,22 @@ def question_log_history_view(request):
 
             if selected_topic:
                 qs = qs.filter(question__topic_id=selected_topic.id)
+            
+            if section_id:
+                qs = qs.filter(question__topic__in=topics.values_list('id', flat=True))
 
             if mode == "test":
                 qs = qs.filter(test_id__isnull=False)
             elif mode == "practice":
                 qs = qs.filter(practiceSession__isnull=False)
 
+
+
+
             # -----------------------
             # PAGINATION (CRITICAL)
             # -----------------------
-            paginator = Paginator(qs, 1000)  # tune page size as needed
+            paginator = Paginator(qs, 2000)  # tune page size as needed
             page = paginator.get_page(page_number)
 
             # -----------------------
@@ -138,6 +153,7 @@ def question_log_history_view(request):
     context = {
         "users": users,
         "topics": topics,
+        "sections": sections,
         "selected_user": selected_user,
         "selected_topic": selected_topic,
         "mode": mode,

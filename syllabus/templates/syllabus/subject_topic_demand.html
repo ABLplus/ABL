@@ -57,12 +57,14 @@
               id="model"
               name="model"
               class="border rounded px-2 py-1 text-sm"
-          >
-            <option value="gpt-4.1" {% if selected_model == "gpt-4.1" %}selected{% endif %}>
-              gpt-4.1 (higher quality)
+          ><option value="gpt-5-nano-2025-08-07" {% if selected_model == "gpt-5-nano-2025-08-07" %}selected{% endif %}>
+              gpt-5-nano-2025-08-07 
+            </option>
+            <option value="gpt-5-mini-2025-08-07" {% if selected_model == "gpt-5-mini-2025-08-07" %}selected{% endif %}>
+              gpt-5-mini-2025-08-07
             </option>
             <option value="gpt-4.1-mini" {% if selected_model == "gpt-4.1-mini" %}selected{% endif %}>
-              gpt-4.1-mini (cheaper / faster)
+              gpt-4.1-mini 
             </option>
           </select>
         </div>

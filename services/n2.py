@@ -16,7 +16,7 @@ from tests.models import (
 )
 from practice.models import PracticeSession
 from analysis.models import TopicStatus
-from user.models import UserDailyStats
+from user.models import UserDailyStats, UserOverallStats
 from syllabus.models import Topic
 from practice.views import _compute_and_update_topic_pmi
 
@@ -159,6 +159,7 @@ def finalise_session(session, mode: str) -> None:
         update_user_daily_stats(aggregates)
         register_profile_attempts(aggregates)
         # register_subscription_attempts(aggregates)
+        update_overalluser_stats(aggregates)
 
 
 def build_aggregates(logs, session, *, mode: str) -> dict:
@@ -850,7 +851,8 @@ def update_user_daily_stats(agg: dict) -> None:
 
     uds, _ = UserDailyStats.objects.get_or_create(user=user, date=date)
 
-    uds.total_attempts += total["answered_q"]
+  
+    uds.total_attempts += total["answered_q"]        
     uds.total_correct += total["correct_q"]
     uds.total_wrong += total["wrong_q"]
 
@@ -882,6 +884,63 @@ def update_user_daily_stats(agg: dict) -> None:
 
     uds.save()
 
+
+
+def update_overalluser_stats(agg: dict) -> None:
+    """
+    Increment UserOverallStats for user+mode using aggregated session totals.
+
+    Expected agg shape (minimum):
+      agg = {
+        "user": <User>,
+        "mode": "practice" | "test",
+        "total": {
+            "answered_q": int,
+            "correct_q": int,
+            "wrong_q": int,
+
+            "sureshot_q": int,
+            "applied_q": int,
+            "guesswork_q": int,
+
+            "sureshot_wrong": int,
+            "applied_wrong": int,
+            "guesswork_wrong": int,
+        }
+      }
+    """
+    user = agg["user"]
+    mode = agg.get("mode")  # MUST be present for correct split
+    if mode not in ("practice", "test"):
+        raise ValueError(f"update_overalluser_stats: invalid mode={mode!r}")
+
+    total = agg["total"]
+
+    ous, _ = UserOverallStats.objects.select_for_update().get_or_create(user=user)
+
+    def inc(d: dict, key: str, delta: int) -> dict:
+        # Ensure dict shape
+        if not isinstance(d, dict):
+            d = {}
+        d.setdefault("practice", 0)
+        d.setdefault("test", 0)
+        d[key] = int(d.get(key, 0) or 0) + int(delta or 0)
+        return d
+
+    #test mode
+    ous.test_attempts = ous.test_attempts + total.get("answered_q", 0)
+    ous.test_correct  = ous.test_correct + total.get("correct_q", 0)
+    ous.test_wrong    = ous.test_wrong + total.get("wrong_q", 0)
+
+    ous.test_sureshot_attempts  = ous.test_sureshot_attempts + total.get("sureshot_q", 0)
+    ous.test_applied_attempts   = ous.test_applied_attempts + total.get("applied_q", 0)
+    ous.test_guesswork_attempts = ous.test_guesswork_attempts + total.get("guesswork_q", 0)
+
+    ous.test_sureshot_wrong  = ous.test_sureshot_wrong + total.get("sureshot_wrong", 0) 
+    ous.test_applied_wrong   = ous.test_applied_wrong + total.get("applied_wrong", 0)
+    ous.test_guesswork_wrong = ous.test_guesswork_wrong + total.get("guesswork_wrong", 0)
+
+    ous.save()
 
 def register_profile_attempts(agg: dict) -> None:
     """

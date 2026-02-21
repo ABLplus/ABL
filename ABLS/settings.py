@@ -38,8 +38,8 @@ INSTALLED_APPS = [
     'result',
     'tests',
     'user',
-   
     'question',
+
     'django.contrib.humanize',
     'django.contrib.admin',
     'django.contrib.auth',

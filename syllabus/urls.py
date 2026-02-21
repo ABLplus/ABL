@@ -33,7 +33,7 @@ urlpatterns = [
     path("topic-weights/", topic_weight_view, name="topic_weights"),
     path("tier-browser/", tier_questions_view, name="tier_browser"),
 
-
+    # Topic Demand Reports
     path("topic-report/", views.topic_report_view, name="topic_report"),
     path("subject-topic-demand/",
         views.subject_topic_demand_view,

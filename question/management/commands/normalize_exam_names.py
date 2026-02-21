@@ -12,57 +12,112 @@ def basic_norm(s: str) -> str:
     s = s.strip(" \t\r\n-–—,:;")
     return s
 
-# Exact aliases first (cheap wins)
+
 ALIASES = {
+
+    # ---------------- UPSC CSE PRELIMS ----------------
     "CSE Prelims": "CSE Prelims",
     "UPSC CSE Pre": "CSE Prelims",
     "UPSC CSE Pre.": "CSE Prelims",
     "UPSC CSE Pre,": "CSE Prelims",
     "UPSC CSE Pre.:": "CSE Prelims",
     "UPSC CSE Pre.": "CSE Prelims",
-    "UPSC CSE": "CSE Prelims",   # if you want
-    "UPSC": "CSE Prelims",       # optional
+    "UPSC CSE Pre,": "CSE Prelims",
+    "UPSC CSE Pre:": "CSE Prelims",
+    "UPSC CSE": "CSE Prelims",
+    "UPSC": "CSE Prelims",          # optional but present in data
+    "UPSC CSE": "CSE Prelims",
+    "UPSC CSE Pre,": "CSE Prelims",
 
-    "UPPSC": "UPPCS",
-    "UPPCS": "UPPCS",
-    "U.P.P.C.S.": "UPPCS",
-    "U.P.P.C.S": "UPPCS",
-    "U.P.P.C.S,": "UPPCS",
-    "U.P.P.C.S,:": "UPPCS",
-    "U.P.P.S.C.": "UPPCS",
-    "U.P. P.C.S.": "UPPCS",
-    "U.P.P,.C.S.:": "UPPCS",
-    "U.P.P.C.S. Pre": "UPPCS",
+    # ---------------- UPPSC ----------------
+    "UPPSC": "UPPSC",
+    "UPPCS": "UPPSC",
+    "U.P.P.C.S.": "UPPSC",
+    "U.P.P.C.S": "UPPSC",
+    "U.P.P.C.S,": "UPPSC",
+    "U.P.P.C.S,:": "UPPSC",
+    "U.P.P.S.C.": "UPPSC",
+    "U.P. P.C.S.": "UPPSC",
+    "U.P.P,.C.S.:": "UPPSC",
+    "U.P.P.C.S. Pre": "UPPSC",
+    "U.P.P.C.S Pre": "UPPSC",
+    "U.P.P.C.S. (Pre)": "UPPSC",
+    "U.P.P.C.S (Pre)": "UPPSC",
+    "U.P.P.C.S. (Spl)": "UPPSC",
+    "U.P.P.C.S.(Spl)": "UPPSC",
+    "U.P.P.C.S (Spl)": "UPPSC",
+    "U.P.P.C.S. (Spl.)": "UPPSC",
+    "U.P.P.C.S. (Re-Exam)": "UPPSC",
+    "U.P.P.C.S. (Re. Exam)": "UPPSC",
+    "U.P.P.C.S. (Mains) Spl.": "UPPSC",
+    "U.P.P.C.S,.:": "UPPSC",
+    "U.P.P.C.S,.": "UPPSC",
 
+    # ---------------- BPSC ----------------
     "BPSC": "BPSC",
     "B.P.S.C.": "BPSC",
     "B.P.S.C": "BPSC",
     "B.P.S.C,:": "BPSC",
+    "B.P.S.C,": "BPSC",
+    "BPSC (Pre)": "BPSC",
+    "BPSC (Re-Exam)": "BPSC",
+    "B.P.S.C. Re-Exam": "BPSC",
+    "B.P.S.C.(Pre)": "BPSC",
 
-    "RPSC": "RPSC",
-    "MPPSC": "MPPCS",
-    "M.P.P.C.S.": "MPPCS",
-    "MPPCS": "MPPCS",
+    # ---------------- MPPSC ----------------
+    "MPPSC": "MPPSC",
+    "MPPCS": "MPPSC",
+    "M.P.P.C.S.": "MPPSC",
+    "M.P.P.C.S": "MPPSC",
+    "M.P.P.C.S,": "MPPSC",
+    "M.P.P.S.C.": "MPPSC",
+    "MPPCS Pre": "MPPSC",
 
+    # ---------------- CGPSC ----------------
     "CGPSC": "CGPSC",
     "Chhattisgarh P.C.S.": "CGPSC",
     "Chhattisgarh PCS": "CGPSC",
+    "Chhattisgarh P.C.S": "CGPSC",
     "Chhattisagarh P.C.S.": "CGPSC",
+    "Chhattisgarh P.C.S,": "CGPSC",
     "CPPCS": "CGPSC",
 
+    # ---------------- RPSC / RAS-RTS ----------------
+    "RPSC": "RPSC",
+    "RAS/RTS": "RPSC",
+    "R.A.S./R.T.S.": "RPSC",
+    "R.A.S./R.T.S": "RPSC",
+    "R.A.S/R.T.S": "RPSC",
+    "R.A.S./ R.T.S.": "RPSC",
+    "R.A.S./R.T.S.(Pre)": "RPSC",
+    "R.A.S./R.T.S. (Pre)": "RPSC",
+    "R.A.S./R.T.S. (Re-Exam)": "RPSC",
+    "R.A.S/RTS": "RPSC",
+    "RAS/RTS (Pre)": "RPSC",
+    "RAS/RTS (Re-Exam)": "RPSC",
+
+    # ---------------- UKPSC ----------------
     "UKPSC": "UKPSC",
     "Uttarakhand P.C.S.": "UKPSC",
     "Uttarakhand PCS": "UKPSC",
+    "Uttarakhand P.C.S": "UKPSC",
     "Uttaranchal P.C.S.": "UKPSC",
     "Uttrakhand P.C.S.": "UKPSC",
 
+    # ---------------- JPSC ----------------
     "JPSC": "JPSC",
     "J.P.S.C.": "JPSC",
+    "Jharkhand P.C.S.": "JPSC",
+    "Jharkhand PCS": "JPSC",
+    "Jharkhand P.C.S": "JPSC",
+    "Jharkhand P.C.S,": "JPSC",
 
+    # ---------------- UPSC OTHER ----------------
     "CDS": "CDS",
     "CAPF": "CAPF",
-    "CAPE": "CAPF",
+    "CAPE": "CAPF",   # typo present in data
 }
+
 
 def canonicalize(raw: str):
     if raw is None:

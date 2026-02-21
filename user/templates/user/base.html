@@ -83,24 +83,55 @@
 <body hx-boost="true"
       class="font-sans antialiased bg-gray-50 text-gray-700 dark:bg-gray-900 dark:text-gray-100">
 
-  <!-- ========= NAVBAR ========= -->
-  <header x-data="{ open:false }"
-          class="fixed inset-x-0 top-0 z-50 bg-white/90 dark:bg-gray-800/90 backdrop-blur shadow">
-    <div class="max-w-7xl mx-auto flex items-center justify-between px-4 sm:px-6 py-3">
-      <!-- Brand -->
- <a href="{% url 'home' %}" class="text-2xl font-extrabold text-primary-600 dark:text-primary-400">
-  ABL+<span class="text-base font-normal italic text-gray-700 dark:text-gray-300">{{ exam }}</span>
-</a>
+  <!-- ========= NAVBAR (Responsive / Mobile: hamburger on left, theme on right) ========= -->
+<header x-data="{ open:false }"
+        class="fixed inset-x-0 top-0 z-50 bg-white/90 dark:bg-gray-800/90 backdrop-blur shadow">
+  <div class="max-w-7xl mx-auto flex items-center justify-between px-3 sm:px-6 py-2.5 sm:py-3">
 
-      <!-- Desktop nav links -->
-      <nav class="hidden md:flex space-x-8">
-        <!-- Add any site-wide static links here -->
-      </nav>
+    <!-- LEFT: Mobile hamburger + Brand -->
+    <div class="flex items-center gap-2 min-w-0">
+      <!-- Mobile menu button (LEFT) -->
+      <button @click="open = !open"
+              class="md:hidden p-2 -ml-1 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none"
+              aria-label="Open menu">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6"
+             fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path x-show="!open" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M4 6h16M4 12h16M4 18h16"/>
+          <path x-show="open" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
 
-      <!-- Right-side controls -->
-      <div class="flex items-center space-x-4">
-        {% if user.is_authenticated %}
-          <a href="{% url 'profile' %}" class="hover:text-primary-600 dark:hover:text-primary-400">{{request.user}}</a>
+      <!-- Brand (exam clamps on mobile to <= half width, 1 line) -->
+      <a href="{% url 'home' %}"
+         class="flex items-baseline gap-1.5 min-w-0">
+        <span class="text-xl sm:text-2xl font-extrabold text-primary-600 dark:text-primary-400 leading-none">
+          ABL+
+        </span>
+
+        <!-- exam: 1 line, max half width on mobile, truncates -->
+        <span class="text-xs sm:text-base font-normal italic text-gray-700 dark:text-gray-300 leading-none
+                     max-w-[50vw] sm:max-w-none truncate">
+          {{ exam }}
+        </span>
+      </a>
+    </div>
+
+    <!-- Desktop nav links -->
+    <nav class="hidden md:flex space-x-8">
+      <!-- Add any site-wide static links here -->
+    </nav>
+
+    <!-- RIGHT: Only theme toggle on mobile; full controls on md+ -->
+    <div class="flex items-center gap-2 sm:gap-4">
+      {% if user.is_authenticated %}
+        <div class="hidden md:flex items-center gap-4">
+          <a href="{% url 'profile' %}"
+             class="hover:text-primary-600 dark:hover:text-primary-400">
+            {{ request.user }}
+          </a>
+
           <form method="post" action="{% url 'logout' %}" class="inline">
             {% csrf_token %}
             <button type="submit"
@@ -108,49 +139,51 @@
               Logout
             </button>
           </form>
-        {% else %}
-          <a href="{% url 'login' %}" class="hover:text-primary-600 dark:hover:text-primary-400">Login</a>
-        {% endif %}
+        </div>
+      {% else %}
+        <a href="{% url 'login' %}"
+           class="hidden md:inline hover:text-primary-600 dark:hover:text-primary-400">
+          Login
+        </a>
+      {% endif %}
 
-        <!-- Theme toggle -->
-        <button @click="toggle"
-                class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none">
-          <span x-show="!dark" aria-label="Switch to dark mode">🌙</span>
-          <span x-show="dark"  aria-label="Switch to light mode">☀️</span>
-        </button>
-
-        <!-- Mobile menu button -->
-        <button @click="open = !open" class="md:hidden p-2 focus:outline-none">
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6"
-               fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path x-show="!open" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M4 6h16M4 12h16M4 18h16"/>
-            <path x-show="open" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M6 18L18 6M6 6l12 12"/>
-          </svg>
-        </button>
-      </div>
+      <!-- Theme toggle (always visible) -->
+      <button @click="toggle"
+              class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none"
+              aria-label="Toggle theme">
+        <span x-show="!dark" aria-label="Switch to dark mode">🌙</span>
+        <span x-show="dark"  aria-label="Switch to light mode">☀️</span>
+      </button>
     </div>
+  </div>
 
-    <!-- Mobile dropdown -->
-    <div x-show="open" x-transition.origin.top
-         class="md:hidden bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
-      <nav class="flex flex-col px-4 py-3 space-y-2">
-        {% if user.is_authenticated %}
-          <a href="{% url 'profile' %}" class="py-2 hover:text-primary-600 dark:hover:text-primary-400">{{request.user}}</a>
-          <form method="post" action="{% url 'logout' %}">
-            {% csrf_token %}
-            <button type="submit"
-                    class="w-full text-left py-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded">
-              Logout
-            </button>
-          </form>
-        {% else %}
-          <a href="{% url 'login' %}" class="py-2 hover:text-primary-600 dark:hover:text-primary-400">Login</a>
-        {% endif %}
-      </nav>
-    </div>
-  </header>
+  <!-- Mobile dropdown (everything except theme lives here) -->
+  <div x-show="open" x-transition.origin.top
+       class="md:hidden bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
+    <nav class="flex flex-col px-4 py-3 space-y-2">
+      {% if user.is_authenticated %}
+        <a href="{% url 'profile' %}"
+           class="py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/40">
+          {{ request.user }}
+        </a>
+
+        <form method="post" action="{% url 'logout' %}">
+          {% csrf_token %}
+          <button type="submit"
+                  class="w-full text-left py-2 px-2 rounded-lg text-red-600
+                         hover:bg-red-50 dark:hover:bg-red-900/30">
+            Logout
+          </button>
+        </form>
+      {% else %}
+        <a href="{% url 'login' %}"
+           class="py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/40">
+          Login
+        </a>
+      {% endif %}
+    </nav>
+  </div>
+</header>
 
   <!-- ========= MAIN ========= -->
  <main class="pt-12">                <!-- roughly 4rem = 64px -->

@@ -312,7 +312,7 @@ from openai import OpenAI
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 SYSTEM_PROMPT = """
-You are an expert UPSC exam analyst.
+You are an expert UPSC exam analyst and curriculum designer.
 
 TASK
 Given:
@@ -322,34 +322,59 @@ Given:
 Produce a **TopicDemandMap** that conforms EXACTLY to the required schema and structure.
 
 ────────────────────────
+GOAL (IMPORTANT)
+────────────────────────
+Build a demand-complete map that:
+1) reflects UPSC examiner intent (patterns of testing), AND
+2) uses subtopic NAMES that feel familiar from STANDARD SOURCES (NCERTs, basic economy texts, Economic Survey, common coaching notes).
+
+The structure should be UPSC-demand-driven.
+The labels should be textbook-natural.
+
+────────────────────────
 WHAT YOU MUST DO
 ────────────────────────
-1. Identify **explicit subtopics actually tested** in the given PYQs.
+1) Identify **explicit subtopics actually tested** in the given PYQs.
    - Each subtopic must be backed by evidence using `question_ids`.
+   - A subtopic MAY contain multiple `question_id`s.
+   - Each `question_id` must be listed under exactly ONE subtopic (no duplicates across subtopics).
 
-2. Arrange subtopics in a **logical study sequence** (foundational → advanced).
+2) Arrange subtopics in a **logical study sequence** (foundational → advanced).
+   - Sequence should follow learning dependency (definitions → mechanisms → institutions → outcomes/trade).
 
-3. Identify **implicit concepts / prerequisites** required to solve these PYQs
-   (even if not directly asked).
+3) For EACH subtopic, write:
+   a) What UPSC tested (pattern-level; examiner intent)
+   b) Demand type (facts / concepts / application / multi-factor reasoning)
+   c) Study focus (what to study to be exam-ready for this subtopic)
 
-4. Identify **adjacent subtopics**
-   - Closely related areas UPSC could logically ask next
+4) Identify **implicit prerequisites / concepts**
+   - Concepts needed to solve the PYQs even if not directly asked.
+
+5) Identify **adjacent subtopics UPSC could logically ask next**
+   - Closely related extensions of the same demand zone.
    - These may NOT appear in the current PYQs.
-5. List down the type of demand for each subtopic. Which facts, concepts, or application it test.
+   - Keep them realistic and directly connected to the tested patterns.
+
+────────────────────────
+SUBTOPIC LABELING RULES (NON-NEGOTIABLE)
+────────────────────────
+- Subtopic labels MUST:
+  - Be short (2–6 words)
+  - Match standard-source phrasing (NCERT/Economy texts/Eco Survey/coaching language)
+  - Avoid technical/researchy phrasing (no “framework”, “architecture”, “intervention logic”)
+  - Be student-searchable (a learner should find the heading in a book/index)
+
+- Subtopics MUST still be derived ONLY from patterns in the given PYQs.
+  ✅ You may choose a standard-source-like label for that PYQ-derived idea.
+  ❌ Do NOT import unrelated syllabus headings that are not evidenced by the PYQs.
+
+- Merge synonyms / overlapping ideas into one subtopic when appropriate.
 
 ────────────────────────
 STRICT RULES (NON-NEGOTIABLE)
 ────────────────────────
 - Subtopics MUST be derived only from patterns in the given PYQs.
-  ❌ Do NOT import external syllabus lists or textbook headings.
-
-- A `question_id` may appear in the evidence of **ONLY ONE** subtopic.
-
-- Keep subtopic labels:
-  - Short
-  - Conceptual
-  - Reusable
-  - Merge synonyms or overlapping ideas.
+  ❌ Do NOT import external syllabus lists.
 
 - Do NOT:
   - Quote full question text
@@ -358,17 +383,17 @@ STRICT RULES (NON-NEGOTIABLE)
 
 - Notes must remain **pattern-level**, not question-level.
 
-- If the PYQ count is too small for confident subdivision:
-  - Keep the map minimal
-  - Explicitly state this limitation in notes.
+- If PYQ count is too small for confident subdivision:
+  - Keep the map minimal (fewer subtopics)
+  - Explicitly state the limitation under Notes.
 
 ────────────────────────
 OUTPUT FORMAT (MANDATORY)
 ────────────────────────
-- Return **ONLY** the TopicDemandMap.
-- Output must be **GitHub-flavored Markdown**.
-- Use clean hierarchy ONLY:
-  - `#` for the main title
+- Return ONLY the TopicDemandMap (no preface, no extra commentary).
+- Output must be GitHub-flavored Markdown.
+- Use hierarchy ONLY:
+  - `#` for main title
   - `##` for major sections
   - `###` for subtopics
 
@@ -376,19 +401,15 @@ OUTPUT FORMAT (MANDATORY)
   - Bullet lists
   - Short, precise paragraphs
 
-- ❌ No random formatting
 - ❌ No emojis
 - ❌ No tables
-- ❌ No code blocks unless absolutely unavoidable
-
-- Each subtopic must appear under a clear heading.
-- Each section must be clearly labeled.
+- ❌ No random formatting
+- ❌ No code blocks
 
 The response MUST strictly conform to the schema and formatting rules above.
-
 """
 
-def analyze_topic_with_llm(topic_path: str, pyq_list: list, model_name: str = "gpt-5-nano") -> str:
+def analyze_topic_with_llm(topic_path: str, pyq_list: list, model_name: str) -> str:
     """
     Given a topic_path and list of PYQs, call the LLM and return
     a nuanced Markdown 'Topic Demand Report'.
@@ -430,7 +451,7 @@ def analyze_topic_with_llm(topic_path: str, pyq_list: list, model_name: str = "g
                 ),
             },
         ],
-        temperature=0.25,
+        temperature=1,
     )
 
     markdown_report = response.choices[0].message.content

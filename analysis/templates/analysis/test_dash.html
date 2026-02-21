@@ -229,6 +229,7 @@
 
   <!-- Part 3: Ongoing Test Sessions -->
   <section id="ongoing-sessions" class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow">
+    {% if pending_tests %}
     <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Ongoing Test Sessions</h2>
 <div class="space-y-4">
   {% for s,next_serial in pending_tests %}
@@ -270,10 +271,11 @@
     </div>
   {% endfor %}
 </div>
+{% endif%}
    <section id="new-test" class="mt-6">
   <h3 class="font-medium text-gray-900 dark:text-white mb-2">Start New Test</h3>
 
-  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
     <!-- Exam-Year -->
     <button
       class="px-4 py-3 bg-indigo-600 text-white rounded-lg text-center hover:bg-indigo-700"
@@ -291,7 +293,17 @@
       hx-swap="innerHTML">
       Subject Test
     </button>
+
+    <button
+      class="px-4 py-3 bg-indigo-600 text-white rounded-lg text-center hover:bg-indigo-700"
+      hx-get="{% url 'test_filter_form' %}?type=section"
+      hx-target="#test-config"
+      hx-swap="innerHTML">
+      Section Test
+    </button>
   </div>
+
+  
 
   <!-- HTMX injects the chosen form here -->
   <div id="test-config" class="mt-6"></div>

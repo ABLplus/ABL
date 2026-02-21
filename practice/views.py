@@ -17,6 +17,7 @@ from collections import Counter
 from analysis.models import TopicStatus
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from user.models import UserDailyStats, UserOverallStats
 
 User = get_user_model()
 
@@ -381,94 +382,288 @@ def _compute_and_update_topic_pmi(user, topic, *, newly_completed_session_id=Non
     topic_status.save()
 
 # ── FINALISE SESSION & UPDATE SUMMARY ─────────────────────────────────────
+
 def _finalise_session_and_update_summary(session: PracticeSession) -> None:
     """
-    Populate PracticeSession stats **and** upsert TopicAttemptSummary
-    in ONE atomic transaction. Also recompute TopicStatus.pmi using last-N sessions.
+    Populate PracticeSession stats **and** update:
+      1) TopicAttemptSummary (mode=practice)
+      2) UserDailyStats (today)
+      3) UserOverallStats (JSON buckets)
+      4) TopicStatus.pmi recompute
+
+    All in ONE atomic transaction, using ONE aggregation over QuestionLogs.
     """
+    # Guard: prevent double counting
+    if session.status == "completed":
+        return
+
     logs = session.questionlog_set.all()
 
-    # Aggregate once – cheaper & 100 % accurate
+    # Aggregate once – cheap & accurate
     agg = logs.aggregate(
         total_q         = Count("id"),
         answered_q      = Count("id", filter=Q(user_answered__isnull=False)),
         correct_q       = Count("id", filter=Q(attempt_result="right")),
+
         sureshot_q      = Count("id", filter=Q(attempt_type="sureshot")),
         applied_q       = Count("id", filter=Q(attempt_type="applied")),
         guesswork_q     = Count("id", filter=Q(attempt_type="guesswork")),
 
-        sureshot_wrong  = Count("id", filter=Q(attempt_type="sureshot", attempt_result="wrong")),
-        applied_wrong   = Count("id", filter=Q(attempt_type="applied",  attempt_result="wrong")),
-        guesswork_wrong = Count("id", filter=Q(attempt_type="guesswork",attempt_result="wrong")),
+        sureshot_wrong  = Count("id", filter=Q(attempt_type="sureshot",  attempt_result="wrong")),
+        applied_wrong   = Count("id", filter=Q(attempt_type="applied",   attempt_result="wrong")),
+        guesswork_wrong = Count("id", filter=Q(attempt_type="guesswork", attempt_result="wrong")),
     )
 
-    wrong_q      = (agg["answered_q"] or 0) - (agg["correct_q"] or 0)
-    
+    total_q     = int(agg.get("total_q") or 0)
+    answered_q  = int(agg.get("answered_q") or 0)
+    correct_q   = int(agg.get("correct_q") or 0)
+    wrong_q     = max(0, answered_q - correct_q)
 
-    # Simple net-mark rule (+2 / −0.66) – tweak if you use a different formula
-    net_marks = ((agg["correct_q"] or 0) * 2.0) - (wrong_q * 0.66)
+    sureshot_q  = int(agg.get("sureshot_q") or 0)
+    applied_q   = int(agg.get("applied_q") or 0)
+    guesswork_q = int(agg.get("guesswork_q") or 0)
 
-    attempt_count = agg["answered_q"] or 0
+    sureshot_wrong  = int(agg.get("sureshot_wrong") or 0)
+    applied_wrong   = int(agg.get("applied_wrong") or 0)
+    guesswork_wrong = int(agg.get("guesswork_wrong") or 0)
+
+    # Net mark rule (+2 / −0.66). Keep consistent with your platform.
+    net_marks = (correct_q * 2.0) - (wrong_q * 0.66)
+
+    # Time add rule: cap inflated session time
+    end_ts = timezone.now()
+
+    actual_seconds = 0
+    if session.start_time:
+        actual_seconds = max(0, int((end_ts - session.start_time).total_seconds()))
+    actual_hours = actual_seconds / 3600.0
+
+    expected_minutes = total_q * 2.0
+    expected_hours = expected_minutes / 60.0
+    max_allowed_hours = expected_hours * 1.25
+
+    if expected_hours > 0 and actual_hours > max_allowed_hours:
+        hours_to_add = expected_hours
+    else:
+        hours_to_add = actual_hours
+
+    hours_to_add = float(round(hours_to_add, 4))
+
+    stats_date = timezone.localdate()
+    mode = "practice"
+
+    # Helper for JSON-field increments in UserOverallStats
+    def _inc_json(d: dict, key: str, add: int) -> dict:
+        if not isinstance(d, dict):
+            d = {}
+        d.setdefault("practice", 0)
+        d.setdefault("test", 0)
+        d[key] = int(d.get(key, 0) or 0) + int(add or 0)
+        return d
 
     with transaction.atomic():
         # ── update PracticeSession ────────────────────────────────────────────
-        session.total_questions   = agg["total_q"] or 0
-        session.correct_answers   = agg["correct_q"] or 0
-        
-        session.total_score       = net_marks
+        session.total_questions    = total_q
+        session.correct_answers    = correct_q
+        session.total_score        = net_marks
 
-        session.sureshot_attempts = agg["sureshot_q"] or 0
-        session.applied_attempts  = agg["applied_q"] or 0
-        session.guesswork_attempts= agg["guesswork_q"] or 0
+        session.sureshot_attempts  = sureshot_q
+        session.applied_attempts   = applied_q
+        session.guesswork_attempts = guesswork_q
 
-        session.sureshot_wrong    = agg["sureshot_wrong"] or 0
-        session.applied_wrong     = agg["applied_wrong"] or 0
-        session.guesswork_wrong   = agg["guesswork_wrong"] or 0
+        session.sureshot_wrong     = sureshot_wrong
+        session.applied_wrong      = applied_wrong
+        session.guesswork_wrong    = guesswork_wrong
 
-        session.status            = "completed"
-        session.end_time          = timezone.now()
+        session.status             = "completed"
+        session.end_time           = end_ts
         session.save()
 
-        # ── upsert TopicAttemptSummary ───────────────────────────────────────
-        summary, _ = TopicAttemptSummary.objects.get_or_create(
-            user  = session.user,
-            topic = session.topic,
-            mode  = "practice",
-            defaults = {
-                "total_attempts":   0,
-                "correct_attempts": 0,
-                "wrong_attempts":   0,
-                "net_marks":        0,
+        # ── upsert UserDailyStats ────────────────────────────────────────────
+        uds, _ = UserDailyStats.objects.get_or_create(
+            user=session.user,
+            date=stats_date,
+            defaults={
+                "practice_sessions": 0,
+                "test_sessions": 0,
+                "total_attempts": 0,
+                "total_correct": 0,
+                "total_wrong": 0,
                 "sureshot_attempts": 0,
-                "applied_attempts":  0,
-                "guesswork_attempts":0,
-                "sureshot_wrong":    0,
-                "applied_wrong":     0,
-                "guesswork_wrong":   0,
+                "applied_attempts": 0,
+                "guesswork_attempts": 0,
+                "sureshot_wrong": 0,
+                "applied_wrong": 0,
+                "guesswork_wrong": 0,
+                "practice_time": 0.0,
+                "test_time": 0.0,
             },
         )
 
-        # increment counters from this session
-        summary.total_attempts      = F("total_attempts")      + (agg["answered_q"] or 0)
-        summary.correct_attempts    = F("correct_attempts")    + (agg["correct_q"] or 0)
-        summary.wrong_attempts      = F("wrong_attempts")      + wrong_q
+        UserDailyStats.objects.filter(pk=uds.pk).update(
+            practice_sessions=F("practice_sessions") + 1,
 
-        summary.sureshot_attempts   = F("sureshot_attempts")   + (agg["sureshot_q"] or 0)
-        summary.applied_attempts    = F("applied_attempts")    + (agg["applied_q"] or 0)
-        summary.guesswork_attempts  = F("guesswork_attempts")  + (agg["guesswork_q"] or 0)
+            total_attempts=F("total_attempts") + answered_q,
+            total_correct=F("total_correct") + correct_q,
+            total_wrong=F("total_wrong") + wrong_q,
 
-        summary.sureshot_wrong      = F("sureshot_wrong")      + (agg["sureshot_wrong"] or 0)
-        summary.applied_wrong       = F("applied_wrong")       + (agg["applied_wrong"] or 0)
-        summary.guesswork_wrong     = F("guesswork_wrong")     + (agg["guesswork_wrong"] or 0)
+            sureshot_attempts=F("sureshot_attempts") + sureshot_q,
+            applied_attempts=F("applied_attempts") + applied_q,
+            guesswork_attempts=F("guesswork_attempts") + guesswork_q,
 
-        summary.net_marks           = F("net_marks")           + net_marks
-        summary.save()
+            sureshot_wrong=F("sureshot_wrong") + sureshot_wrong,
+            applied_wrong=F("applied_wrong") + applied_wrong,
+            guesswork_wrong=F("guesswork_wrong") + guesswork_wrong,
 
-        # ── recompute TopicStatus.pmi from last-N sessions (emergent trend) ──
+            practice_time=F("practice_time") + hours_to_add,
+        )
+
+        # ── update UserOverallStats (JSON buckets per mode) ──────────────────
+        ous, _ = UserOverallStats.objects.select_for_update().get_or_create(user=session.user)
+
+        ous.total_attempts = _inc_json(ous.total_attempts, mode, answered_q)
+        ous.total_correct  = _inc_json(ous.total_correct,  mode, correct_q)
+        ous.total_wrong    = _inc_json(ous.total_wrong,    mode, wrong_q)
+
+        ous.sureshot_attempts  = _inc_json(ous.sureshot_attempts,  mode, sureshot_q)
+        ous.applied_attempts   = _inc_json(ous.applied_attempts,   mode, applied_q)
+        ous.guesswork_attempts = _inc_json(ous.guesswork_attempts, mode, guesswork_q)
+
+        ous.sureshot_wrong  = _inc_json(ous.sureshot_wrong,  mode, sureshot_wrong)
+        ous.applied_wrong   = _inc_json(ous.applied_wrong,   mode, applied_wrong)
+        ous.guesswork_wrong = _inc_json(ous.guesswork_wrong, mode, guesswork_wrong)
+
+        ous.save()
+
+        # ── upsert TopicAttemptSummary (mode=practice) ───────────────────────
+        summary, _ = TopicAttemptSummary.objects.get_or_create(
+            user=session.user,
+            topic=session.topic,
+            mode="practice",
+            defaults={
+                "total_attempts": 0,
+                "correct_attempts": 0,
+                "wrong_attempts": 0,
+                "net_marks": 0,
+                "sureshot_attempts": 0,
+                "applied_attempts": 0,
+                "guesswork_attempts": 0,
+                "sureshot_wrong": 0,
+                "applied_wrong": 0,
+                "guesswork_wrong": 0,
+            },
+        )
+
+        TopicAttemptSummary.objects.filter(pk=summary.pk).update(
+            total_attempts=F("total_attempts") + answered_q,
+            correct_attempts=F("correct_attempts") + correct_q,
+            wrong_attempts=F("wrong_attempts") + wrong_q,
+
+            sureshot_attempts=F("sureshot_attempts") + sureshot_q,
+            applied_attempts=F("applied_attempts") + applied_q,
+            guesswork_attempts=F("guesswork_attempts") + guesswork_q,
+
+            sureshot_wrong=F("sureshot_wrong") + sureshot_wrong,
+            applied_wrong=F("applied_wrong") + applied_wrong,
+            guesswork_wrong=F("guesswork_wrong") + guesswork_wrong,
+
+            net_marks=F("net_marks") + net_marks,
+        )
+
+        # ── recompute TopicStatus.pmi from last-N sessions ───────────────────
         _compute_and_update_topic_pmi(session.user, session.topic)
+
+        # Optional: profile counters (keep if you use it)
+        session.user.profile.register_attempt(increment=answered_q)
+
+# def _finalise_session_and_update_summary(session: PracticeSession) -> None:
+#     """
+#     Populate PracticeSession stats **and** upsert TopicAttemptSummary
+#     in ONE atomic transaction. Also recompute TopicStatus.pmi using last-N sessions.
+#     """
+#     logs = session.questionlog_set.all()
+
+#     # Aggregate once – cheaper & 100 % accurate
+#     agg = logs.aggregate(
+#         total_q         = Count("id"),
+#         answered_q      = Count("id", filter=Q(user_answered__isnull=False)),
+#         correct_q       = Count("id", filter=Q(attempt_result="right")),
+#         sureshot_q      = Count("id", filter=Q(attempt_type="sureshot")),
+#         applied_q       = Count("id", filter=Q(attempt_type="applied")),
+#         guesswork_q     = Count("id", filter=Q(attempt_type="guesswork")),
+
+#         sureshot_wrong  = Count("id", filter=Q(attempt_type="sureshot", attempt_result="wrong")),
+#         applied_wrong   = Count("id", filter=Q(attempt_type="applied",  attempt_result="wrong")),
+#         guesswork_wrong = Count("id", filter=Q(attempt_type="guesswork",attempt_result="wrong")),
+#     )
+
+#     wrong_q      = (agg["answered_q"] or 0) - (agg["correct_q"] or 0)
+    
+
+#     # Simple net-mark rule (+2 / −0.66) – tweak if you use a different formula
+#     net_marks = ((agg["correct_q"] or 0) * 2.0) - (wrong_q * 0.66)
+
+#     attempt_count = agg["answered_q"] or 0
+
+#     with transaction.atomic():
+#         # ── update PracticeSession ────────────────────────────────────────────
+#         session.total_questions   = agg["total_q"] or 0
+#         session.correct_answers   = agg["correct_q"] or 0
         
-        # Optional: streaks / profile counters
-        session.user.profile.register_attempt(increment=attempt_count)
+#         session.total_score       = net_marks
+
+#         session.sureshot_attempts = agg["sureshot_q"] or 0
+#         session.applied_attempts  = agg["applied_q"] or 0
+#         session.guesswork_attempts= agg["guesswork_q"] or 0
+
+#         session.sureshot_wrong    = agg["sureshot_wrong"] or 0
+#         session.applied_wrong     = agg["applied_wrong"] or 0
+#         session.guesswork_wrong   = agg["guesswork_wrong"] or 0
+
+#         session.status            = "completed"
+#         session.end_time          = timezone.now()
+#         session.save()
+
+#         # ── upsert TopicAttemptSummary ───────────────────────────────────────
+#         summary, _ = TopicAttemptSummary.objects.get_or_create(
+#             user  = session.user,
+#             topic = session.topic,
+#             mode  = "practice",
+#             defaults = {
+#                 "total_attempts":   0,
+#                 "correct_attempts": 0,
+#                 "wrong_attempts":   0,
+#                 "net_marks":        0,
+#                 "sureshot_attempts": 0,
+#                 "applied_attempts":  0,
+#                 "guesswork_attempts":0,
+#                 "sureshot_wrong":    0,
+#                 "applied_wrong":     0,
+#                 "guesswork_wrong":   0,
+#             },
+#         )
+
+#         # increment counters from this session
+#         summary.total_attempts      = F("total_attempts")      + (agg["answered_q"] or 0)
+#         summary.correct_attempts    = F("correct_attempts")    + (agg["correct_q"] or 0)
+#         summary.wrong_attempts      = F("wrong_attempts")      + wrong_q
+
+#         summary.sureshot_attempts   = F("sureshot_attempts")   + (agg["sureshot_q"] or 0)
+#         summary.applied_attempts    = F("applied_attempts")    + (agg["applied_q"] or 0)
+#         summary.guesswork_attempts  = F("guesswork_attempts")  + (agg["guesswork_q"] or 0)
+
+#         summary.sureshot_wrong      = F("sureshot_wrong")      + (agg["sureshot_wrong"] or 0)
+#         summary.applied_wrong       = F("applied_wrong")       + (agg["applied_wrong"] or 0)
+#         summary.guesswork_wrong     = F("guesswork_wrong")     + (agg["guesswork_wrong"] or 0)
+
+#         summary.net_marks           = F("net_marks")           + net_marks
+#         summary.save()
+
+#         # ── recompute TopicStatus.pmi from last-N sessions (emergent trend) ──
+#         _compute_and_update_topic_pmi(session.user, session.topic)
+        
+#         # Optional: streaks / profile counters
+#         session.user.profile.register_attempt(increment=attempt_count)
 
         
 

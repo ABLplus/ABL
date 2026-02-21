@@ -1,0 +1,104 @@
+{% extends 'user/base.html' %}
+
+{% block title %}All Exams — Completed Days{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="text-center text-primary mb-4">Completed Days — Admin View</h1>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <p class="card-text">
+                Select an exam from the dropdown to view all completed day entries associated with that exam.
+            </p>
+            <p class="mb-0"><strong>Note:</strong> This page is visible to staff users only.</p>
+        </div>
+    </div>
+
+    <form method="get" id="exam-filter-form" class="mb-3">
+        <div class="row g-2 align-items-end">
+            <div class="col-md-9">
+                <label for="exam_id" class="form-label">Choose Exam</label>
+                <select id="exam_id" name="exam_id" class="form-select">
+                    <option value="">-- Select an exam --</option>
+                    {% for exam in exams %}
+                        <option value="{{ exam.id }}" {% if selected_exam and exam.id == selected_exam.id %}selected{% endif %}>
+                            {{ exam.name }} — {{ exam.user.get_full_name|default:exam.user.username }}
+                            {% if exam.date %} ({{ exam.date }}){% endif %}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3 text-end">
+                <button type="submit" class="btn btn-primary mt-2">Show Completed Days</button>
+            </div>
+        </div>
+    </form>
+
+    {% if selected_exam %}
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="card-title mb-1">{{ selected_exam.name }}</h5>
+                <p class="card-text small text-muted mb-0">
+                    User: {{ selected_exam.user.get_full_name|default:selected_exam.user.username }}
+                    &middot; Marks: {{ selected_exam.marks }}
+                    {% if selected_exam.date %} &middot; Date: {{ selected_exam.date }}{% endif %}
+                </p>
+            </div>
+        </div>
+    {% endif %}
+
+    {% if days.exists %}
+        <div class="table-responsive">
+            <table class="table table-sm table-striped align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Week - Day</th>
+                        <th>Date</th>
+                        <th>Wake time</th>
+                        <th>Study hours</th>
+                        <th>Mood</th>
+                        <th>Reflection</th>
+                        <th>Logged at</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for day in days %}
+                        <tr>
+                            <td>W{{ day.week.week_number }} - D{{ day.day_number }}</td>
+                            <td>{% if day.date %}{{ day.date|date:"Y-m-d" }}{% else %}—{% endif %}</td>
+                            <td>{% if day.wake_time %}{{ day.wake_time|time:"H:i" }}{% else %}—{% endif %}</td>
+                            <td>{{ day.study_hours }}</td>
+                            <td>{{ day.get_mood_display }}</td>
+                            <td style="max-width:380px; white-space:pre-wrap; word-break:break-word;">{{ day.reflection|default:"—" }}</td>
+                            <td>{% if day.log_datetime %}{{ day.log_datetime|localtime|date:"Y-m-d H:i" }}{% else %}—{% endif %}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="alert alert-info">
+            {% if selected_exam %}
+                No completed days found for this exam.
+            {% else %}
+                Select an exam above to view completed days.
+            {% endif %}
+        </div>
+    {% endif %}
+
+    <div class="text-end mt-4">
+        <a href="{% url 'admin:index' %}" class="btn btn-secondary">Back to Admin</a>
+    </div>
+</div>
+
+<script>
+    // optional: auto-submit on change
+    document.getElementById('exam_id')?.addEventListener('change', function() {
+        // only auto-submit if a value is chosen; prevents accidental empty submits
+        if (this.value) {
+            document.getElementById('exam-filter-form').submit();
+        }
+    });
+</script>
+{% endblock %}
